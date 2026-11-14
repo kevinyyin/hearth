@@ -177,7 +177,8 @@ def test_keypad_yes_on_a_call_never_records_the_caller_as_safe(monkeypatch):
 def test_yes_to_the_impact_question_confirms_the_profile_hours(monkeypatch, answer):
     from hearth.messaging import interpreter
     monkeypatch.setattr(voice, "interpret_turn", interpreter.interpret_turn)  # yes and keypad are read by code
-    c = call_at_ask(); assert respond(c, answer) == render("ask_temperature") and confirmed_facts(c)["backup_hours"] == 6.0
+    c = call_at_ask()  # p1 lives on floor 6 with an elevator on record: today's elevator comes before the temperature
+    assert respond(c, answer) == render("ask_elevator_working") and confirmed_facts(c)["backup_hours"] == 6.0
 
 
 @pytest.mark.parametrize("answer", ["no", "3"])
@@ -375,3 +376,18 @@ def test_a_finished_call_hangs_up_after_the_closing_line(monkeypatch):
         "stream": True, "tools": END_CALL, "messages": [{"role": "user", "content": "yes"}], "elevenlabs_extra_body": {"call_id": c}})
     assert sse_text(r).endswith(render("close_no_promise")) and chunks(r)[-1]["choices"][0]["finish_reason"] == "tool_calls"
     assert store.get("call", c)["status"] == "done"  # nothing after the closing line can re-flag it
+
+
+def test_the_impact_call_asks_about_the_elevator_above_floor_1():
+    from hearth.buildings import status
+    FAKE["it's not working"] = Turn(elevator_working="no", confidence=0.9)
+    c = call_at_ask()  # p1: floor 6 in a fixture building with an elevator on record
+    assert respond(c, "yes") == render("ask_elevator_working")
+    assert respond(c, "it's not working") == render("ask_temperature")
+    s = status.latest("B-SAMPLE")
+    assert (s["elevator"], s["said_by"], s["call_id"]) == ("no", "resident", c)
+
+
+def test_no_elevator_question_on_floor_1():
+    store.put("patient", "p1", PATIENT | {"floor": 1})
+    assert respond(call_at_ask(), "yes") == render("ask_temperature")
