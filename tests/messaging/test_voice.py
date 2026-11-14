@@ -225,3 +225,84 @@ def test_dialysis_patient_hears_about_their_next_treatment_not_backup():
     c = start_call("p2", "impact")
     first = respond(c, "")
     assert "next home dialysis treatment" in first and "backup should last" not in first
+
+
+def system(caller, conversation="conv-1"):
+    return {"role": "system", "content": f"Every reply comes from the Hearth custom model endpoint. caller={caller} conversation={conversation}"}
+
+
+def test_an_inbound_call_from_a_number_a_person_entered_gets_one_impact_check():
+    store.put("contact", "p1", {"patient_id": "p1", "phone": "+15550100002"})
+    lines = [sse_text(client().post("/voice/v1/chat/completions", json={
+        "stream": True, "messages": [system("+15550100002"), {"role": "user", "content": turn}]})) for turn in ("hello?", "yes")]
+    calls = store.all("call")
+    assert "automated" in lines[0] and lines[1] == render("ask_temperature")
+    assert [(c["patient_id"], c["kind"]) for c in calls] == [("p1", "impact")]
+
+
+def test_an_inbound_call_from_any_other_number_goes_to_a_person():
+    r = client().post("/voice/v1/chat/completions", json={  # PATIENT["phone"] is a synthetic record, not a number a person entered
+        "stream": True, "messages": [system(PATIENT["phone"]), {"role": "user", "content": "hello?"}]})
+    assert sse_text(r) == render("human_handoff") and store.all("call") == []
+
+
+def test_dial_rings_only_a_phone_a_person_entered(monkeypatch):
+    import httpx
+    posts = []
+    for k, v in {"ELEVENLABS_API_KEY": "k", "ELEVENLABS_AGENT_ID": "agent1", "ELEVENLABS_PHONE_NUMBER_ID": "line1"}.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(voice.httpx, "post", lambda url, **kw: posts.append(kw["json"]) or httpx.Response(
+        200, json={"success": True, "conversation_id": "conv9"}, request=httpx.Request("POST", url)))
+    c = start_call("p1", "move_consent", "P1")
+    assert voice.dial(c) is None and posts == []  # PATIENT["phone"] is synthetic: never dialed
+    store.put("contact", "p1", {"patient_id": "p1", "phone": "+15550100002"})
+    assert voice.dial(c) == "conv9"
+    assert posts[0]["to_number"] == "+15550100002" and posts[0]["conversation_initiation_client_data"]["custom_llm_extra_body"] == {"call_id": c}
+
+
+def test_the_follow_up_text_goes_after_the_closing_line(monkeypatch):
+    from hearth.messaging import photon
+    sent = []
+    monkeypatch.setattr(photon, "after_call", sent.append)
+    c = call_at_move_offer(); respond(c, "yes")  # -> consent read-back
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "messages": [{"role": "user", "content": "yes"}], "elevenlabs_extra_body": {"call_id": c}})
+    assert render("close_no_promise") in sse_text(r) and sent == [c]
+
+
+END_CALL = [{"type": "function", "function": {"name": "end_call", "parameters": {"type": "object", "properties": {"reason": {"type": "string"}}}}}]
+
+
+def chunks(r):
+    import json
+    return [json.loads(line[6:]) for line in r.text.splitlines() if line.startswith("data: {")]
+
+
+def test_a_handed_off_call_says_so_honestly_then_hangs_up():
+    c = call_at_ask()
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "tools": END_CALL, "messages": [{"role": "user", "content": "maybe, I guess"}], "elevenlabs_extra_body": {"call_id": c}})
+    said, calls = sse_text(r), [t for ch in chunks(r) for t in ch["choices"][0]["delta"].get("tool_calls", [])]
+    assert said == render("human_handoff") and "connecting" not in said and "911" in said
+    assert [t["function"]["name"] for t in calls] == ["end_call"] and chunks(r)[-1]["choices"][0]["finish_reason"] == "tool_calls"
+
+
+def test_an_active_call_and_a_browser_without_end_call_stay_up():
+    c = call_at_ask()
+    for tools, turn in ((END_CALL, "about forty minutes"), ([], "maybe, I guess")):
+        r = client().post("/voice/v1/chat/completions", json={
+            "stream": True, "tools": tools, "messages": [{"role": "user", "content": turn}], "elevenlabs_extra_body": {"call_id": c}})
+        assert not any(ch["choices"][0]["delta"].get("tool_calls") for ch in chunks(r))
+
+
+def test_an_unknown_inbound_caller_is_told_and_the_call_ends():
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "tools": END_CALL, "messages": [system("+15550109999"), {"role": "user", "content": "hello?"}]})
+    assert sse_text(r) == render("human_handoff") and chunks(r)[-1]["choices"][0]["finish_reason"] == "tool_calls"
+
+
+def test_a_line_the_plan_does_not_allow_hands_the_call_to_a_person(monkeypatch):
+    from hearth.messaging import scripts
+    c = call_at_ask()
+    monkeypatch.setattr(scripts, "advance", lambda call, t: [("delivery_confirmed", {"org": "x", "item": "y", "window": "z"})])
+    assert respond(c, "yes") == render("human_handoff") and store.get("call", c)["status"] == "handoff"

@@ -1,4 +1,4 @@
-import { API } from "./api";
+import { API, authHeaders, onUnauthorized } from "./api";
 import type { BuildingProfile, TraceEvent } from "./types";
 
 export type Todo = { content: string; status: string };
@@ -74,7 +74,8 @@ export function parseSSE(buffer: string): { events: unknown[]; rest: string } {
 /** Streams events from the API (GET or POST; EventSource cannot POST). Resolves when the stream ends. */
 export async function streamEvents(path: string, init: RequestInit | undefined, onEvent: (e: TraceEvent) => void): Promise<void> {
   if (!API) throw new Error("Set NEXT_PUBLIC_API to the Hearth API to run the agent live.");
-  const res = await fetch(`${API}${path}`, init);
+  const res = await fetch(`${API}${path}`, { ...init, headers: { ...authHeaders(), ...(init?.headers as Record<string, string>) } });
+  if (res.status === 401) onUnauthorized();
   if (!res.ok || !res.body) throw new Error(`${res.status} ${res.statusText}`);
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

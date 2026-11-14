@@ -89,3 +89,11 @@ def test_options_recheck_dark_area_and_type_and_build_reasons_in_code(monkeypatc
     [opt] = refuge._options(pat, '[{"building_id": "H-LEVEL", "reasons": ["model says: lovely lobby"]}]')
     assert "power at refuge not verified" in opt.reasons and any("step-free" in r for r in opt.reasons)
     assert any(r.endswith("km away") for r in opt.reasons) and not any("lovely" in r for r in opt.reasons)
+
+
+def test_rejection_memory_survives_a_fresh_server_instance():
+    seed_pending_proposal("P5")
+    decide("P5", "reject", "elevator out of service")
+    Path(refuge.MEMORY_FILE).unlink()                     # a new instance starts with an empty temp folder
+    refuge.sync_memory()
+    assert "elevator out of service" in Path(refuge.MEMORY_FILE).read_text()
