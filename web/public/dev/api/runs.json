@@ -1,0 +1,9 @@
+[
+  {
+    "run_id": "sample__p3__c20__s1",
+    "scenario": "sample",
+    "policy": "p3",
+    "crews": 20,
+    "seed": 1
+  }
+]
