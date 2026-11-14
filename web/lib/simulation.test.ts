@@ -56,6 +56,16 @@ describe("what the map shows", () => {
     expect(new Set(households.map((h) => h.needsAt)).size).toBe(households.length);
   });
 
+  it("shows a household on today's map only once its call is in", () => {
+    const side = county.sides.todayAt;
+    const held = side.jobs.find((j) => !j.refill && j.knownAt !== null && j.knownAt - j.dueAt > 0.5)!;
+    expect(county.stateAt(held.h, (held.dueAt + held.knownAt!) / 2, "todayAt")).toBe("unaffected");
+    expect(county.stateAt(held.h, held.knownAt!, "todayAt")).toBe("waiting");
+
+    const neverCalls = side.jobs.find((j) => !j.refill && j.knownAt === null)!;
+    expect(county.stateAt(neverCalls.h, RUN_HOURS, "todayAt")).toBe("unaffected");
+  });
+
   it("changes a household's colour when the van pulls away, and shows the van parked until then", () => {
     const side = county.sides.hearthAt;
     const job = side.jobs.find((j) => j.servedAt !== null && !j.refill)!;

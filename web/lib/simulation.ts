@@ -286,8 +286,12 @@ export const CREW_COUNT = STATIONS.length * CREWS_PER_STATION;
 const CRUISE = 0.34;
 /** Hours spent at a door. Same job either way. */
 const SERVICE_H = 0.2;
-/** How finely the dispatcher reconsiders. */
-export const DT = 0.25;
+/**
+ * How finely the dispatcher reconsiders: about a minute, so an order that comes in
+ * while a van is free goes out straight away. A power of two, so the steps add up
+ * exactly.
+ */
+export const DT = 1 / 64;
 /**
  * Hours of running a single delivery buys. Past this a household that was helped
  * needs helping again — which is the thing a one-visit-per-person picture misses.
@@ -616,8 +620,11 @@ export function buildCounty(households: Household[]): CountySim {
   }
 
   /**
-   * `time` is continuous, not an hour index: a household turns green the moment
-   * its van arrives, which is what you watch for when a crew is on its way.
+   * Each map is its dispatcher's view: a need shows once the dispatcher has the
+   * order. With the registry that is the moment the device goes down; today it is
+   * once the call has been answered and written up, so a household still on hold,
+   * or one that never calls, stays grey. `time` is continuous: a household turns
+   * green the moment its van pulls away.
    */
   const stateAt = (i: number, time: number, which: SideKey): HouseholdState => {
     const mine = byHousehold[which][i];
@@ -628,7 +635,7 @@ export function buildCounty(households: Household[]): CountySim {
     let refillDone = false;
 
     for (const j of mine) {
-      if (j.dueAt > time) continue;
+      if (j.knownAt === null || j.knownAt > time) continue;
       anyDue = true;
       if (j.servedAt === null || j.servedAt > time) {
         openNow = true;
@@ -700,7 +707,7 @@ export function buildCounty(households: Household[]): CountySim {
     backlogAt(time, which) {
       let n = 0;
       for (const j of sides[which].jobs) {
-        if (j.dueAt > time) continue;
+        if (j.knownAt === null || j.knownAt > time) continue;
         if (j.servedAt === null || j.servedAt > time) n += 1;
       }
       return n;
