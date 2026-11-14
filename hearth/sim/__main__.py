@@ -1,8 +1,9 @@
 """python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20 [--no-buildings] [--no-moves] [--mutual-aid]
-python -m hearth.sim sweep --scenario beryl_2024 --crews 5,10,20,40,80 --seeds 10"""
+python -m hearth.sim sweep --scenario beryl_2024 [--crews 20,40,80,160,320] [--seeds 10]   (defaults: sweep.* in assumptions.yaml)"""
 import argparse
 import json
 
+from hearth.config import a
 from hearth.planner import Flags
 from hearth.sim.engine import run
 from hearth.sim.sweep import sweep
@@ -21,8 +22,8 @@ def main(argv=None):
     r.add_argument("--mutual-aid", action="store_true")
     s = sub.add_parser("sweep", help="all policies x crew counts x seeds; writes results/sweep_<scenario>.json")
     s.add_argument("--scenario", default="beryl_2024")
-    s.add_argument("--crews", default="5,10,20,40,80")
-    s.add_argument("--seeds", type=int, default=10)
+    s.add_argument("--crews", default=",".join(map(str, a("sweep.crews"))))
+    s.add_argument("--seeds", type=int, default=a("sweep.seeds"))
     args = p.parse_args(argv)
     if args.cmd == "sweep":
         print(json.dumps(sweep(args.scenario, [int(c) for c in args.crews.split(",")], args.seeds), indent=1))

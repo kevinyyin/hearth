@@ -113,7 +113,7 @@ and crew assignment. The world is identical under every policy; policies differ 
 
 ## Sweep and replay (Task S4)
 
-`HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim sweep --scenario beryl_2024 --crews 5,10,20,40,80 --seeds 10`
+`HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim sweep --scenario beryl_2024` (crews 20, 40, 80, 160, 320 and 10 seeds from `sweep.*` in `assumptions.yaml`; the range was 5 to 80 until Nov 13, which covered only the start of the curve)
 (250 runs, about 4.5 min on 10 cores) writes `results/sweep_beryl_2024.json` and
 `results/sweep_beryl_2024.assumptions.yaml`. The committed sweep ran against the main store: 1,386 records-only
 profiles plus 6 agent surveys, no fixtures.
