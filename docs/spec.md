@@ -205,7 +205,9 @@ Field names and coverage are in `docs/toolkit-notes.md`.
 - **Refuge finder** (`refuge.py`): searches CoStar within 15 km for hotels and senior housing outside the dark
   area, surveys up to three candidates (cache first), filters with a code rule (a wheelchair or bedbound patient
   needs a step-free entrance, and an elevator above one floor; unknown access is ineligible), and stops at the
-  approval interrupt. A rejection reason is appended to the agent's memory file and read on the next proposal.
+  approval interrupt. An elevator that a scan shows but CoStar does not list (CoStar lists none for hotels) counts
+  only after a call to the refuge confirms it is running. In this build that call is simulated: nobody is phoned,
+  the answer is yes for a refuge outside the dark area, and the dispatcher sees "(simulated call)" in the reasons. A rejection reason is appended to the agent's memory file and read on the next proposal.
 - **Records-only profiles**: `python -m hearth.buildings bulk` builds a profile for every Houston home and refuge
   from CoStar and Vexcel fields with no model call. 1,386 are stored, plus 6 agent surveys. The interface marks
   which is which.
@@ -296,6 +298,8 @@ List these beside the results, every time.
 
 - Simulated patients answer at configured rates, and crews accept jobs instantly.
 - Refuges have no capacity limit, so the building-data gap is an upper bound.
+- A simulated call always confirms that an elevator seen in a refuge's scan is running, when the refuge is outside
+  the dark area. A real call could find it out of service.
 - Hearth assumes per-home outage status from the utility, which most utilities do not share today.
 - Dispatcher approval is assumed instant in the simulation; the live app requires it.
 - The indoor temperature model and the building time constants are simple heuristics.

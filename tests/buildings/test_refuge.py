@@ -7,6 +7,7 @@ from hearth import store
 from hearth.buildings import refuge
 from hearth.buildings.profile import default_profile, finalize
 from hearth.buildings.refuge import decide, eligible, outside_dark_area
+from hearth.contracts import Sourced
 
 
 @pytest.fixture(autouse=True)
@@ -31,6 +32,43 @@ def test_single_floor_refuge_needs_no_elevator():
 def test_unknown_access_is_ineligible():
     ok, why = eligible(finalize(default_profile("H", "x", 0, 0)), patient(mobility="wheelchair_manual"))
     assert not ok and "unverified access" in why
+
+
+def scan_seen(building_id="H-LEVEL", count=1):
+    """A step-free 4-floor refuge whose only elevator evidence is a scan: CoStar lists none for hotels."""
+    p = profile(building_id, step_free=True, floors=4)
+    p.elevator_count = Sourced(value=count, source="matterport", confidence=0.5)
+    return p
+
+
+def test_an_elevator_only_seen_in_a_scan_needs_a_call_before_it_counts():
+    who = patient(mobility="wheelchair_manual")
+    ok, why = eligible(scan_seen(), who)
+    assert not ok and why[0] == "needs a call"
+    ok, why = eligible(scan_seen(), who, elevator_confirmed=True)
+    assert ok and any("simulated call" in w for w in why)
+    ok, why = eligible(scan_seen(count=0), who, elevator_confirmed=True)  # not seeing one in a scan proves nothing
+    assert not ok and "unverified access" in why
+
+
+def test_the_simulated_call_is_recorded_and_only_made_outside_the_outage_area(monkeypatch):
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    who = patient(mobility="wheelchair_manual")
+    ok, why = refuge.access(scan_seen(), who, {"77030"})  # H-LEVEL's own ZIP is dark: its elevator cannot be assumed
+    assert not ok and why[0] == "needs a call" and store.get("refuge_call", "H-LEVEL") is None
+    ok, why = refuge.access(scan_seen(), who, {"77002"})
+    call = store.get("refuge_call", "H-LEVEL")
+    assert ok and call["simulated"] is True and call["answer"] == "yes"
+    assert store.all("call") == [] and store.all("message") == []  # no patient was called or texted
+
+
+def test_a_refuge_confirmed_by_the_simulated_call_reaches_the_dispatcher_with_that_reason(monkeypatch):
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    store.put("profile", "H-LEVEL", scan_seen())
+    pat = patient(mobility="wheelchair_manual")
+    refuge._ctx[pat.patient_id] = (pat, {"77002"})
+    [opt] = refuge._options(pat, '[{"building_id": "H-LEVEL"}]')
+    assert any("seen in a scan" in r for r in opt.reasons) and any("simulated call" in r for r in opt.reasons)
 
 
 def test_walking_patient_has_no_access_constraint():

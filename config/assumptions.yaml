@@ -76,6 +76,7 @@ building:
 refuge:
   search_radius_km: {value: 15, source: "our call: a short ride across Houston", confirmed: false}
   max_candidates: {value: 3, source: "our call: each uncached candidate costs a 30-60 s survey", confirmed: false}
+  elevator_runs_outside_outage: {value: true, source: "team decision Nov 14: a refuge outside the dark area has power, so an elevator seen in its scan is assumed running; a simulated call stands in for a real one", confirmed: false}
 
 voice:
   county: {value: Harris County, source: "design: synthetic Harris County patients", confirmed: true}
