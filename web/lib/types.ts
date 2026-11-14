@@ -171,6 +171,11 @@ export type Home = {
   patient_id: string;
   building_id: string;
   ok_without_h: number;
+  /** The device as the resident names it. */
+  device_name: string;
+  /** Can the device leave with the person? null: not answered. */
+  movable: boolean | null;
+  /** No longer asked on the resident page; older saved homes may carry one. */
   backup_plan: string;
   size: SizeId;
   /** Width, depth, height in cm; only for a custom size. */

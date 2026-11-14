@@ -190,7 +190,9 @@ class Home(BaseModel):
     patient_id: str
     building_id: str
     ok_without_h: float = Field(ge=0, le=720)
-    backup_plan: str = Field("", max_length=500)
+    device_name: str = Field("", max_length=120)  # the device as the resident names it; the patient record keeps the clinical type
+    movable: bool | None = None  # can the device leave with the person? None: not answered
+    backup_plan: str = Field("", max_length=500)  # no longer asked on the resident page; kept so older saved homes still load
     size: Literal["shoebox", "microwave", "carry_on", "mini_fridge", "custom"]
     size_cm: tuple[Cm, Cm, Cm] | None = None  # width, depth, height; needed only for "custom", checked whenever sent
     scan_id: str | None = None  # the scan the resident says is laid out like their home; None: none of them
