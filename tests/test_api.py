@@ -101,3 +101,8 @@ def test_survey_streams_server_sent_events():
 
 def test_propose_for_unknown_patient_is_404():
     assert client.post("/api/patients/nobody/propose").status_code == 404
+
+
+def test_snapshots_are_served_gzipped():
+    r = client.get("/api/runs/sample__p3__c20__s1/snapshots/0", headers={"Accept-Encoding": "gzip"})
+    assert r.headers.get("content-encoding") == "gzip"
