@@ -102,7 +102,7 @@ export default function ResultsPage() {
               style={{ color: "var(--text-secondary)" }}
             >
               Set a crew count and something to compare against. Every number comes from replaying the
-              storm over the same simulated patients.
+              storm over the same simulated patients: one in 36 of the county&rsquo;s 23,273.
             </p>
           </div>
 
