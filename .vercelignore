@@ -1,0 +1,17 @@
+# never upload: secrets, sponsor data, local caches and big generated files (the API reads those from Supabase Storage)
+.env
+.env.*
+.venv
+.claude
+.superpowers
+data/raw
+data/buildings/*
+!data/buildings/_fixtures
+data/processed
+data/*.db
+data/remote
+results/beryl_*
+web/node_modules
+web/.next
+web/.vercel
+_uv

@@ -62,6 +62,8 @@ def respond(call_id: str, caller_text: str, keypad: str | None = None) -> str:
     call["ctx"]["ride"] = ({"org": job["data"].get("org_name", job["org_id"]), "window": job["data"]["window"]}
                            if job_status == "accepted" and "window" in job["data"] else None)
     ack, lines = _turn(call, text, keypad)
+    if refused := [k for k, _ in lines if not allowed(k, state, job_status)]:
+        _end(call, "handoff", "handoff", f"line not allowed for this plan: {refused}")  # so the hand-off line is true
     said = [render(k, **v) if allowed(k, state, job_status) else render("human_handoff") for k, v in lines]
     out = " ".join(([ack] if ack else []) + said)
     call["transcript"].append({"role": "agent", "text": out, "t": time.time()})
@@ -133,6 +135,45 @@ def _patient(patient_id: str) -> dict:
     return store.get("patient", patient_id) or next((p for p in demo if p["patient_id"] == patient_id), {})
 
 
+def phone_of(patient_id: str) -> str | None:
+    """Only a phone a person entered (a "contact" doc); a synthetic patient's phone field is never dialed or texted."""
+    return (store.get("contact", patient_id) or {}).get("phone")
+
+
+def dial(call_id: str) -> str | None:
+    """Rings the patient's phone from the Photon line through ElevenLabs; returns its conversation id. None when no
+    person entered a phone or the line is not set up: the browser phone takes the call then."""
+    call = store.get("call", call_id)
+    phone, line = phone_of(call["patient_id"]), os.environ.get("ELEVENLABS_PHONE_NUMBER_ID")
+    if not (phone and line):
+        return None
+    r = httpx.post("https://api.elevenlabs.io/v1/convai/sip-trunk/outbound-call", headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
+                   json={"agent_id": os.environ["ELEVENLABS_AGENT_ID"], "agent_phone_number_id": line, "to_number": phone,
+                         "conversation_initiation_client_data": {"custom_llm_extra_body": {"call_id": call_id}}}, timeout=30)
+    if r.is_error or not r.json().get("success"):
+        raise RuntimeError(f"ElevenLabs did not place the call ({r.status_code}): {r.text[:300]}")
+    return r.json().get("conversation_id")
+
+
+def _inbound_call(msgs: list) -> str | None:
+    """A call to the Photon line. The agent's prompt carries ElevenLabs' caller ID and conversation ID (a browser call
+    has no caller ID). A number a person entered gets one impact check per conversation; anyone else gets a person."""
+    # shortcut: caller ID can be spoofed on the phone network; a real line would confirm who is calling on the call
+    system = next((m.get("content") for m in msgs if m.get("role") == "system"), None)
+    found = re.search(r"caller=(\+\d{8,15}) conversation=(\S+)", system if isinstance(system, str) else "")
+    if not found:
+        return None
+    caller, conversation = found.groups()
+    if known := store.get("conversation", conversation):
+        return known["call_id"]
+    patient_id = next((c["patient_id"] for c in store.all("contact") if c.get("phone") == caller), None)
+    if patient_id is None:
+        return None
+    call_id = start_call(patient_id, "impact")
+    store.put("conversation", conversation, {"call_id": call_id, "caller": caller})
+    return call_id
+
+
 def _latest_ride(patient_id: str) -> dict | None:
     rides = [j for j in store.all("job") if j["patient_id"] == patient_id and j["kind"] == "ride"]
     return rides[-1] if rides else None
@@ -150,27 +191,47 @@ def chat_completions(body: dict = Body(...), authorization: str | None = Header(
     content = last.get("content") or ""
     text = (content if isinstance(content, str) else " ".join(p.get("text", "") for p in content)).strip() \
         if last.get("role") == "user" else ""  # no new caller message: a silent turn
-    call_id = extra.get("call_id")
-    if not (call_id and store.get("call", call_id)):
-        # shortcut: inbound calls need a telephony caller id (Task V3); a request body is not proof of who is calling
+    call_id = extra.get("call_id") or _inbound_call(msgs)  # a caller number in the extra body is never trusted
+    then = None
+    can_hang_up = any((t.get("function") or {}).get("name") == "end_call" for t in body.get("tools") or [])
+    if not (call_id and (call := store.get("call", call_id))):
         line = render("human_handoff")
     else:
         try:
             line = respond(call_id, text)  # keypad digits arrive as a bare user turn; the interpreter reads them
+            if call["status"] == "active" and store.get("call", call_id)["status"] == "done":
+                from hearth.messaging.photon import after_call
+
+                then = lambda: after_call(call_id)  # noqa: E731
         except Exception as e:  # a bug must not leave the caller with a dead line: a person takes over
             log.exception("voice turn failed for %s", call_id)
             call = store.get("call", call_id)
             _end(call, "handoff", "error", f"{type(e).__name__}: {e}")
             store.put("call", call_id, call)
             line = render("human_handoff")
-    return StreamingResponse(_sse(line, body.get("model", "hearth-voice")), media_type="text/event-stream")
+    # a person has the call now (or no one matched the caller): after the hand-off line, end it rather than loop on it
+    now = store.get("call", call_id) if can_hang_up and call_id else None
+    hang_up = can_hang_up and (now is None or now["status"] in ("handoff", "escalated"))
+    return StreamingResponse(_sse(line, body.get("model", "hearth-voice"), then, hang_up), media_type="text/event-stream")
 
 
-def _sse(line: str, model: str):
+def _sse(line: str, model: str, then=None, hang_up: bool = False):
     base = {"id": f"chatcmpl-{uuid.uuid4().hex[:12]}", "object": "chat.completion.chunk", "created": int(time.time()), "model": model}
-    yield "data: " + json.dumps(base | {"choices": [{"index": 0, "delta": {"role": "assistant", "content": line}, "finish_reason": None}]}) + "\n\n"
-    yield "data: " + json.dumps(base | {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}) + "\n\n"
+
+    def chunk(delta: dict, finish: str | None) -> str:
+        return "data: " + json.dumps(base | {"choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}) + "\n\n"
+
+    yield chunk({"role": "assistant", "content": line}, None)
+    if hang_up:  # ElevenLabs' end_call system tool: the line above is spoken, then the call ends
+        yield chunk({"tool_calls": [{"index": 0, "id": f"call_{uuid.uuid4().hex[:12]}", "type": "function",
+                                     "function": {"name": "end_call", "arguments": json.dumps({"reason": "handed to a person"})}}]}, None)
+    yield chunk({}, "tool_calls" if hang_up else "stop")
     yield "data: [DONE]\n\n"
+    if then:  # after the caller has the line, so the follow-up text adds no delay to the call
+        try:
+            then()
+        except Exception:
+            log.exception("after-call step failed")
 
 
 def setup(public_url: str) -> str:
@@ -185,8 +246,12 @@ def setup(public_url: str) -> str:
         "name": "Hearth voice line (simulated patients)",
         "conversation_config": {
             "agent": {"first_message": "", "language": "en", "prompt": {
-                "prompt": "Every reply comes from the Hearth custom model endpoint.", "llm": "custom-llm", "custom_llm": custom}},
+                "prompt": "Every reply comes from the Hearth custom model endpoint. "
+                          "caller={{system__caller_id}} conversation={{system__conversation_id}}", "llm": "custom-llm", "custom_llm": custom,
+                "built_in_tools": {"end_call": {"type": "system", "name": "end_call", "description": "Ends the call after a hand-off.",
+                                                "params": {"system_tool_type": "end_call"}}}}},
             "turn": {"turn_timeout": a("voice.turn_timeout_s"), "turn_eagerness": "patient"},
+            "tts": {"optimize_streaming_latency": a("voice.tts_streaming_optimization")},
             "conversation": {"dtmf_input_settings": {"dtmf_input_timeout": 2, "hash_terminator": True}},
         },
         "platform_settings": {"overrides": {"custom_llm_extra_body": True,  # carries call_id to our endpoint

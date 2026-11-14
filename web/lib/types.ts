@@ -128,7 +128,61 @@ export type BuildingDetail = {
   hours_to_unsafe: number | null;
   embed_url: string | null;
   image_url: string;
+  /** The building's real scan models; empty with fixtures or when CoStar lists none. */
+  scan_ids: string[];
+  scan_sdk_key: string | null;
 };
+
+// --- Home markup shapes (mirrors Patient and Home in hearth/contracts.py). ---
+
+export type Patient = {
+  patient_id: string;
+  synthetic: true;
+  lat: number;
+  lon: number;
+  zip: string;
+  floor: number;
+  device: string;
+  device_detail: string;
+  backup_hours_on_hand: number;
+  use_rate: number;
+  mobility: string;
+  can_self_relocate: boolean;
+  temp_sensitive: "heat" | "cold" | "both" | "none";
+  risk_weight: number;
+  supplier_id: string;
+  building_id: string | null;
+  phone_status: "verified" | "unverified" | "missing";
+  profile_status: "complete" | "partial" | "none";
+  phone: string | null;
+};
+
+export type Vec3 = { x: number; y: number; z: number };
+export type OutsideKind = "park" | "entrance" | "blocked" | "route";
+export type InsideKind = "machine" | "blocked" | "route";
+export type SizeId = "shoebox" | "microwave" | "carry_on" | "mini_fridge" | "custom";
+
+/** x and y are fractions of the aerial image's width and height. */
+export type OutsidePin = { kind: OutsideKind; x: number; y: number };
+/** A point on a surface in the scan's own frame, in metres. */
+export type InsidePin = { kind: InsideKind; position: Vec3; normal: Vec3 };
+
+export type Home = {
+  patient_id: string;
+  building_id: string;
+  ok_without_h: number;
+  backup_plan: string;
+  size: SizeId;
+  /** Width, depth, height in cm; only for a custom size. */
+  size_cm: [number, number, number] | null;
+  /** The scan the resident says is laid out like their home; null: none of them. */
+  scan_id: string | null;
+  note: string;
+  outside: OutsidePin[];
+  inside: InsidePin[];
+};
+
+export type HomeRow = { home: Home; patient: Patient; address: string };
 
 export type TraceEvent = {
   seq: number;
@@ -150,4 +204,5 @@ export type RefugeProposal = {
   thread_id: string;
   call_id?: string;
   call_error?: string;
+  phone_call?: string | null;
 };
