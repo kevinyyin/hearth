@@ -185,29 +185,6 @@ function Side({
         ariaLabel={`${title} at hour ${hour}: ${t.reached} reached, ${t.waiting} waiting, ${t.resupply} needing a restock.`}
       />
 
-      {/* the two logs sit under their own map, side by side, so a column reads
-          as one thing: the ground, then what was heard, then what was sent */}
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <LogPanel
-          title={hearth ? "Agent calls" : "Operator calls"}
-          note={hearth ? "in parallel" : "in order"}
-          events={county.logAt(time, which, 20, ["call"])}
-          badge={`${count.format(onHold)} on hold`}
-          badgeTone={onHold > 0 ? "warn" : "ok"}
-          open={callsOpen}
-          onToggle={() => setCallsOpen((v) => !v)}
-        />
-        <LogPanel
-          title="Dispatch"
-          note={`${chained}% chained`}
-          events={county.logAt(time, which, 20, ["dispatch", "arrive", "restock"])}
-          badge={`${count.format(backlog)} open`}
-          badgeTone={backlog > 0 ? "warn" : "ok"}
-          open={dispatchOpen}
-          onToggle={() => setDispatchOpen((v) => !v)}
-        />
-      </div>
-
       <dl className="mt-3 grid grid-cols-5 gap-2">
         {[
           ["Reached", count.format(t.reached), "#0e7a54"],
@@ -229,6 +206,29 @@ function Side({
           </div>
         ))}
       </dl>
+
+      {/* the two logs sit under the figures, side by side, so a column reads as
+          one thing: the ground and how it stands, then what was heard and what was sent */}
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <LogPanel
+          title={hearth ? "Agent calls" : "Operator calls"}
+          note={hearth ? "in parallel" : "in order"}
+          events={county.logAt(time, which, 20, ["call"])}
+          badge={`${count.format(onHold)} on hold`}
+          badgeTone={onHold > 0 ? "warn" : "ok"}
+          open={callsOpen}
+          onToggle={() => setCallsOpen((v) => !v)}
+        />
+        <LogPanel
+          title="Dispatch"
+          note={`${chained}% chained`}
+          events={county.logAt(time, which, 20, ["dispatch", "arrive", "restock"])}
+          badge={`${count.format(backlog)} open`}
+          badgeTone={backlog > 0 ? "warn" : "ok"}
+          open={dispatchOpen}
+          onToggle={() => setDispatchOpen((v) => !v)}
+        />
+      </div>
     </section>
   );
 }
