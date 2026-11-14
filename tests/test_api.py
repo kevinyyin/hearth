@@ -18,6 +18,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch, tmp_path):
+    # .env may hold the hosted settings; tests run as the local API, with no password and no Supabase
+    for k in ("HEARTH_PASSWORD", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "HEARTH_DATABASE_URL", "HEARTH_WEB_ORIGIN_REGEX"):
+        monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("HEARTH_FIXTURES", "1")
     monkeypatch.setenv("HEARTH_DB", str(tmp_path / "t.db"))
     monkeypatch.setattr(refuge, "MEMORY_FILE", str(tmp_path / "memory.md"))
@@ -181,3 +184,21 @@ def test_county_patients_come_from_a_json_copy_in_storage(monkeypatch, tmp_path)
     monkeypatch.setattr(m, "PATIENTS_FILE", tmp_path / "absent.parquet")
     monkeypatch.setattr(remote, "fetch", lambda path: copy if path == "processed/patients_beryl_2024_s1.json" else None)
     assert m._patient("SIM-77002-0001").patient_id == "SIM-77002-0001"
+
+
+def test_web_origins_can_be_a_pattern_for_preview_deployments():
+    import importlib
+    import api.main as m
+    os_env = {"HEARTH_WEB_ORIGIN_REGEX": r"https://hearth[a-z0-9-]*\.vercel\.app"}
+    import os
+    old = {k: os.environ.get(k) for k in os_env}
+    os.environ.update(os_env)
+    try:
+        fresh = TestClient(importlib.reload(m).app)
+        r = fresh.get("/api/runs", headers={"Origin": "https://hearth-abc123-kyin.vercel.app"})
+        assert r.headers.get("access-control-allow-origin") == "https://hearth-abc123-kyin.vercel.app"
+        assert "access-control-allow-origin" not in fresh.get("/api/runs", headers={"Origin": "https://evil.example"}).headers
+    finally:
+        for k, v in old.items():
+            os.environ.pop(k) if v is None else os.environ.__setitem__(k, v)
+        importlib.reload(m)

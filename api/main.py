@@ -48,6 +48,7 @@ async def guard(request: Request, call_next):
 
 # added after the guard so they wrap it: a 401 still carries CORS headers the browser can read
 app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("HEARTH_WEB_ORIGINS", "http://localhost:3000").split(","),
+                   allow_origin_regex=os.environ.get("HEARTH_WEB_ORIGIN_REGEX"),  # preview deployments get new hostnames
                    allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)  # a full-county snapshot is megabytes of JSON; gzip keeps scrubbing smooth
 try:  # lane V's OpenAI-compatible endpoint that ElevenLabs calls as its model
