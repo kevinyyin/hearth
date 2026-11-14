@@ -509,7 +509,8 @@ export default function SimulationPage() {
                     them.
                   </p>
                   <BuildingViews
-                    buildingId={residentFeed.buildingId ?? "B-SAMPLE"}
+                    buildingId={residentFeed.buildingId}
+                    preferredScanId={residentFeed.scanId}
                     outside={residentFeed.outside}
                     inside={residentFeed.inside}
                   />
@@ -813,7 +814,8 @@ export default function SimulationPage() {
                     style={{ borderColor: "var(--border)", background: "var(--surface-0)" }}
                   >
                     <BuildingViews
-                      buildingId={residentFeed.buildingId ?? "B-SAMPLE"}
+                      buildingId={residentFeed.buildingId}
+                    preferredScanId={residentFeed.scanId}
                       outside={residentFeed.outside}
                       inside={residentFeed.inside}
                     />

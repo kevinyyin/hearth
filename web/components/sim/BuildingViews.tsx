@@ -24,17 +24,24 @@ import type { InsidePin, OutsidePin } from "@/lib/types";
  */
 export default function BuildingViews({
   buildingId,
+  preferredScanId = null,
   outside = [],
   inside = [],
 }: {
   buildingId: string | null;
+  /** The scan the resident picked. /resident opens this one, so this does too. */
+  preferredScanId?: string | null;
   outside?: OutsidePin[];
   inside?: InsidePin[];
 }) {
   const { data, source, detail, error } = useBuildingFeed(buildingId);
 
   const live = source === "api" && !!data;
-  const scanId = data?.scan_ids?.[0] ?? null;
+  const listed = data?.scan_ids ?? [];
+  const scanId =
+    preferredScanId && listed.includes(preferredScanId)
+      ? preferredScanId
+      : (listed[0] ?? null);
   const imagePath = data?.image_url ?? (buildingId ? `/api/buildings/${buildingId}/image` : null);
 
   return (
@@ -88,14 +95,12 @@ export default function BuildingViews({
           ) : (
             <>
               <strong style={{ color: "var(--text-primary)" }}>
-                The 3D space cannot load on this machine.
+                No scan reachable from here.
               </strong>{" "}
-              The walkthrough is Matterport&rsquo;s, opened in an iframe with a viewer key that only
-              the API holds, from a model id that only the CoStar extract holds. Neither is in this
-              checkout, and neither can be — the key would be in the browser bundle and the extract
-              is kept out of the repository on purpose. Set{" "}
-              <code>NEXT_PUBLIC_API</code> to a Hearth API that has both and the real scan opens
-              here, from above, with the resident&rsquo;s pins in it.
+              The walkthrough is Matterport&rsquo;s, opened with a model id and a viewer key the API
+              hands over — the same ones the resident screen uses, so where that screen shows a scan
+              this one will too. This build has no <code>NEXT_PUBLIC_API</code>, so there is nothing
+              to ask.
             </>
           )}
         </div>
