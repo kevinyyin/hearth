@@ -163,7 +163,7 @@ def results():
 class _DayHousehold(BaseModel):
     lon: float = Field(ge=-180, le=180)
     lat: float = Field(ge=-90, le=90)
-    needsAt: float = Field(ge=0, le=48)
+    needsAt: float = Field(ge=0, le=100_000)  # a long backup is a need after the day ends, not an error
     repeats: bool
 
 

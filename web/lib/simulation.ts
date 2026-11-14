@@ -622,9 +622,39 @@ export type CountySim = {
   restocksBy(time: number, which: SideKey): number;
 };
 
-export function buildCounty(households: Household[]): CountySim {
+const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const point = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]);
+const hourOrNone = (v: unknown) => v === null || num(v);
+
+/**
+ * A Hearth side planned by the API (POST /api/sim/day), checked before the page
+ * draws it. Anything that is not the shape `runSide` produces is refused, and the
+ * caller falls back to the browser's own routes: a bad answer must not blank a map.
+ */
+export function parseSide(raw: unknown, households: number): SideSim | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const s = raw as Record<string, unknown>;
+  const { jobs, calls, legs, station, events } = s;
+  if (![jobs, calls, legs, station, events].every(Array.isArray)) return null;
+  if (![s.tours, s.stops, s.refills].every(num)) return null;
+  const okLeg = (l: Record<string, unknown>) =>
+    l && point(l.from) && point(l.to) && num(l.t0) && num(l.t1) && typeof l.departure === "boolean";
+  const okJob = (j: Record<string, unknown>) =>
+    j && Number.isInteger(j.h) && (j.h as number) >= 0 && (j.h as number) < households && num(j.dueAt) &&
+    hourOrNone(j.knownAt) && hourOrNone(j.sentAt) && hourOrNone(j.servedAt) && typeof j.refill === "boolean";
+  const okEvent = (e: Record<string, unknown>) =>
+    e && num(e.t) && typeof e.text === "string" && ["call", "dispatch", "arrive", "restock"].includes(e.kind as string);
+  const L = legs as unknown[];
+  if (L.length !== CREW_COUNT || (station as unknown[]).length !== CREW_COUNT) return null;
+  if (!L.every((van) => Array.isArray(van) && van.every(okLeg))) return null;
+  if (!(jobs as Record<string, unknown>[]).every(okJob) || !(events as Record<string, unknown>[]).every(okEvent)) return null;
+  return raw as SideSim;
+}
+
+/** `hearthSide` is the central planner's day when the API answered with one; without it the browser routes both sides. */
+export function buildCounty(households: Household[], hearthSide?: SideSim): CountySim {
   const sides: Record<SideKey, SideSim> = {
-    hearthAt: runSide(households, "hearthAt"),
+    hearthAt: hearthSide ?? runSide(households, "hearthAt"),
     todayAt: runSide(households, "todayAt"),
   };
 
@@ -678,7 +708,9 @@ export function buildCounty(households: Household[]): CountySim {
       if (k < 0) continue;
       const leg = legs[k];
       // parked at a door: keep facing the way it drove in
-      const aim = leg.from === leg.to && k > 0 ? legs[k - 1] : leg;
+      // by value: a side from the API has its own array for every point
+      const parked = leg.from[0] === leg.to[0] && leg.from[1] === leg.to[1];
+      const aim = parked && k > 0 ? legs[k - 1] : leg;
       const p = (time - leg.t0) / Math.max(leg.t1 - leg.t0, 1e-6);
       out.push({
         lon: leg.from[0] + (leg.to[0] - leg.from[0]) * p,
