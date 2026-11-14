@@ -17,7 +17,6 @@ import {
   EVENT_CALL_ASK_LINE,
   EVENT_PHASES,
   HELP_REQUEST,
-  RUN_HOURS,
   type Actor,
   type EventPhase,
   type TranscriptLine,
@@ -218,12 +217,6 @@ export default function SimulationPage() {
 
   const phaseReached = (p: EventPhase) =>
     EVENT_PHASES.findIndex((x) => x.phase === p) <= phaseIdx;
-
-  // the county panel follows the steps rather than its own clock
-  const countyHour =
-    stage === "event"
-      ? Math.round((phaseIdx / (EVENT_PHASES.length - 1)) * RUN_HOURS)
-      : 0;
 
   /** A field is known once the resident's answer to it has been said. */
   const landed = (label: string) =>
@@ -922,7 +915,6 @@ export default function SimulationPage() {
               {/* sidebar */}
               <div className="flex min-h-0 flex-col gap-5">
                 {phaseReached("accepted") && <RouteSim onArrive={advance} />}
-                <CoverageMap hour={countyHour} heading={false} />
               </div>
             </div>
           </>
