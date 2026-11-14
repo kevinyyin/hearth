@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -89,10 +90,28 @@ function ChartTooltip({
   );
 }
 
-export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
+export default function CrewsChart({
+  rows,
+  selectedCrews,
+  comparison,
+}: {
+  rows: SweepRow[];
+  /** Marked with a rule on the x axis, so the card's crew count is visible here too. */
+  selectedCrews?: number | null;
+  /** When set, the chart opens on Hearth against this one policy; the legend still toggles the rest. */
+  comparison?: PolicyId;
+}) {
   const [weighted, setWeighted] = useState(true);
-  const [shown, setShown] = useState<string[]>([...DEFAULT_POLICIES]);
+  const [shown, setShown] = useState<string[]>(
+    comparison ? ["p3", comparison] : [...DEFAULT_POLICIES],
+  );
   const [showTable, setShowTable] = useState(false);
+
+  // The card drives which comparison is drawn. A legend click after that still wins,
+  // until the card changes again.
+  useEffect(() => {
+    if (comparison) setShown(["p3", comparison]);
+  }, [comparison]);
 
   const allSeries = useMemo(() => toSeries(rows, weighted), [rows, weighted]);
   // the crew counts come from the sweep file (sweep.crews in assumptions.yaml), not from the page
@@ -155,7 +174,8 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
 
       <div className="h-[420px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartRows} margin={{ top: 8, right: 16, bottom: 28, left: 8 }}>
+          {/* top leaves room for the selected-crews label the reference line hangs above the plot */}
+          <ComposedChart data={chartRows} margin={{ top: 26, right: 16, bottom: 28, left: 8 }}>
             <CartesianGrid stroke="var(--grid)" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="crews"
@@ -194,6 +214,20 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
               content={<ChartTooltip weighted={weighted} />}
               cursor={{ stroke: "var(--text-muted)", strokeDasharray: "3 3" }}
             />
+
+            {selectedCrews != null && (
+              <ReferenceLine
+                x={selectedCrews}
+                stroke="var(--accent, var(--text-muted))"
+                strokeDasharray="4 4"
+                label={{
+                  value: `${selectedCrews} crews`,
+                  position: "top",
+                  fill: "var(--accent, var(--text-secondary))",
+                  fontSize: 11,
+                }}
+              />
+            )}
 
             {/* p5..p95 band: an invisible floor plus a tinted span, stacked per policy. */}
             {weighted &&

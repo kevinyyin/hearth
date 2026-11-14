@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
 
 :root {
   color-scheme: light;
@@ -69,4 +70,41 @@ body {
 
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Direction 3A, "paper". Opt in per route with data-paper on a wrapper; it only
+   redefines tokens inside that wrapper, so pages that have not opted in (the
+   dispatch, resident and responder lanes) keep the :root values untouched.
+   Series slots 1-5 are re-snapped for this surface: validated at light mode
+   against #f4f1ea, all five pass lightness, chroma, CVD separation, the
+   normal-vision floor and 3:1 contrast. Slot 4 is violet, not amber: amber
+   cannot be both dark enough for paper and far enough from slot 3's green.
+   --------------------------------------------------------------------------- */
+[data-paper] {
+  color-scheme: light;
+
+  --surface-0: #f4f1ea;
+  --surface-1: #fbf9f4;
+  --surface-2: #f1ede3;
+  --border: #dad4c6;
+  --text-primary: #14130f;
+  --text-secondary: #3d382e;
+  --text-muted: #6b6457;
+  --accent: #a8441a;
+  --grid: #dfd9cb;
+
+  --series-1: #2a78d6;
+  --series-2: #c4461a;
+  --series-3: #0e7a54;
+  --series-4: #6b4fd1;
+  --series-5: #b0417a;
+
+  background: var(--surface-0);
+  color: var(--text-primary);
+}
+
+.display {
+  font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+  font-weight: 400;
 }
