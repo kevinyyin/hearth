@@ -211,6 +211,19 @@ def building_image(building_id: str):
     return FileResponse(img, media_type="image/png")
 
 
+@app.get("/api/buildings/{building_id}/entrance")
+def building_entrance(building_id: str):
+    """Where a vision model reads the way in on the aerial tile, for a home whose resident has marked none."""
+    rec = _building(building_id)
+    try:
+        spot = tools.aerial_entrance(building_id, rec["lat"], rec["lon"])
+    except Exception:  # the reading is optional: a vision or Vexcel failure is "no reading", not a broken page
+        spot = None
+    if spot is None:
+        raise HTTPException(404, "no entrance reading")
+    return spot
+
+
 @app.get("/api/buildings/{building_id}/survey")
 def building_survey(building_id: str, fresh: bool = False):
     rec = _building(building_id)

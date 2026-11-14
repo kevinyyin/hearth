@@ -63,3 +63,14 @@ export function toChartRows(series: Series[]): Record<string, number | null>[] {
     return row;
   });
 }
+
+/**
+ * Patient-hours in full, with separators and whatever fraction the risk weighting
+ * produced: 2,817,150.5 rather than 2.82M. Compacting read more cleanly but it
+ * rounds, and a figure someone may quote from a sweep should be the figure the
+ * sweep reported.
+ */
+export function formatHours(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  return new Intl.NumberFormat("en-US").format(v);
+}

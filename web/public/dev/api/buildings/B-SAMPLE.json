@@ -1,0 +1,15 @@
+{
+  "building_id": "B-SAMPLE",
+  "name": "1720 Crestdale Dr",
+  "address": "1720 Crestdale Dr, Houston, TX 77080",
+  "lat": 29.804345,
+  "lon": -95.530708,
+  "profile": null,
+  "brief": null,
+  "layer_effects": null,
+  "hours_to_unsafe": null,
+  "embed_url": null,
+  "image_url": "/api/buildings/B-SAMPLE/image",
+  "scan_ids": [],
+  "scan_sdk_key": null
+}

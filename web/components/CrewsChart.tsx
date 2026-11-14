@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { toChartRows, toSeries } from "@/lib/results";
+import { formatHours, toChartRows, toSeries } from "@/lib/results";
 import {
   DEFAULT_POLICIES,
   OPTIONAL_POLICIES,
@@ -21,6 +22,12 @@ import {
   type SweepRow,
 } from "@/lib/types";
 
+/**
+ * Kept out of the main screen. The ablation is still in the sweep and still in the
+ * repo's own write-ups; it is one line too many for a two-minute demo.
+ */
+const HIDDEN: PolicyId[] = ["p3__nomove"];
+
 /** Colour follows the policy, never its rank, so a toggle never repaints the survivors. */
 function seriesColor(policy: string): string {
   const slot = POLICY_ORDER.indexOf(policy as PolicyId);
@@ -28,7 +35,6 @@ function seriesColor(policy: string): string {
 }
 
 
-const fmt = new Intl.NumberFormat("en-US");
 
 type TooltipPayload = { dataKey?: string | number; value?: number; color?: string };
 
@@ -79,7 +85,7 @@ function ChartTooltip({
                 </td>
                 <td style={{ color: "var(--text-secondary)" }}>{policyLabel(String(p.dataKey))}</td>
                 <td className="tnum text-right font-medium">
-                  {p.value == null ? "—" : fmt.format(p.value)}
+                  {p.value == null ? "—" : formatHours(p.value)}
                 </td>
               </tr>
             ))}
@@ -89,12 +95,34 @@ function ChartTooltip({
   );
 }
 
-export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
-  const [weighted, setWeighted] = useState(true);
-  const [shown, setShown] = useState<string[]>([...DEFAULT_POLICIES]);
+export default function CrewsChart({
+  rows,
+  selectedCrews,
+  comparison,
+}: {
+  rows: SweepRow[];
+  /** Marked with a rule on the x axis, so the card's crew count is visible here too. */
+  selectedCrews?: number | null;
+  /** When set, the chart opens on Hearth against this one policy; the legend still toggles the rest. */
+  comparison?: PolicyId;
+}) {
+  // Always risk-weighted: the unweighted view was a toggle nobody used in a demo.
+  const weighted = true;
+  const [shown, setShown] = useState<string[]>(
+    comparison ? ["p3", comparison] : [...DEFAULT_POLICIES],
+  );
   const [showTable, setShowTable] = useState(false);
 
-  const allSeries = useMemo(() => toSeries(rows, weighted), [rows, weighted]);
+  // The card drives which comparison is drawn. A legend click after that still wins,
+  // until the card changes again.
+  useEffect(() => {
+    if (comparison) setShown(["p3", comparison]);
+  }, [comparison]);
+
+  const allSeries = useMemo(
+    () => toSeries(rows, weighted).filter((s) => !HIDDEN.includes(s.policy as PolicyId)),
+    [rows, weighted],
+  );
   // the crew counts come from the sweep file (sweep.crews in assumptions.yaml), not from the page
   const crewTicks = useMemo(() => [...new Set(rows.map((r) => r.crews))].sort((a, b) => a - b), [rows]);
   const visible = useMemo(
@@ -115,33 +143,6 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
     >
       {/* Filters in one row above the chart. */}
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div
-          className="inline-flex rounded-lg border p-0.5 text-sm"
-          style={{ borderColor: "var(--border)" }}
-          role="group"
-          aria-label="Weighting"
-        >
-          {[
-            { on: true, label: "Risk-weighted" },
-            { on: false, label: "Unweighted" },
-          ].map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              onClick={() => setWeighted(opt.on)}
-              aria-pressed={weighted === opt.on}
-              className="rounded-md px-3 py-1.5 font-medium transition-colors"
-              style={
-                weighted === opt.on
-                  ? { background: "var(--surface-0)", color: "var(--text-primary)" }
-                  : { color: "var(--text-muted)" }
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
         <button
           type="button"
           onClick={() => setShowTable((v) => !v)}
@@ -155,7 +156,8 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
 
       <div className="h-[420px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartRows} margin={{ top: 8, right: 16, bottom: 28, left: 8 }}>
+          {/* top leaves room for the selected-crews label the reference line hangs above the plot */}
+          <ComposedChart data={chartRows} margin={{ top: 26, right: 16, bottom: 28, left: 8 }}>
             <CartesianGrid stroke="var(--grid)" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="crews"
@@ -179,7 +181,7 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
               axisLine={false}
               width={96}
               tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-              tickFormatter={(v: number) => fmt.format(v)}
+              tickFormatter={(v: number) => formatHours(v)}
               label={{
                 value: weighted
                   ? "Median patient-hours at risk"
@@ -194,6 +196,20 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
               content={<ChartTooltip weighted={weighted} />}
               cursor={{ stroke: "var(--text-muted)", strokeDasharray: "3 3" }}
             />
+
+            {selectedCrews != null && (
+              <ReferenceLine
+                x={selectedCrews}
+                stroke="var(--accent, var(--text-muted))"
+                strokeDasharray="4 4"
+                label={{
+                  value: `${selectedCrews} crews`,
+                  position: "top",
+                  fill: "var(--accent, var(--text-secondary))",
+                  fontSize: 11,
+                }}
+              />
+            )}
 
             {/* p5..p95 band: an invisible floor plus a tinted span, stacked per policy. */}
             {weighted &&
@@ -309,10 +325,10 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
                           "—"
                         ) : (
                           <>
-                            {fmt.format(point.y)}
+                            {formatHours(point.y)}
                             {point.lo !== undefined && point.hi !== undefined && (
                               <span className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                                ({fmt.format(point.lo)}–{fmt.format(point.hi)})
+                                ({formatHours(point.lo)}–{formatHours(point.hi)})
                               </span>
                             )}
                           </>

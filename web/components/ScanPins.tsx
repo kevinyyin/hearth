@@ -1,7 +1,8 @@
 "use client";
 
 import { type MouseEvent, useEffect, useRef, useState } from "react";
-import { PIN_COLOR, pinLabels } from "@/lib/home";
+import { PIN_COLOR, PIN_LABEL, pinLabels } from "@/lib/home";
+import { nearestSpot, scanRoute, type Spot } from "@/lib/scanRoute";
 import type { InsideKind, InsidePin, Vec3 } from "@/lib/types";
 
 const SDK_SRC = "https://static.matterport.com/showcase-sdk/latest.js";
@@ -11,7 +12,8 @@ const HOLD_MS = 800;
 
 // The slice of Matterport's embed SDK used here (verified Nov 14 on a real scan).
 type Hit = { position: Vec3; normal: Vec3; object: string };
-type Sweep = { position: Vec3; enabled?: boolean }; // a spot the scan was taken from, which the viewer can stand at
+type Sweep = Spot; // a spot the scan was taken from, which the viewer can stand at
+type Point = { x: number; y: number };
 type Sdk = {
   App: { state: { waitUntil(f: (s: { phase: string }) => boolean): Promise<unknown> }; Phase: { PLAYING: string } };
   Tag: { add(...tags: object[]): Promise<string[]>; remove(...ids: string[]): Promise<unknown> };
@@ -19,12 +21,13 @@ type Sdk = {
   Mode: { moveTo(mode: unknown): Promise<unknown>; Mode: { FLOORPLAN: string }; current: { subscribe(f: (mode: string) => void): { cancel(): void } } };
   Sweep: {
     data: { subscribe(o: { onCollectionUpdated(sweeps: Record<string, Sweep>): void }): { cancel(): void } };
+    current: { subscribe(f: (sweep: { id?: string; sid?: string }) => void): { cancel(): void } };
     moveTo(id: string, options: object): Promise<unknown>;
     Transition: { FLY: unknown };
   };
   Pointer: { intersection: { subscribe(f: (hit: Hit) => void): { cancel(): void } } };
-  Camera: { getPose(): Promise<unknown> };
-  Conversion: { worldToScreen(p: Vec3, pose: unknown, size: { w: number; h: number }): { x: number; y: number } };
+  Camera: { getPose(): Promise<unknown>; pose: { subscribe(f: (pose: unknown) => void): { cancel(): void } } };
+  Conversion: { worldToScreen(p: Vec3, pose: unknown, size: { w: number; h: number }): Point };
 };
 type Connect = (iframe: HTMLIFrameElement, key: string, unused: string) => Promise<Sdk>;
 
@@ -43,12 +46,24 @@ function loadSdk(): Promise<void> {
 }
 
 const xyz = (v: Vec3): Vec3 => ({ x: v.x, y: v.y, z: v.z });
+/** The spot the scan opens at, which is where whoever scanned the home chose to start: nearly always the way in. */
+function openingSpot(s: Sdk): Promise<string | null> {
+  let sub: { cancel(): void } | undefined;
+  return new Promise<string | null>((resolve) => {
+    sub = s.Sweep.current.subscribe((sweep) => {
+      const id = sweep.id || sweep.sid; // empty while the viewer is between spots
+      if (id) resolve(id);
+    });
+    setTimeout(() => resolve(null), 3000);
+  }).finally(() => sub?.cancel());
+}
+
 const rgb = (hex: string) => ({ r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 });
 
 /** One of the building's 3D scans with the resident's inside pins. With `onChange`, holding the pointer still on a
  *  surface offers "Drop pin here"; without it the pins are only shown and the view turns to the machine pin.
  *  The pins are always listed as text below, so they survive a scan that does not open. */
-export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = "inside" }: {
+export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = "inside", route = false }: {
   scanId: string;
   sdkKey: string | null;
   pins: InsidePin[];
@@ -57,6 +72,9 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
   /** "floorplan" opens the scan from straight above; a click on a spot there takes the viewer inside at that spot.
    *  Pins are dropped in the in-person view only, so clicking around the floor plan never places one by accident. */
   view?: "inside" | "floorplan";
+  /** On the floor plan, draw the walk from where the scan starts to the machine: the machine pin, or with none the
+   *  spot farthest from the start. */
+  route?: boolean;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [sdk, setSdk] = useState<Sdk | null>(null);
@@ -67,6 +85,8 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
   const turned = useRef(false);
   const sweeps = useRef<Record<string, Sweep>>({});
   const [mode, setMode] = useState<string | null>(null);
+  const start = useRef<string | null>(null);
+  const [walk, setWalk] = useState<{ w: number; h: number; line: Point[] } | null>(null);
   const editable = !!onChange;
   const labels = pinLabels(pins);
 
@@ -77,6 +97,8 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
     setSpot(null);
     tagIds.current = [];
     turned.current = false;
+    start.current = null;
+    setWalk(null);
     if (!sdkKey || !iframe) return setState("failed");
     setState("opening");
     let cancelled = false;
@@ -95,6 +117,7 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
         if (!connect) throw new Error("the scan script is missing");
         const s = await connect(iframe, sdkKey, "");
         await s.App.state.waitUntil((a) => a.phase === s.App.Phase.PLAYING);
+        if (route) start.current = await openingSpot(s); // read before the view leaves it for the floor plan
         if (view === "floorplan") await s.Mode.moveTo(s.Mode.Mode.FLOORPLAN).catch(() => {}); // a refused move leaves the walk-through view
         if (cancelled) return;
         opened = true;
@@ -112,7 +135,7 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
       seen.disconnect();
       iframe.removeEventListener("load", onLoad);
     };
-  }, [scanId, sdkKey, view]);
+  }, [scanId, sdkKey, view, route]);
 
   // Keep the scan's tags equal to the pins. Runs are queued so a quick second change cannot interleave with the first.
   useEffect(() => {
@@ -127,7 +150,7 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
             })))
           : [];
         const machine = pins.findIndex((p) => p.kind === "machine");
-        if (!editable && !turned.current && machine >= 0) {
+        if (!editable && !route && !turned.current && machine >= 0) { // flying to the pin would leave the floor plan the route is on
           turned.current = true;
           await sdk.Mattertag.navigateToTag(tagIds.current[machine], sdk.Mattertag.Transition.FLY);
         }
@@ -138,16 +161,36 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- labels derive from pins
   }, [sdk, pins, editable]);
 
-  // Which view the scan is in, and the spots a viewer can stand at: both feed the floor plan's double-click.
+  // Which view the scan is in, and the spots a viewer can stand at: both feed the floor plan's double-click. The
+  // spots and the camera also place the route, which is redrawn whenever either moves.
   useEffect(() => {
     if (!sdk) return;
+    let pose: unknown = null;
+    const draw = () => {
+      const iframe = frame.current;
+      if (!route || !pose || !iframe || !start.current) return;
+      const all = sweeps.current;
+      const machine = pins.find((p) => p.kind === "machine");
+      const spots = scanRoute(all, start.current, machine ? nearestSpot(all, machine.position) : null).map((id) => all[id].position);
+      if (machine && spots.length) spots.push(machine.position);
+      const size = { w: iframe.clientWidth, h: iframe.clientHeight };
+      setWalk(spots.length > 1 ? { ...size, line: spots.map((p) => sdk.Conversion.worldToScreen(p, pose, size)) } : null);
+    };
     const a = sdk.Mode.current.subscribe(setMode);
-    const b = sdk.Sweep.data.subscribe({ onCollectionUpdated: (all) => { sweeps.current = all; } });
+    const b = sdk.Sweep.data.subscribe({ onCollectionUpdated: (all) => { sweeps.current = all; draw(); } });
+    const c = sdk.Camera.pose.subscribe((p) => { pose = p; draw(); });
+    // a scan that named no spot while it opened still gets its route from the first one it names
+    const d = sdk.Sweep.current.subscribe((sweep) => {
+      const id = sweep.id || sweep.sid;
+      if (id && !start.current) { start.current = id; draw(); }
+    });
     return () => {
       a.cancel();
       b.cancel();
+      c.cancel();
+      d.cancel();
     };
-  }, [sdk]);
+  }, [sdk, route, pins]);
 
   /** A double-click on the floor plan: stand at the scan spot nearest to it on screen, in the in-person view. */
   async function standAt(e: MouseEvent<HTMLDivElement>) {
@@ -200,7 +243,31 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
         {view === "floorplan" && sdk && mode === sdk.Mode.Mode.FLOORPLAN && (
           // The scan lives in another site's frame, which keeps its own clicks. This sheet over the floor plan catches
           // the double-click instead; it is gone once the viewer is inside, so the in-person view works as usual.
-          <div className="absolute inset-0 cursor-pointer" title="Double-click a spot to stand there" onDoubleClick={standAt} />
+          <div className="absolute inset-0 cursor-pointer" title="Double-click a spot to stand there" onDoubleClick={standAt}>
+            {walk && (
+              <>
+                <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${walk.w} ${walk.h}`} preserveAspectRatio="none" aria-hidden>
+                  {/* white under the dots, so the route reads on a dark floor and a pale one */}
+                  {([["#fff", 6, undefined], [PIN_COLOR.route, 3.5, "0.1 8"]] as const).map(([stroke, width, dash]) => (
+                    <polyline key={stroke} points={walk.line.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke}
+                      strokeWidth={width} strokeDasharray={dash} strokeLinejoin="round" strokeLinecap="round" />
+                  ))}
+                </svg>
+                {(["entrance", "machine"] as const).map((k) => {
+                  const p = walk.line[k === "entrance" ? 0 : walk.line.length - 1];
+                  return (
+                    <span key={k} className="pointer-events-none absolute flex flex-col items-center"
+                      style={{ left: `${(p.x / walk.w) * 100}%`, top: `${(p.y / walk.h) * 100}%`, transform: "translate(-50%, -7px)" }}>
+                      <span className="block h-3.5 w-3.5 rounded-full border-2 border-white shadow" style={{ background: PIN_COLOR[k] }} />
+                      <span className="mt-0.5 rounded px-1 text-[10px] font-semibold leading-4 text-white" style={{ background: PIN_COLOR[k] }}>
+                        {PIN_LABEL[k]}
+                      </span>
+                    </span>
+                  );
+                })}
+              </>
+            )}
+          </div>
         )}
         {state === "opening" && (
           <p className="absolute inset-x-0 bottom-2 text-center text-xs" style={{ color: "var(--text-muted)" }}>Opening the 3D scan…</p>
@@ -222,6 +289,36 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
         )}
       </div>
       {state === "failed" && <p className="text-xs" style={{ color: "#d03b3b" }}>The 3D scan did not open.</p>}
+      {walk && sdk && mode === sdk.Mode.Mode.FLOORPLAN && (
+        <>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <svg width="22" height="6" aria-hidden="true">
+                <line x1="2" y1="3" x2="20" y2="3" stroke={PIN_COLOR.route} strokeWidth="3.5" strokeDasharray="0.1 6" strokeLinecap="round" />
+              </svg>
+              Recommended path
+            </span>
+            {(["entrance", "machine"] as const).map((k) => (
+              <span key={k} className="flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: PIN_COLOR[k] }} />
+                {PIN_LABEL[k]}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            The recommended path is the walk from the entrance to the machine. It is planned over the spots the scanner stood
+            at, so every step of it is somewhere a person can stand. The entrance is where the scan starts
+            {pins.some((p) => p.kind === "machine") ? "." : "; nobody has pinned the machine yet, so the simulation places it in the farthest room from the door."}
+          </p>
+        </>
+      )}
+      {route && sdk && mode !== null && mode !== sdk.Mode.Mode.FLOORPLAN && (
+        // the route is drawn on the floor plan only, and a double-click there walks the viewer inside
+        <button type="button" className="rounded border px-2.5 py-1 text-xs font-semibold" style={{ borderColor: "var(--border)" }}
+          onClick={() => sdk.Mode.moveTo(sdk.Mode.Mode.FLOORPLAN).catch(() => {})}>
+          Show the recommended path on the floor plan
+        </button>
+      )}
       {editable && state !== "failed" && (
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
           {view === "floorplan" && "Double-click a spot on the floor plan to stand there. "}

@@ -77,3 +77,10 @@ def test_matterport_rooms_can_be_limited_to_some_scans(monkeypatch):
     monkeypatch.setattr(tools.httpx, "post", lambda url, json, **kw: asked.append(json["variables"]["id"]) or R())
     tools.matterport_rooms("anything", model_ids=["m1", "m2"])
     assert asked == ["m1", "m2"]
+
+
+def test_an_entrance_reading_is_a_point_on_the_tile_or_nothing():
+    assert tools.parse_entrance('Here: {"x": 0.44, "y": 0.69, "note": "canopy on the south side"}') == {
+        "x": 0.44, "y": 0.69, "note": "canopy on the south side"}
+    for answer in ("cannot tell", '{"x": 1.4, "y": 0.2}', '{"x": "left", "y": 0.2}', '{"note": "no door visible"}', "{not json}"):
+        assert tools.parse_entrance(answer) is None
