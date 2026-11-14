@@ -204,8 +204,10 @@ lines are. Follow the existing pattern for colours and toggles.
 `dispatch.run()` keeps the model's ordering, the refuge choice in rank order, the strict-then-loose equipment rule, the
 offer and accept flow, and every blocked reason. The change is the last step: instead of calling `assign` once per
 request, it builds one `Need` per placeable request and calls `plan(..., routing="paired")` once, strict fit first and
-then loose for whatever is left. A request's weight comes from the model's order (first of N gets N, last gets 1); its
-deadline comes from the hours the rule already uses. No ALNS here: there are a handful of requests.
+then loose for whatever is left. A request's weight comes from the model's order (first of N gets N, last gets 1).
+Every live request counts as already waiting (its deadline is now): the model weighed each person's hours when it
+ordered them, and feeding the hours in a second time would let them overturn its order on their own. (Amended while
+planning; the first draft took the deadline from the rule's hours.) No ALNS here: there are a handful of requests.
 
 Refuge places: pairing needs every request's drop-off before it knows who gets a crew. Refuges are chosen in rank order
 and each placeable request holds its place for that planning pass only; a request that gets no crew in the pass
