@@ -23,7 +23,8 @@ def opening(call: dict) -> Lines:
 def advance(call: dict, t: Turn) -> Lines:
     """Mutates call (step, pending, facts, status) and returns what to say next."""
     step, c, facts = call["step"], call["ctx"], call["facts"]
-    for k in ("safe", "device_running", "can_move"):  # plain yes/no statements; only confident turns reach here
+    # plain statements; only confident turns reach here. Never "safe": on a call, keypad 1 means "yes" to the question
+    for k in ("device_running", "can_move"):
         if getattr(t, k) is not None:
             facts[k] = getattr(t, k)
 

@@ -154,3 +154,10 @@ def test_elevenlabs_silence_marker_counts_as_silence():
     assert "Is that about right?" in respond(c, "...")  # first silence: ask again
     respond(c, " … "); respond(c, "...")
     assert store.get("call", c)["status"] == "escalated"
+
+
+def test_keypad_yes_on_a_call_never_records_the_caller_as_safe(monkeypatch):
+    from hearth.messaging import interpreter
+    monkeypatch.setattr(voice, "interpret_turn", interpreter.interpret_turn)  # real keypad path, no model needed
+    c = call_at_move_offer(); respond(c, "1"); respond(c, "1")
+    assert confirmed_facts(c) == {"consents_to_move": True}
