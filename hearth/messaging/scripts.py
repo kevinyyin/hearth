@@ -31,7 +31,7 @@ def advance(call: dict, t: Turn) -> Lines:
     if step == "ask":
         if t.backup_hours is not None:
             return _readback(call, t.backup_hours)
-        if call["last_key"] == "impact_check" and t.confirms:
+        if call["last"][0] == "impact_check" and t.confirms:
             facts["backup_hours"] = c["hours"]  # caller agreed with the profile value we read to them
             return _go(call, "temperature", "ask_temperature")
         return _go(call, "ask", "ask_hours")

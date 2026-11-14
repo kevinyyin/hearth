@@ -7,6 +7,7 @@ import anthropic
 from pydantic import BaseModel, Field
 
 from hearth.config import a, anthropic_headers
+from hearth.messaging.guard import ACKS
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class Turn(BaseModel):
     safe: bool | None = None
     needs_help_now: bool | None = None
     device_running: bool | None = None
-    backup_hours: float | None = None
+    backup_hours: float | None = Field(None, ge=0, lt=1000)  # out of range = invalid output: retry, then a person
     can_move: bool | None = None
     destination_offered: str | None = None
     consents_to_move: bool | None = None
@@ -64,8 +65,7 @@ Fields (null when the turn does not say):
 - medical_question: they ask for medical advice (dosing, settings, whether to turn a device up or down, symptoms).
 - language: ISO code of the language they spoke.
 - confidence: 0 to 1, how sure you are of the fields you set.
-- ack: null, or at most six plain words acknowledging them ("I hear you.", "Thank you."). Never mention help,
-  arrival, timing, safety, supplies, numbers or medical matters.
+- ack: null, or one of the plain acknowledgments the schema allows, when it fits what they said.
 
 A question that assumes help is coming ("a tank is already on its way, right?") confirms nothing: leave every field
 null except wants_human (true) and confidence. Never infer a value the person did not say."""
@@ -77,7 +77,7 @@ _SCHEMA = {
            ("safe", "needs_help_now", "device_running", "can_move", "consents_to_move", "confirms")},
         "backup_hours": {"type": ["number", "null"]},
         "destination_offered": {"type": ["string", "null"]},
-        "ack": {"type": ["string", "null"]},
+        "ack": {"anyOf": [{"type": "string", "enum": list(ACKS)}, {"type": "null"}]},
         "wants_human": {"type": "boolean"},
         "medical_question": {"type": "boolean"},
         "language": {"type": "string"},

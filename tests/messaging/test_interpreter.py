@@ -63,7 +63,7 @@ def test_model_error_escalates(monkeypatch):
 @pytest.mark.parametrize("line", [
     "Help is on the way.", "A driver will be there in 20 minutes.", "Someone's coming to you soon.",
     "You're safe now.", "Your tank was delivered.", "Don't worry, we'll send a car.", "Turn your oxygen down to 2 liters.",
-    "They're almost there.",
+    "They're almost there.", "We've got you covered.", "Assistance has been arranged.", "Ya viene la ayuda.",
 ])
 def test_guard_blocks_promises_safety_timing_and_advice(line):
     assert not guard.allows(line)
@@ -99,3 +99,11 @@ def test_live_plain_no_to_a_readback_is_clear():
     for _ in range(2):
         t = interpret_turn("no", None, ctx, hist)
         assert t.confirms is False and not t.wants_human and t.confidence >= 0.7
+
+
+
+@pytest.mark.parametrize("hours", ["-1", "12000"])
+def test_out_of_range_hours_count_as_invalid_output(monkeypatch, hours):
+    monkeypatch.setattr(interpreter, "_call_model", lambda *a: GOOD.replace('"backup_hours": 0.67', f'"backup_hours": {hours}'))
+    t = interpret_turn("forty minutes", None, ctx, [])
+    assert t.wants_human and t.backup_hours is None

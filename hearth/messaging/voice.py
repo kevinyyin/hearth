@@ -4,6 +4,7 @@ Each caller turn goes to the interpreter (Claude Haiku, structured fields); scri
 renders only keys `allowed` for the patient's plan state and job status. A model never writes a promise.
 """
 import json
+import logging
 import os
 import re
 import sys
@@ -19,10 +20,11 @@ from hearth import store
 from hearth.config import ROOT, a
 from hearth.contracts import PlanState
 from hearth.messaging import guard, scripts
-from hearth.messaging.interpreter import interpret_turn
+from hearth.messaging.interpreter import Turn, interpret_turn
 from hearth.messaging.templates import allowed, render
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
 
 
@@ -69,29 +71,43 @@ def confirmed_facts(call_id: str) -> dict:
 
 
 def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, scripts.Lines]:
-    if call["status"] != "active":
-        return None, [("close_no_promise" if call["status"] == "done" else "human_handoff", {})]
-    if call["step"] == "open":
-        return None, _script(call, scripts.opening(call))
+    active = call["status"] == "active"
     if not text and not keypad:  # silence is never safe
+        if not active:
+            return None, []  # the call is over: say nothing back to silence
+        if call["step"] == "open":
+            return None, _script(call, scripts.opening(call))
         call["silences"] += 1
         if call["silences"] >= a("voice.silences_to_escalate"):
             _end(call, "escalated", "escalation", f"no answer for {call['silences']} turns")
             return None, [("human_handoff", {})]
         return None, [tuple(call["last"])]  # ask the last question again
     call["silences"] = 0
-    history = [{"role": m["role"], "text": m["text"]} for m in call["transcript"][:-1]]  # [-1] is this turn
-    t = interpret_turn(text, keypad, call["ctx"], history)
+    if active and call["step"] == "open" and len(text.split()) <= 2:  # "hello?": no model latency on the greeting
+        return None, _script(call, scripts.opening(call))
+    if active and call["last"] and call["last"][0] == "ask_hours" and text.isdigit() and len(text) <= 3:
+        t = Turn(backup_hours=float(text), confidence=1.0)  # "3" answers "how many hours", not the keypad menu
+    else:
+        history = [{"role": m["role"], "text": m["text"]} for m in call["transcript"][:-1]]  # [-1] is this turn
+        t = interpret_turn(text, keypad, call["ctx"], history)
     call["transcript"][-1]["read"] = t.model_dump(exclude_defaults=True)  # what the interpreter heard, for review
-    if t.medical_question:
-        call["events"].append({"type": "medical_question", "text": text, "t": time.time()})
-        return None, [("medical_handoff", {})]
     if t.needs_help_now:
         _end(call, "escalated", "escalation", "caller needs help now")
-        return None, [("human_handoff", {})]
+        return None, [("medical_handoff" if t.medical_question else "human_handoff", {})]
+    if t.medical_question:
+        call["events"].append({"type": "medical_question", "text": text, "t": time.time()})
+        if not active:
+            return None, [("medical_handoff", {})]
+        # then ask the pending question again, so a "yes" to the hand-off line is not read as an answer
+        again = scripts.opening(call) if call["step"] == "open" else [tuple(call["last"])]
+        return None, [("medical_handoff", {})] + _script(call, again)
     if t.wants_human or t.confidence < a("voice.min_confidence"):
         _end(call, "handoff", "handoff", "caller asked for a person, or the turn was unclear")
         return None, [("human_handoff", {})]
+    if not active:
+        return None, [("close_no_promise" if call["status"] == "done" else "human_handoff", {})]
+    if call["step"] == "open":
+        return None, _script(call, scripts.opening(call))
     return (t.ack if t.ack and guard.allows(t.ack) else None), _script(call, scripts.advance(call, t))
 
 
@@ -101,7 +117,8 @@ def _script(call: dict, lines: scripts.Lines) -> scripts.Lines:
 
 
 def _end(call: dict, status: str, event: str, why: str) -> None:
-    call["status"] = status
+    if call["status"] != "escalated":  # never downgrade an escalation
+        call["status"] = status
     call["events"].append({"type": event, "text": why, "t": time.time()})
 
 
@@ -117,16 +134,6 @@ def _latest_ride(patient_id: str) -> dict | None:
     return rides[-1] if rides else None
 
 
-def _inbound(number: str | None) -> str | None:
-    """An inbound call continues the caller's active call, or starts an impact call for the patient with that phone."""
-    patient = next((p for p in store.all("patient") if number and p.get("phone") == number), None)
-    if patient is None:
-        return None
-    pid = patient["patient_id"]
-    active = [c for c in store.all("call") if c["patient_id"] == pid and c["status"] == "active"]
-    return active[-1]["call_id"] if active else start_call(pid, "impact")
-
-
 @router.post("/voice/v1/chat/completions")
 def chat_completions(body: dict = Body(...), authorization: str | None = Header(None)) -> StreamingResponse:
     """OpenAI-compatible streaming endpoint that ElevenLabs calls as its model."""
@@ -139,11 +146,19 @@ def chat_completions(body: dict = Body(...), authorization: str | None = Header(
     content = last.get("content") or ""
     text = (content if isinstance(content, str) else " ".join(p.get("text", "") for p in content)).strip() \
         if last.get("role") == "user" else ""  # no new caller message: a silent turn
-    call_id = extra.get("call_id") or _inbound(extra.get("caller_number"))
-    if call_id and store.get("call", call_id):
-        line = respond(call_id, text)  # keypad digits arrive as a bare user turn; the interpreter reads them
-    else:
+    call_id = extra.get("call_id")
+    if not (call_id and store.get("call", call_id)):
+        # shortcut: inbound calls need a telephony caller id (Task V3); a request body is not proof of who is calling
         line = render("human_handoff")
+    else:
+        try:
+            line = respond(call_id, text)  # keypad digits arrive as a bare user turn; the interpreter reads them
+        except Exception as e:  # a bug must not leave the caller with a dead line: a person takes over
+            log.exception("voice turn failed for %s", call_id)
+            call = store.get("call", call_id)
+            _end(call, "handoff", "error", f"{type(e).__name__}: {e}")
+            store.put("call", call_id, call)
+            line = render("human_handoff")
     return StreamingResponse(_sse(line, body.get("model", "hearth-voice")), media_type="text/event-stream")
 
 
