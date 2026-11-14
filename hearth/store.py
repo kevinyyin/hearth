@@ -1,4 +1,8 @@
-"""One SQLite table of JSON documents: docs(kind, id, json, updated_at). Path from HEARTH_DB."""
+"""One table of JSON documents: docs(kind, id, json, updated_at).
+
+HEARTH_DB (a SQLite file) wins when set, which keeps tests on throwaway files; otherwise HEARTH_DATABASE_URL (Postgres,
+e.g. Supabase) when set, so the hosted API keeps state between requests; otherwise data/hearth.db.
+"""
 import json
 import os
 import sqlite3
@@ -7,6 +11,23 @@ from contextlib import closing
 from pathlib import Path
 
 from pydantic import BaseModel
+
+_pg_ready: set[str] = set()  # database URLs whose table exists in this process
+
+
+def postgres_url() -> str | None:
+    return None if os.environ.get("HEARTH_DB") else os.environ.get("HEARTH_DATABASE_URL")
+
+
+def _pg(url: str):
+    import psycopg
+
+    c = psycopg.connect(url, autocommit=True, prepare_threshold=None)  # no prepared statements: poolers reject them
+    if url not in _pg_ready:
+        c.execute("CREATE TABLE IF NOT EXISTS docs (kind text, id text, json jsonb, updated_at double precision, "
+                  "seq bigserial, PRIMARY KEY (kind, id))")
+        _pg_ready.add(url)
+    return c
 
 
 def _conn() -> sqlite3.Connection:
@@ -19,11 +40,23 @@ def _conn() -> sqlite3.Connection:
 
 def put(kind: str, id: str, obj: BaseModel | dict) -> None:
     doc = obj.model_dump(mode="json") if isinstance(obj, BaseModel) else obj
+    if url := postgres_url():
+        from psycopg.types.json import Jsonb
+
+        with _pg(url) as c:  # a replaced doc takes a new seq, so all() keeps "oldest write first"
+            c.execute("INSERT INTO docs (kind, id, json, updated_at) VALUES (%s, %s, %s, %s) ON CONFLICT (kind, id) DO UPDATE "
+                      "SET json = excluded.json, updated_at = excluded.updated_at, seq = nextval(pg_get_serial_sequence('docs', 'seq'))",
+                      (kind, id, Jsonb(doc), time.time()))
+        return
     with closing(_conn()) as c, c:
         c.execute("INSERT OR REPLACE INTO docs VALUES (?, ?, ?, ?)", (kind, id, json.dumps(doc), time.time()))
 
 
 def get(kind: str, id: str) -> dict | None:
+    if url := postgres_url():
+        with _pg(url) as c:
+            row = c.execute("SELECT json FROM docs WHERE kind = %s AND id = %s", (kind, id)).fetchone()
+        return row[0] if row else None
     with closing(_conn()) as c:
         row = c.execute("SELECT json FROM docs WHERE kind = ? AND id = ?", (kind, id)).fetchone()
     return json.loads(row[0]) if row else None
@@ -31,6 +64,9 @@ def get(kind: str, id: str) -> dict | None:
 
 def all(kind: str) -> list[dict]:
     """Oldest write first (a replaced doc moves to the end)."""
+    if url := postgres_url():
+        with _pg(url) as c:
+            return [r[0] for r in c.execute("SELECT json FROM docs WHERE kind = %s ORDER BY seq", (kind,)).fetchall()]
     with closing(_conn()) as c:
         rows = c.execute("SELECT json FROM docs WHERE kind = ? ORDER BY rowid", (kind,)).fetchall()
     return [json.loads(r[0]) for r in rows]

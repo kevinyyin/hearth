@@ -142,3 +142,30 @@ def test_tunneled_requests_reach_only_the_voice_route():
     assert store.get("proposal", "P9")["status"] == "pending"
     r = client.post("/voice/v1/chat/completions", json={"messages": []}, headers={"x-forwarded-for": "203.0.113.7"})
     assert r.status_code == 200
+
+
+def test_a_run_that_lives_only_in_storage_is_served(monkeypatch, tmp_path):
+    from hearth import remote
+    src = tmp_path / "remote" / "results" / "cloud_run"
+    (src / "snapshots").mkdir(parents=True)
+    (src / "meta.json").write_text('{"run_id": "cloud_run", "scenario": "beryl_2024", "policy": "p3", "crews": 20, "seed": 1, "ticks": [], "center": [29.76, -95.37]}')
+    (src / "snapshots" / "0.json").write_text('{"t": "2024-07-08T06:00:00Z", "patients": [], "crews": [], "depots": []}')
+    (src / "events.jsonl").write_text('{"t": "2024-07-08T06:00:00Z", "type": "power_lost", "patient_id": "x", "data": {}}\n')
+    monkeypatch.setattr(remote, "listdir", lambda prefix: ["cloud_run"] if prefix == "results" else [])
+    monkeypatch.setattr(remote, "fetch", lambda path: (tmp_path / "remote" / path) if (tmp_path / "remote" / path).exists() else None)
+    assert any(r["run_id"] == "cloud_run" for r in client.get("/api/runs").json())
+    assert client.get("/api/runs/cloud_run/meta").json()["policy"] == "p3"
+    Snapshot.model_validate(client.get("/api/runs/cloud_run/snapshots/0").json())
+    assert client.get("/api/runs/cloud_run/events?patient_id=x").json()[0]["type"] == "power_lost"
+    assert client.get("/api/runs/cloud_run/snapshots/5").status_code == 404
+
+
+def test_hosted_api_needs_the_shared_password(monkeypatch):
+    monkeypatch.setenv("HEARTH_PASSWORD", "open sesame")
+    origin = {"Origin": "http://localhost:3000"}
+    r = client.get("/api/runs", headers=origin)
+    assert r.status_code == 401 and r.headers.get("access-control-allow-origin") == "http://localhost:3000"  # the browser can read it
+    assert client.get("/api/runs", headers={"Authorization": "Bearer wrong"}).status_code == 401
+    assert client.get("/api/runs", headers={"Authorization": "Bearer open sesame", "x-forwarded-for": "203.0.113.7"}).status_code == 200
+    assert client.options("/api/runs", headers=origin | {"Access-Control-Request-Method": "GET"}).status_code == 200
+    assert client.post("/voice/v1/chat/completions", json={"messages": []}).status_code == 200  # its own secret

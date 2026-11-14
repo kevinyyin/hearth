@@ -1,5 +1,7 @@
 """Hearth API: run files for the map, the building agent's surveys and refuge proposals, and the approval-gated call."""
+import hmac
 import json
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -12,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from api import live
-from hearth import store
+from hearth import remote, store
 from hearth.buildings import refuge, tools
 from hearth.buildings.agent import survey
 from hearth.buildings.brief import access_brief
@@ -25,18 +27,28 @@ DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
 PATIENTS_FILE = ROOT / "data" / "processed" / "patients_beryl_2024_s1.parquet"
 
 app = FastAPI(title="Hearth (simulated patients)")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_methods=["*"], allow_headers=["*"])
-app.add_middleware(GZipMiddleware, minimum_size=1000)  # a full-county snapshot is megabytes of JSON; gzip keeps scrubbing smooth
 
 
 @app.middleware("http")
-async def local_only(request: Request, call_next):
-    """The dispatcher API is for this machine. A tunnel (opened so ElevenLabs can reach the voice route) adds forwarding
-    headers; such requests reach only /voice, so approvals and paid agent runs are never public."""
-    proxied = "x-forwarded-for" in request.headers or "cf-connecting-ip" in request.headers
-    if proxied and not request.url.path.startswith("/voice/"):
+async def guard(request: Request, call_next):
+    """Hosted (HEARTH_PASSWORD set): every route needs the shared password, sent as a bearer token. Local: the API is for
+    this machine, so requests through a tunnel (forwarding headers) are refused. Either way /voice keeps its own secret
+    and CORS preflights pass."""
+    if request.method == "OPTIONS" or request.url.path.startswith("/voice/"):
+        return await call_next(request)
+    if password := os.environ.get("HEARTH_PASSWORD"):
+        given = request.headers.get("authorization", "").removeprefix("Bearer ")
+        if not hmac.compare_digest(given.encode(), password.encode()):
+            return JSONResponse({"detail": "password required"}, status_code=401)
+    elif "x-forwarded-for" in request.headers or "cf-connecting-ip" in request.headers:
         return JSONResponse({"detail": "the dispatcher API is not reachable through a tunnel"}, status_code=403)
     return await call_next(request)
+
+
+# added after the guard so they wrap it: a 401 still carries CORS headers the browser can read
+app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("HEARTH_WEB_ORIGINS", "http://localhost:3000").split(","),
+                   allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # a full-county snapshot is megabytes of JSON; gzip keeps scrubbing smooth
 try:  # lane V's OpenAI-compatible endpoint that ElevenLabs calls as its model
     from hearth.messaging.voice import router as voice_router
 
@@ -50,11 +62,16 @@ def _sse(events: Iterator[TraceEvent]) -> StreamingResponse:
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-def _run(run_id: str) -> Path:
-    d = RESULTS / run_id
-    if not re.fullmatch(r"[A-Za-z0-9_]+", run_id) or not (d / "meta.json").exists():
+def _run_file(run_id: str, rel: str) -> Path:
+    """A run's file from the repo's results/, else from private storage (the county replay is too big to bundle)."""
+    if not re.fullmatch(r"[A-Za-z0-9_]+", run_id):
         raise HTTPException(404, "no such run")
-    return d
+    local = RESULTS / run_id / rel
+    if local.exists():
+        return local
+    if (fetched := remote.fetch(f"results/{run_id}/{rel}")) is not None:
+        return fetched
+    raise HTTPException(404, "no such run or file")
 
 
 def _json_file(path: Path):
@@ -78,10 +95,11 @@ def _patient(patient_id: str) -> Patient:
     found = None
     if DEMO_PATIENTS.exists():
         found = next((Patient(**r) for r in json.loads(DEMO_PATIENTS.read_text()) if r["patient_id"] == patient_id), None)
-    if found is None and PATIENTS_FILE.exists():
+    parquet = PATIENTS_FILE if PATIENTS_FILE.exists() else remote.fetch(f"processed/{PATIENTS_FILE.name}")
+    if found is None and parquet is not None:
         import pandas as pd
 
-        df = pd.read_parquet(PATIENTS_FILE)
+        df = pd.read_parquet(parquet)
         hit = df[df["patient_id"] == patient_id]
         if len(hit):
             found = Patient(**json.loads(hit.iloc[[0]].to_json(orient="records"))[0])
@@ -95,17 +113,22 @@ def _patient(patient_id: str) -> Patient:
 @app.get("/api/runs")
 def runs():
     keys = ("run_id", "scenario", "policy", "crews", "seed")
-    return [{k: m.get(k) for k in keys} for m in (json.loads(p.read_text()) for p in sorted(RESULTS.glob("*/meta.json")))]
+    ids = [p.parent.name for p in RESULTS.glob("*/meta.json")]
+    try:
+        ids += [r for r in remote.listdir("results") if re.fullmatch(r"[A-Za-z0-9_]+", r) and r not in ids]
+    except Exception:  # storage unreachable: list the bundled runs
+        pass
+    return [{k: m.get(k) for k in keys} for m in (json.loads(_run_file(r, "meta.json").read_text()) for r in sorted(ids))]
 
 
 @app.get("/api/runs/{run_id}/meta")
 def meta(run_id: str):
-    return json.loads((_run(run_id) / "meta.json").read_text())
+    return json.loads(_run_file(run_id, "meta.json").read_text())
 
 
 @app.get("/api/runs/{run_id}/snapshots/{i}")
 def snapshot(run_id: str, i: int):
-    return _json_file(_run(run_id) / "snapshots" / f"{i}.json")
+    return json.loads(_run_file(run_id, f"snapshots/{i}.json").read_text())
 
 
 @lru_cache(maxsize=4)
@@ -116,7 +139,7 @@ def _events(path: str, mtime: float) -> list[dict]:
 
 @app.get("/api/runs/{run_id}/events")
 def events(run_id: str, patient_id: str | None = None):
-    path = _run(run_id) / "events.jsonl"
+    path = _run_file(run_id, "events.jsonl")
     rows = _events(str(path), path.stat().st_mtime)
     return [e for e in rows if patient_id is None or e.get("patient_id") == patient_id]
 

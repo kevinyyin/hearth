@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { API } from "@/lib/api";
+import { API, authHeaders, onUnauthorized } from "@/lib/api";
 import type { RefugeProposal } from "@/lib/types";
 
 /** A refuge proposal waiting on the dispatcher. Nothing is booked or sent until Approve; Reject needs a reason. */
@@ -16,9 +16,10 @@ export default function ProposalCard({ proposal, onDecided }: { proposal: Refuge
     try {
       const res = await fetch(`${API}/api/proposals/${proposal.proposal_id}/decision`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ decision, reason: decision === "reject" ? reason : null }),
       });
+      if (res.status === 401) onUnauthorized();
       if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
       onDecided((await res.json()) as RefugeProposal);
     } catch (e) {

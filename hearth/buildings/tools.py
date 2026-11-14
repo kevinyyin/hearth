@@ -14,9 +14,9 @@ from typing import Any, Callable
 
 import httpx
 
-from hearth.config import ROOT, a, anthropic_headers
+from hearth.config import DATA, ROOT, a, anthropic_headers
 
-CACHE_ROOT = ROOT / "data" / "buildings"
+CACHE_ROOT = DATA / "buildings"  # writable; fixtures below stay in the read-only repo
 FIXTURES = ROOT / "data" / "buildings" / "_fixtures"
 COSTAR_FILE = ROOT / "data/raw/costar/costar-hackathon-kit/data/commercial-property.jsonl"
 VEXCEL_API = "https://api.vexcelgroup.com/v2"
@@ -132,6 +132,10 @@ def _costar_index() -> dict[str, dict]:
     global _costar
     if _costar is None:
         path = CACHE_ROOT / "_costar" / "houston_v2.json"  # bump the name when normalize_costar changes
+        if not path.exists() and not COSTAR_FILE.exists():  # a host without the kit reads the index from storage
+            from hearth import remote
+
+            path = remote.fetch("costar/houston_v2.json") or path
         if not path.exists():
             rows = {}
             with COSTAR_FILE.open() as f:
