@@ -3,10 +3,12 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import HouseholdMap from "@/components/sim/HouseholdMap";
+import { SpeedControl, useRunClock } from "@/components/sim/RunClock";
 import SourceBadge from "@/components/sim/SourceBadge";
 import { useCountyFeed } from "@/lib/simSource";
 import {
   CREW_COUNT,
+  OPERATORS,
   RUN_HOURS,
   STATIONS,
   count,
@@ -16,7 +18,7 @@ import {
   type SimEvent,
 } from "@/lib/simulation";
 
-/** Slow enough to talk over: a full day takes about a minute and a half. */
+/** Slow enough to talk over at 1×: a full day takes about a minute and a half. */
 const STEP_MS = 3600;
 
 const DOT: Record<SimEvent["kind"], string> = {
@@ -160,6 +162,7 @@ function Side({
 
   const t = county.tallyAt(time, which);
   const backlog = county.backlogAt(time, which);
+  const onHold = county.queueAt(time, which);
   const chained = Math.round(county.chainedShare(which) * 100);
 
   return (
@@ -187,10 +190,10 @@ function Side({
       <div className="mt-3 grid grid-cols-2 gap-3">
         <LogPanel
           title={hearth ? "Agent calls" : "Operator calls"}
-          note={hearth ? "in parallel" : "one at a time"}
+          note={hearth ? "in parallel" : "in order"}
           events={county.logAt(time, which, 20, ["call"])}
-          badge={`${count.format(backlog)} open`}
-          badgeTone={backlog > 0 ? "warn" : "ok"}
+          badge={`${count.format(onHold)} on hold`}
+          badgeTone={onHold > 0 ? "warn" : "ok"}
           open={callsOpen}
           onToggle={() => setCallsOpen((v) => !v)}
         />
@@ -198,6 +201,8 @@ function Side({
           title="Dispatch"
           note={`${chained}% chained`}
           events={county.logAt(time, which, 20, ["dispatch", "arrive", "restock"])}
+          badge={`${count.format(backlog)} open`}
+          badgeTone={backlog > 0 ? "warn" : "ok"}
           open={dispatchOpen}
           onToggle={() => setDispatchOpen((v) => !v)}
         />
@@ -233,13 +238,7 @@ export default function FullRun() {
   const feed = useCountyFeed();
   const { county, center } = feed;
 
-  const [hour, setHour] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const raf = useRef<number | null>(null);
-  const hourStart = useRef(0);
+  const { time, hour, running, start, speed, setSpeed } = useRunClock(STEP_MS, county);
 
   const maps = useRef<{ a: MapLibreMap | null; b: MapLibreMap | null }>({ a: null, b: null });
   const syncing = useRef(false);
@@ -260,40 +259,6 @@ export default function FullRun() {
     [],
   );
 
-  useEffect(() => {
-    if (!running) return;
-    hourStart.current = performance.now();
-
-    timer.current = setInterval(() => {
-      hourStart.current = performance.now();
-      setHour((h) => {
-        if (h >= RUN_HOURS) {
-          setRunning(false);
-          return h;
-        }
-        return h + 1;
-      });
-    }, STEP_MS);
-
-    const tick = () => {
-      setProgress(Math.min((performance.now() - hourStart.current) / STEP_MS, 1));
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (timer.current) clearInterval(timer.current);
-      if (raf.current) cancelAnimationFrame(raf.current);
-    };
-  }, [running]);
-
-  useEffect(() => {
-    setHour(0);
-    setProgress(0);
-    setRunning(false);
-  }, [county]);
-
-  const time = hour + (running ? progress : 0);
   const restocksH = county.restocksBy(RUN_HOURS + 1, "hearthAt");
   const restocksT = county.restocksBy(RUN_HOURS + 1, "todayAt");
 
@@ -313,13 +278,10 @@ export default function FullRun() {
         <p className="tnum text-sm" style={{ color: "var(--text-secondary)" }}>
           Hour {hour} of {RUN_HOURS}
         </p>
+        <SpeedControl speed={speed} onChange={setSpeed} />
         <button
           type="button"
-          onClick={() => {
-            setHour(0);
-            setProgress(0);
-            setRunning(true);
-          }}
+          onClick={start}
           disabled={running}
           className="rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
           style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
@@ -390,8 +352,8 @@ export default function FullRun() {
       >
         <strong style={{ color: "var(--text-primary)" }}>Same fleet, different information.</strong>{" "}
         The call logs are where the two part: on the left the agent works the registry in parallel,
-        so every crew has a round to drive; on the right households queue to be heard, and a van goes
-        to whoever reached the front. Over a full day that gap compounds, because a delivery runs
+        so every crew has a round to drive; on the right households queue to be heard, {OPERATORS} operators
+        taking calls in the order they rang, and every free van goes to whoever reached the front. Over a full day that gap compounds, because a delivery runs
         down — {restocksH} restocks were made on the left against {restocksT} on the right, and a
         blue dot is someone who was already helped once. The queue rate, the crew model and how long
         a delivery lasts are this panel&rsquo;s assumptions, not results from the repository.

@@ -280,7 +280,7 @@ const CRUISE = 0.34;
 /** Hours spent at a door. Same job either way. */
 const SERVICE_H = 0.2;
 /** How finely the dispatcher reconsiders. */
-const DT = 0.25;
+export const DT = 0.25;
 /**
  * Hours of running a single delivery buys. Past this a household that was helped
  * needs helping again — which is the thing a one-visit-per-person picture misses.
@@ -292,11 +292,15 @@ const CAPACITY = { hearthAt: 4, todayAt: 3 } as const;
 /** How far a crew will go for the next stop on a round it is already out on. */
 const CHAIN_RADIUS = { hearthAt: Infinity, todayAt: 0.18 } as const;
 /**
- * Households that become visible per hour. Hearth has the registry, so everyone
- * is visible the moment their power goes. Today a household is only visible once
- * its call has worked to the front of the queue. An assumption, not a measurement.
+ * Today's phone tree. Hearth has the registry, so everyone is visible the moment
+ * their power goes. Today a household is visible once its call has been answered:
+ * calls wait in one queue and are taken in the order they rang, by a few operators
+ * who each take one call at a time — the details, then writing up the order. Three
+ * lines at half an hour a call is about six households an hour. An assumption, not
+ * a measurement.
  */
-const DISCOVERY = { hearthAt: Infinity, todayAt: 6 } as const;
+export const OPERATORS = 3;
+const CALL_H = 0.5;
 /**
  * The share of households that ever reach the dispatcher on their own. Hearth has
  * the registry, so all of them. Without it the people most likely never to call
@@ -372,11 +376,23 @@ export type SimEvent = {
 };
 
 /** One visit a household needs. A repeat household generates another once served. */
-type Job = { h: number; dueAt: number; servedAt: number | null; refill: boolean };
+type Job = {
+  h: number;
+  dueAt: number;
+  /** When the dispatcher has the order: at once with the registry, after the call today. */
+  knownAt: number | null;
+  /** When a van was sent for it. */
+  sentAt: number | null;
+  servedAt: number | null;
+  refill: boolean;
+};
+
+/** One call into today's queue. `answeredAt` is when an operator picked it up. */
+type Call = { job: Job; at: number; answeredAt: number | null };
 
 export type SideSim = {
   jobs: Job[];
-  knownAt: (number | null)[];
+  calls: Call[];
   legs: Leg[][];
   station: number[];
   tours: number;
@@ -398,22 +414,33 @@ const bearingOf = (from: [number, number], to: [number, number]) =>
  */
 function runSide(households: Household[], which: SideKey): SideSim {
   const capacity = CAPACITY[which];
-  const perHour = DISCOVERY[which];
   const chainRadius = CHAIN_RADIUS[which];
   const outbound = which === "hearthAt";
 
-  const jobs: Job[] = households.map((h, i) => ({
-    h: i,
-    dueAt: h.needsAt,
-    servedAt: null,
-    refill: false,
-  }));
-  const knownAt: (number | null)[] = households.map(() => null);
-  const known = households.map(() => false);
+  const jobs: Job[] = [];
+  const calls: Call[] = [];
   const events: SimEvent[] = [];
+  const lineFree: number[] = Array(OPERATORS).fill(0);
+  let nextCall = 0; // calls[] stays in ringing order, and is answered strictly in it
 
-  let discoveredThisHour = 0;
-  let hourMark = 0;
+  const pos = (j: Job): [number, number] => [households[j.h].lon, households[j.h].lat];
+
+  /** A need starts. Hearth hears at once; today hears when the call is answered, if one comes. */
+  const addJob = (h: number, dueAt: number, refill: boolean) => {
+    const job: Job = { h, dueAt, knownAt: null, sentAt: null, servedAt: null, refill };
+    jobs.push(job);
+    if (outbound) {
+      job.knownAt = dueAt;
+      events.push({ t: dueAt, kind: "call", text: `Called household ${h + 1} — on the registry, device down` });
+    } else if (callsIn(h, CALLS_IN.todayAt)) {
+      // people ring some time in the hour their device runs out, not on the hour
+      const at = dueAt + mulberry32(jobs.length)();
+      let k = calls.length;
+      while (k > nextCall && calls[k - 1].at > at) k -= 1;
+      calls.splice(k, 0, { job, at, answeredAt: null });
+    }
+  };
+  households.forEach((h, i) => addJob(i, h.needsAt, false));
 
   const station: number[] = [];
   const legs: Leg[][] = [];
@@ -428,65 +455,69 @@ function runSide(households: Household[], which: SideKey): SideSim {
   let stops = 0;
   let refills = 0;
 
-  const openJobAt = (i: number, t: number) =>
-    jobs.find((j) => j.h === i && j.servedAt === null && j.dueAt <= t);
-
   for (let t = 0; t <= RUN_HOURS; t += DT) {
-    if (Math.floor(t) !== hourMark) {
-      hourMark = Math.floor(t);
-      discoveredThisHour = 0;
-    }
-
-    // who the dispatcher can see right now
-    for (let i = 0; i < households.length; i++) {
-      if (known[i]) continue;
-      if (!callsIn(i, CALLS_IN[which])) continue; // never gets through on their own
-      if (!openJobAt(i, t)) continue;
-      if (discoveredThisHour >= perHour) break;
-      known[i] = true;
-      knownAt[i] = t;
+    // today's operators work the queue in the order it rang, one call each at a time
+    while (nextCall < calls.length) {
+      const call = calls[nextCall];
+      const line = lineFree.indexOf(Math.min(...lineFree));
+      const answeredAt = Math.max(call.at, lineFree[line]);
+      if (answeredAt > t) break;
+      call.answeredAt = answeredAt;
+      lineFree[line] = answeredAt + CALL_H;
+      call.job.knownAt = answeredAt + CALL_H; // the order exists once the call is written up
+      const held = answeredAt - call.at;
       events.push({
-        t,
+        t: answeredAt,
         kind: "call",
-        text: outbound
-          ? `Called household ${i + 1} — on the registry, device down`
-          : `Household ${i + 1} got through — after holding`,
+        text:
+          held < 1 / 60
+            ? `Household ${call.job.h + 1} got through — no wait`
+            : `Household ${call.job.h + 1} got through — after ${held < 1 ? `${Math.round(held * 60)} min` : `${held.toFixed(1)} h`} on hold`,
       });
-      if (perHour !== Infinity) discoveredThisHour += 1;
+      nextCall += 1;
     }
 
-    for (let c = 0; c < CREW_COUNT; c++) {
-      if (freeAt[c] > t) continue;
-      const base = STATIONS[station[c]].at;
+    const waiting = jobs.filter(
+      (j) => j.sentAt === null && j.dueAt <= t && j.knownAt !== null && j.knownAt <= t,
+    );
+    const free = freeAt.flatMap((f, c) => (f <= t ? [c] : []));
 
-      // The round a crew would actually drive: nearest-neighbour from the station,
-      // but someone still waiting on a first delivery outranks someone whose
-      // resupply is due. A household that has had nothing yet is the worse
-      // problem, whichever side is dispatching.
-      const route: Job[] = [];
-      let at: [number, number] = base;
-      while (route.length < capacity) {
-        const open = jobs.filter(
-          (j) => j.servedAt === null && j.dueAt <= t && known[j.h] && !route.includes(j),
-        );
-        if (open.length === 0) break;
+    // Every free van goes before any round takes a second stop, so none sits at
+    // its station while an order waits. Someone still waiting on a first delivery
+    // goes ahead of a restock — a household that has had nothing yet is the worse
+    // problem, whichever side is dispatching — and within that, the closest
+    // van-and-order pair goes first.
+    const rounds: { c: number; route: Job[] }[] = [];
+    while (waiting.length && free.length) {
+      const firstsLeft = waiting.some((j) => !j.refill);
+      let pick = { w: -1, f: -1, d: Infinity };
+      waiting.forEach((j, w) => {
+        if (firstsLeft && j.refill) return;
+        free.forEach((c, f) => {
+          const d = dist(STATIONS[station[c]].at, pos(j));
+          if (d < pick.d) pick = { w, f, d };
+        });
+      });
+      rounds.push({ c: free.splice(pick.f, 1)[0], route: waiting.splice(pick.w, 1) });
+    }
 
-        const withD = open.map((j) => ({
-          j,
-          d: dist(at, [households[j.h].lon, households[j.h].lat]),
-        }));
-        // a crew already out only chains to what is genuinely on its way
-        const reachable =
-          route.length === 0 ? withD : withD.filter((c) => c.d <= chainRadius);
-        if (reachable.length === 0) break;
-
-        reachable.sort((a, b) => Number(a.j.refill) - Number(b.j.refill) || a.d - b.d);
-        const next = reachable[0].j;
-        route.push(next);
-        at = [households[next.h].lon, households[next.h].lat];
+    // More orders than vans: a round chains what is genuinely on its way, first
+    // deliveries still ahead of restocks.
+    for (const { route } of rounds) {
+      while (route.length < capacity && waiting.length) {
+        const at = pos(route[route.length - 1]);
+        const near = waiting
+          .map((j, k) => ({ k, j, d: dist(at, pos(j)) }))
+          .filter((n) => n.d <= chainRadius)
+          .sort((a, b) => Number(a.j.refill) - Number(b.j.refill) || a.d - b.d);
+        if (!near.length) break;
+        route.push(waiting.splice(near[0].k, 1)[0]);
       }
+    }
 
-      if (route.length === 0) continue;
+    for (const { c, route } of rounds) {
+      const base = STATIONS[station[c]].at;
+      for (const j of route) j.sentAt = t;
 
       events.push({
         t,
@@ -503,7 +534,7 @@ function runSide(households: Household[], which: SideKey): SideSim {
 
       for (let k = 0; k < route.length; k++) {
         const j = route[k];
-        const to: [number, number] = [households[j.h].lon, households[j.h].lat];
+        const to = pos(j);
         const travel = dist(from, to) / CRUISE;
         legs[c].push({ from, to, t0: clock, t1: clock + travel, departure: k === 0 });
         clock += travel;
@@ -519,10 +550,10 @@ function runSide(households: Household[], which: SideKey): SideSim {
             : `Crew ${c + 1} reached household ${j.h + 1}`,
         });
 
-        // a delivery runs down: a repeat household needs another visit later
+        // a delivery runs down: a repeat household needs another visit later, and
+        // today has to hear about it all over again
         if (households[j.h].repeats && clock + REFILL_H <= RUN_HOURS) {
-          jobs.push({ h: j.h, dueAt: clock + REFILL_H, servedAt: null, refill: true });
-          known[j.h] = false; // today has to hear about it all over again
+          addJob(j.h, clock + REFILL_H, true);
         }
 
         clock += SERVICE_H;
@@ -539,7 +570,7 @@ function runSide(households: Household[], which: SideKey): SideSim {
   }
 
   events.sort((a, b) => a.t - b.t);
-  return { jobs, knownAt, legs, station, tours, stops, refills, events };
+  return { jobs, calls, legs, station, tours, stops, refills, events };
 }
 
 export type CountySim = {
@@ -552,6 +583,8 @@ export type CountySim = {
   outNow(time: number, which: SideKey): number;
   logAt(time: number, which: SideKey, n?: number, kinds?: SimEvent["kind"][]): SimEvent[];
   backlogAt(time: number, which: SideKey): number;
+  /** Calls that have rung and are still on hold: always none with the registry. */
+  queueAt(time: number, which: SideKey): number;
   chainedShare(which: SideKey): number;
   restocksBy(time: number, which: SideKey): number;
 };
@@ -658,6 +691,11 @@ export function buildCounty(households: Household[]): CountySim {
         if (j.servedAt === null || j.servedAt > time) n += 1;
       }
       return n;
+    },
+    queueAt(time, which) {
+      return sides[which].calls.filter(
+        (c) => c.at <= time && (c.answeredAt === null || c.answeredAt > time),
+      ).length;
     },
     chainedShare(which) {
       const rounds = sides[which].events.filter((e) => e.kind === "dispatch");

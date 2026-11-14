@@ -1,12 +1,14 @@
 "use client";
 
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import HouseholdMap from "@/components/sim/HouseholdMap";
+import { SpeedControl, useRunClock } from "@/components/sim/RunClock";
 import SourceBadge from "@/components/sim/SourceBadge";
 import { useCountyFeed } from "@/lib/simSource";
 import {
   CREW_COUNT,
+  OPERATORS,
   RUN_HOURS,
   STATIONS,
   count,
@@ -46,7 +48,7 @@ function Tally({
 }) {
   const t = county.tallyAt(time, which);
   return (
-    <dl className="mt-3 grid grid-cols-4 gap-3">
+    <dl className="mt-3 grid grid-cols-5 gap-3">
       <div>
         <dt className="text-xs" style={{ color: "var(--text-muted)" }}>
           Reached
@@ -61,6 +63,14 @@ function Tally({
         </dt>
         <dd className="tnum m-0 text-2xl font-semibold" style={{ color: "#c4461a" }}>
           {count.format(t.waiting)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-xs" style={{ color: "var(--text-muted)" }}>
+          On hold
+        </dt>
+        <dd className="tnum m-0 text-2xl font-semibold">
+          {count.format(county.queueAt(time, which))}
         </dd>
       </div>
       <div>
@@ -90,13 +100,7 @@ export default function SideBySide() {
   const feed = useCountyFeed();
   const { county, center } = feed;
 
-  const [hour, setHour] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const raf = useRef<number | null>(null);
-  const hourStart = useRef(0);
+  const { time, hour, running, start, speed, setSpeed } = useRunClock(STEP_MS, county);
 
   const maps = useRef<{ a: MapLibreMap | null; b: MapLibreMap | null }>({ a: null, b: null });
   const syncing = useRef(false);
@@ -123,47 +127,6 @@ export default function SideBySide() {
     [],
   );
 
-  useEffect(() => {
-    if (!running) return;
-    hourStart.current = performance.now();
-
-    timer.current = setInterval(() => {
-      hourStart.current = performance.now();
-      setHour((h) => {
-        if (h >= RUN_HOURS) {
-          setRunning(false);
-          return h;
-        }
-        return h + 1;
-      });
-    }, STEP_MS);
-
-    const tick = () => {
-      setProgress(Math.min((performance.now() - hourStart.current) / STEP_MS, 1));
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (timer.current) clearInterval(timer.current);
-      if (raf.current) cancelAnimationFrame(raf.current);
-    };
-  }, [running]);
-
-  // a population arriving mid-run would be two different answers in one picture
-  useEffect(() => {
-    setHour(0);
-    setProgress(0);
-    setRunning(false);
-  }, [county]);
-
-  const start = () => {
-    setHour(0);
-    setProgress(0);
-    setRunning(true);
-  };
-
-  const time = hour + (running ? progress : 0);
   const total = county.households.length;
   const endHearth = county.tallyAt(RUN_HOURS, "hearthAt");
   const endToday = county.tallyAt(RUN_HOURS, "todayAt");
@@ -189,6 +152,7 @@ export default function SideBySide() {
         <p className="tnum text-sm" style={{ color: "var(--text-secondary)" }}>
           Hour {hour} of {RUN_HOURS}
         </p>
+        <SpeedControl speed={speed} onChange={setSpeed} />
         <button
           type="button"
           onClick={start}
@@ -297,8 +261,8 @@ export default function SideBySide() {
         </p>
         <p className="m-0">
           <strong style={{ color: "var(--text-primary)" }}>The lever, stated plainly:</strong> the
-          right-hand side learns of about two households an hour, because a call has to reach the
-          front of a queue; the left-hand side knows all {total} the moment their power goes. That
+          right-hand side learns of about six households an hour, because calls wait in one queue and{" "}
+          {OPERATORS} operators take them in the order they rang; the left-hand side knows all {total} the moment their power goes. That
           rate is an assumption, not a measurement, and almost the whole gap above rests on it —
           argue with that number and you are arguing with the panel. It is also why the right-hand
           crews are idle rather than slow: they are not being outrun, they are waiting to be told
