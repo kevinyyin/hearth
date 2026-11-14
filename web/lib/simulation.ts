@@ -246,16 +246,14 @@ export const COVERED_LABEL: Record<Covered, string> = {
   unreached: "Not reached",
 };
 
-// --- The side-by-side panel under the chart ---------------------------------
+// --- The county model behind the side-by-side and the full run --------------
 //
-// The crew model below is a model: it takes a set of households and works out who
-// a fleet reaches, under two dispatch regimes. Where those households come from is
-// decided elsewhere, in lib/simSource.ts — the real replay when an API is reachable,
-// a drawn fixture when it is not. Nothing here knows which it got, which is the
-// point: the same model runs on the teammate's machine with the CoStar kit, on
-// Vercel with the keys, and on a laptop with neither.
+// Takes a set of households and works out who a fleet reaches over a day, under
+// two dispatch regimes. Where the households come from is decided in simSource.ts
+// — the real replay when an API answers, a drawn fixture when none does.
 
-export const RUN_HOURS = 12;
+/** A full day. An outage that ends in twelve hours is not the one Hearth is for. */
+export const RUN_HOURS = 24;
 
 /** Fallback centre: Harris County, the ground Beryl crossed in July 2024. */
 export const COUNTY_CENTER: [number, number] = [-95.37, 29.76]; // lon, lat — Houston
@@ -274,50 +272,42 @@ const CREWS_PER_STATION = 3;
 /** Both sides field exactly this many crews: the comparison is about how they are used. */
 export const CREW_COUNT = STATIONS.length * CREWS_PER_STATION;
 
-// --- The three numbers that are identical on both sides ---------------------
+// --- Identical on both sides ------------------------------------------------
 /** Degrees of ground covered per hour. Same vans, same roads, same speed. */
 const CRUISE = 0.34;
 /** Hours spent at a door. Same job either way. */
 const SERVICE_H = 0.2;
 /** How finely the dispatcher reconsiders. */
 const DT = 0.25;
+/**
+ * Hours of running a single delivery buys. Past this a household that was helped
+ * needs helping again — which is the thing a one-visit-per-person picture misses.
+ */
+const REFILL_H = 9;
 
-// --- The two numbers that differ, and why -----------------------------------
-/**
- * Stops a crew takes before heading back. Hearth can plan a round because it
- * already knows who needs help; today a crew is sent to the one address that
- * just came through, and goes home after it.
- */
+// --- Different, and why -----------------------------------------------------
 const CAPACITY = { hearthAt: 4, todayAt: 2 } as const;
-/**
- * How far a crew will go for the *next* stop on a round it is already out on.
- * Hearth plans the round up front, so distance is no object. Today a crew only
- * picks up a second address if it has practically tripped over it — which is why
- * a van on the right almost always goes straight back.
- */
+/** How far a crew will go for the next stop on a round it is already out on. */
 const CHAIN_RADIUS = { hearthAt: Infinity, todayAt: 0.1 } as const;
 /**
  * Households that become visible per hour. Hearth has the registry, so everyone
  * is visible the moment their power goes. Today a household is only visible once
- * its call has worked to the front of the queue, which is what throttles how many
- * crews can be out at all. This rate is an assumption, not a measurement, and
- * almost the whole gap between the two maps rests on it.
+ * its call has worked to the front of the queue. An assumption, not a measurement.
  */
 const DISCOVERY = { hearthAt: Infinity, todayAt: 1.5 } as const;
 
 export type Household = {
   lon: number;
   lat: number;
-  /** Hour this household needs help. From real backup hours when the API is reachable. */
+  /** Hour this household first needs help. From real backup hours where available. */
   needsAt: number;
+  /** True for households whose need comes back once a delivery runs down. */
+  repeats: boolean;
 };
-export type HouseholdState = "unaffected" | "waiting" | "reached";
+
+export type HouseholdState = "unaffected" | "waiting" | "resupply" | "reached";
 export type SideKey = "hearthAt" | "todayAt";
 
-/**
- * Deterministic, so the drawn fixture sits in the same places on every render and
- * every reload — a demo that reshuffles itself is impossible to talk over.
- */
 function mulberry32(seed: number): () => number {
   let a = seed;
   return () => {
@@ -333,8 +323,6 @@ function mulberry32(seed: number): () => number {
 export function drawHouseholds(n = 140, seed = 20240708): Household[] {
   const rnd = mulberry32(seed);
   const out: Household[] = [];
-  // radial rather than uniform, so the middle of the county is denser, the way a
-  // city is; sqrt keeps density even per unit area instead of piling up on the centre
   const SPREAD_LON = 0.44;
   const SPREAD_LAT = 0.31;
 
@@ -344,62 +332,72 @@ export function drawHouseholds(n = 140, seed = 20240708): Household[] {
     out.push({
       lon: COUNTY_CENTER[0] + Math.cos(angle) * radius * SPREAD_LON,
       lat: COUNTY_CENTER[1] + Math.sin(angle) * radius * SPREAD_LAT,
-      needsAt: Math.floor(rnd() * rnd() * 7),
+      needsAt: Math.floor(rnd() * rnd() * 10),
+      repeats: rnd() < 0.45,
     });
   }
   return out;
 }
 
-/** One stretch of a crew's trip, in continuous hours. */
 export type Leg = {
   from: [number, number];
   to: [number, number];
   t0: number;
   t1: number;
-  /** True for the leg that leaves a station: one deployment. */
   departure: boolean;
 };
 
-/** A line for the running logs: who was heard from, who was sent, who was reached. */
+/** A van in flight: where it is, and which way it is pointing. */
+export type Vehicle = { lon: number; lat: number; bearing: number };
+
 export type SimEvent = {
   t: number;
-  kind: "call" | "dispatch" | "arrive";
+  kind: "call" | "dispatch" | "arrive" | "restock";
   text: string;
-  /** Stops on this round. Chaining is the thing the two sides differ in, so it is on the event. */
   stops?: number;
 };
 
+/** One visit a household needs. A repeat household generates another once served. */
+type Job = { h: number; dueAt: number; servedAt: number | null; refill: boolean };
+
 export type SideSim = {
-  reachAt: (number | null)[];
-  /** When the dispatcher first learned of each household; null if never, inside the window. */
+  jobs: Job[];
   knownAt: (number | null)[];
   legs: Leg[][];
   station: number[];
   tours: number;
   stops: number;
+  refills: number;
   events: SimEvent[];
 };
 
 const dist = (a: [number, number], b: [number, number]) =>
   Math.hypot(a[0] - b[0], a[1] - b[1]);
 
+const bearingOf = (from: [number, number], to: [number, number]) =>
+  (Math.atan2(to[0] - from[0], to[1] - from[1]) * 180) / Math.PI;
+
 /**
- * One pass over the twelve hours, at the same cruising speed and the same time at
- * the door on both sides. Everything that differs comes from one thing: whether
- * the dispatcher already knows who needs help.
+ * One pass over the day, at the same cruising speed and the same time at the door
+ * on both sides. What differs is whether the dispatcher already knows who needs
+ * help — and, once a delivery runs down, whether anyone notices it has.
  */
 function runSide(households: Household[], which: SideKey): SideSim {
   const capacity = CAPACITY[which];
   const perHour = DISCOVERY[which];
-
   const chainRadius = CHAIN_RADIUS[which];
   const outbound = which === "hearthAt";
 
-  const reachAt: (number | null)[] = households.map(() => null);
+  const jobs: Job[] = households.map((h, i) => ({
+    h: i,
+    dueAt: h.needsAt,
+    servedAt: null,
+    refill: false,
+  }));
   const knownAt: (number | null)[] = households.map(() => null);
-  const taken = households.map(() => false);
   const known = households.map(() => false);
   const events: SimEvent[] = [];
+
   let discoveredThisHour = 0;
   let hourMark = 0;
 
@@ -414,6 +412,10 @@ function runSide(households: Household[], which: SideKey): SideSim {
 
   let tours = 0;
   let stops = 0;
+  let refills = 0;
+
+  const openJobAt = (i: number, t: number) =>
+    jobs.find((j) => j.h === i && j.servedAt === null && j.dueAt <= t);
 
   for (let t = 0; t <= RUN_HOURS; t += DT) {
     if (Math.floor(t) !== hourMark) {
@@ -421,8 +423,10 @@ function runSide(households: Household[], which: SideKey): SideSim {
       discoveredThisHour = 0;
     }
 
+    // who the dispatcher can see right now
     for (let i = 0; i < households.length; i++) {
-      if (known[i] || households[i].needsAt > t) continue;
+      if (known[i]) continue;
+      if (!openJobAt(i, t)) continue;
       if (discoveredThisHour >= perHour) break;
       known[i] = true;
       knownAt[i] = t;
@@ -438,28 +442,26 @@ function runSide(households: Household[], which: SideKey): SideSim {
 
     for (let c = 0; c < CREW_COUNT; c++) {
       if (freeAt[c] > t) continue;
-
       const base = STATIONS[station[c]].at;
 
-      // nearest-neighbour chain from the station: the round a crew would actually drive
-      const route: number[] = [];
+      // nearest-neighbour chain from the station: the round a crew would drive
+      const route: Job[] = [];
       let at: [number, number] = base;
       while (route.length < capacity) {
-        let best = -1;
+        let best: Job | null = null;
         let bestD = Infinity;
-        for (let i = 0; i < households.length; i++) {
-          if (taken[i] || !known[i] || route.includes(i)) continue;
-          const d = dist(at, [households[i].lon, households[i].lat]);
+        for (const j of jobs) {
+          if (j.servedAt !== null || j.dueAt > t || !known[j.h] || route.includes(j)) continue;
+          const d = dist(at, [households[j.h].lon, households[j.h].lat]);
           if (d < bestD) {
             bestD = d;
-            best = i;
+            best = j;
           }
         }
-        if (best === -1) break;
-        // after the first stop, a crew only chains on if the next one is near enough
+        if (!best) break;
         if (route.length > 0 && bestD > chainRadius) break;
         route.push(best);
-        at = [households[best].lon, households[best].lat];
+        at = [households[best.h].lon, households[best.h].lat];
       }
 
       if (route.length === 0) continue;
@@ -477,24 +479,33 @@ function runSide(households: Household[], which: SideKey): SideSim {
       let clock = t;
       let from: [number, number] = base;
 
-      route.forEach((i, k) => {
-        const to: [number, number] = [households[i].lon, households[i].lat];
+      for (let k = 0; k < route.length; k++) {
+        const j = route[k];
+        const to: [number, number] = [households[j.h].lon, households[j.h].lat];
         const travel = dist(from, to) / CRUISE;
         legs[c].push({ from, to, t0: clock, t1: clock + travel, departure: k === 0 });
         clock += travel;
 
-        taken[i] = true;
-        reachAt[i] = Math.min(RUN_HOURS, Math.ceil(clock));
+        j.servedAt = clock;
         stops += 1;
+        if (j.refill) refills += 1;
         events.push({
           t: clock,
-          kind: "arrive",
-          text: `Crew ${c + 1} reached household ${i + 1}`,
+          kind: j.refill ? "restock" : "arrive",
+          text: j.refill
+            ? `Crew ${c + 1} restocked household ${j.h + 1}`
+            : `Crew ${c + 1} reached household ${j.h + 1}`,
         });
+
+        // a delivery runs down: a repeat household needs another visit later
+        if (households[j.h].repeats && clock + REFILL_H <= RUN_HOURS) {
+          jobs.push({ h: j.h, dueAt: clock + REFILL_H, servedAt: null, refill: true });
+          known[j.h] = false; // today has to hear about it all over again
+        }
 
         clock += SERVICE_H;
         from = to;
-      });
+      }
 
       const home = dist(from, base) / CRUISE;
       legs[c].push({ from, to: base, t0: clock, t1: clock + home, departure: false });
@@ -506,24 +517,21 @@ function runSide(households: Household[], which: SideKey): SideSim {
   }
 
   events.sort((a, b) => a.t - b.t);
-  return { reachAt, knownAt, legs, station, tours, stops, events };
+  return { jobs, knownAt, legs, station, tours, stops, refills, events };
 }
 
-/** A population plus the two runs over it, and the readings the panel needs. */
 export type CountySim = {
   households: Household[];
   sides: Record<SideKey, SideSim>;
   stateAt(i: number, hour: number, which: SideKey): HouseholdState;
   tallyAt(hour: number, which: SideKey): Record<HouseholdState, number>;
-  vehiclesAt(time: number, which: SideKey): [number, number][];
+  vehiclesAt(time: number, which: SideKey): Vehicle[];
   toursBy(time: number, which: SideKey): number;
   outNow(time: number, which: SideKey): number;
-  /** The last `n` log lines at this moment, oldest first, optionally of certain kinds. */
   logAt(time: number, which: SideKey, n?: number, kinds?: SimEvent["kind"][]): SimEvent[];
-  /** Households that need help and have not been heard from yet: the queue. */
   backlogAt(time: number, which: SideKey): number;
-  /** Share of rounds that carried more than one stop. */
   chainedShare(which: SideKey): number;
+  restocksBy(time: number, which: SideKey): number;
 };
 
 export function buildCounty(households: Household[]): CountySim {
@@ -533,22 +541,28 @@ export function buildCounty(households: Household[]): CountySim {
   };
 
   const stateAt = (i: number, hour: number, which: SideKey): HouseholdState => {
-    if (hour < households[i].needsAt) return "unaffected";
-    const at = sides[which].reachAt[i];
-    return at != null && hour >= at ? "reached" : "waiting";
+    const mine = sides[which].jobs.filter((j) => j.h === i);
+    const due = mine.filter((j) => j.dueAt <= hour);
+    if (due.length === 0) return "unaffected";
+
+    const open = due.some((j) => j.servedAt === null || j.servedAt > hour);
+    if (!open) return "reached";
+    // blue once they have been helped before: this is a resupply, not a first call
+    const servedBefore = mine.some((j) => j.servedAt !== null && j.servedAt <= hour);
+    return servedBefore ? "resupply" : "waiting";
   };
 
-  const vehiclesAt = (time: number, which: SideKey): [number, number][] => {
-    const out: [number, number][] = [];
+  const vehiclesAt = (time: number, which: SideKey): Vehicle[] => {
+    const out: Vehicle[] = [];
     for (let c = 0; c < CREW_COUNT; c++) {
       const leg = sides[which].legs[c].find((l) => time >= l.t0 && time <= l.t1);
       if (!leg) continue;
-      const span = Math.max(leg.t1 - leg.t0, 1e-6);
-      const p = (time - leg.t0) / span;
-      out.push([
-        leg.from[0] + (leg.to[0] - leg.from[0]) * p,
-        leg.from[1] + (leg.to[1] - leg.from[1]) * p,
-      ]);
+      const p = (time - leg.t0) / Math.max(leg.t1 - leg.t0, 1e-6);
+      out.push({
+        lon: leg.from[0] + (leg.to[0] - leg.from[0]) * p,
+        lat: leg.from[1] + (leg.to[1] - leg.from[1]) * p,
+        bearing: bearingOf(leg.from, leg.to),
+      });
     }
     return out;
   };
@@ -559,7 +573,12 @@ export function buildCounty(households: Household[]): CountySim {
     stateAt,
     vehiclesAt,
     tallyAt(hour, which) {
-      const t: Record<HouseholdState, number> = { unaffected: 0, waiting: 0, reached: 0 };
+      const t: Record<HouseholdState, number> = {
+        unaffected: 0,
+        waiting: 0,
+        resupply: 0,
+        reached: 0,
+      };
       for (let i = 0; i < households.length; i++) t[stateAt(i, hour, which)] += 1;
       return t;
     },
@@ -574,19 +593,16 @@ export function buildCounty(households: Household[]): CountySim {
       return vehiclesAt(time, which).length;
     },
     logAt(time, which, n = 7, kinds) {
-      // filter by kind before taking the tail, or a quiet channel shows empty
-      // just because the other one has been busy
       const upto = sides[which].events.filter(
         (e) => e.t <= time && (!kinds || kinds.includes(e.kind)),
       );
       return upto.slice(Math.max(0, upto.length - n));
     },
     backlogAt(time, which) {
-      const { knownAt } = sides[which];
       let n = 0;
-      for (let i = 0; i < households.length; i++) {
-        if (households[i].needsAt > time) continue;
-        if (knownAt[i] == null || (knownAt[i] as number) > time) n += 1;
+      for (const j of sides[which].jobs) {
+        if (j.dueAt > time) continue;
+        if (j.servedAt === null || j.servedAt > time) n += 1;
       }
       return n;
     },
@@ -595,10 +611,13 @@ export function buildCounty(households: Household[]): CountySim {
       if (!rounds.length) return 0;
       return rounds.filter((e) => (e.stops ?? 1) > 1).length / rounds.length;
     },
+    restocksBy(time, which) {
+      return sides[which].events.filter((e) => e.kind === "restock" && e.t <= time).length;
+    },
   };
 }
 
-/** What the panel shows before any fetch resolves, and if none ever does. */
+/** What a panel shows before any fetch resolves, and if none ever does. */
 export const FIXTURE_COUNTY: CountySim = buildCounty(drawHouseholds());
 
 /** Formats a count the same way everywhere in the simulation. */

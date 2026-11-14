@@ -7,12 +7,14 @@ import { count, type CountySim, type HouseholdState, type SideKey } from "@/lib/
 const SWATCH: Record<HouseholdState, { fill: string; ring: boolean }> = {
   reached: { fill: "#0e7a54", ring: false },
   waiting: { fill: "#c4461a", ring: true },
+  resupply: { fill: "#2a6fd6", ring: false },
   unaffected: { fill: "#b8b1a4", ring: false },
 };
 
 const STATE_LABEL: Record<HouseholdState, string> = {
   reached: "Reached",
   waiting: "Waiting",
+  resupply: "Restock",
   unaffected: "Not yet",
 };
 
