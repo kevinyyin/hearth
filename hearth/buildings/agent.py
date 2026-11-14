@@ -109,7 +109,7 @@ def write_profile(building_id: str, fields_json: str, evidence_json: str, confli
 
 SYSTEM = """You survey one building for a county health department planning for people on home medical devices
 during a multi-day power outage. You produce one outage profile. Work in this order:
-1. Write a short to-do plan with write_todos.
+1. Write a short to-do plan with write_todos. Update it as steps finish, in the same turn as your other tool calls.
 2. In ONE turn, call the task tool three times to dispatch the costar, aerial and interior subagents in parallel.
    Give each the building id. They save findings to /<building_id>/costar.md, /<building_id>/vexcel.md and
    /<building_id>/matterport.md and return a summary.

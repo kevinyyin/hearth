@@ -6,6 +6,7 @@ from typing import Iterator, Literal
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -24,6 +25,7 @@ PATIENTS_FILE = ROOT / "data" / "processed" / "patients_beryl_2024_s1.parquet"
 
 app = FastAPI(title="Hearth (simulated patients)")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # a full-county snapshot is megabytes of JSON; gzip keeps scrubbing smooth
 try:  # lane V's OpenAI-compatible endpoint that ElevenLabs calls as its model
     from hearth.messaging.voice import router as voice_router
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { API } from "@/lib/api";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,16 +31,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">
-        <div className="flex min-h-screen flex-col lg:flex-row">
-          <main className="min-w-0 flex-1">{children}</main>
-          {/* Slot for the manager lane: building panel, agent trace, proposal card. */}
-          <aside
-            id="panel-slot"
-            aria-label="Detail panel"
-            className="hidden w-[360px] shrink-0 border-l xl:block"
-            style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-          />
-        </div>
+        {!API && (
+          <div role="status" className="px-4 py-1.5 text-center text-xs font-medium" style={{ background: "#fdf0c4", color: "#5c4300" }}>
+            Sample data, not results: these pages are reading hand-made dev files. Set NEXT_PUBLIC_API to the Hearth API to see the simulation.
+          </div>
+        )}
+        <main className="min-w-0">{children}</main>
         <SimulatedBadge />
       </body>
     </html>

@@ -67,3 +67,11 @@ def test_approve_sets_approved_and_cannot_be_decided_twice():
 def test_pending_proposal_never_times_into_approved():
     seed_pending_proposal("P2")
     assert store.get("proposal", "P2")["status"] == "pending"
+
+
+def test_option_sources_come_from_the_profile_not_the_model(monkeypatch):
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    store.put("profile", "H-LEVEL", profile("H-LEVEL", step_free=True, floors=1))
+    opts = refuge._options(patient(mobility="wheelchair_manual"), '[{"building_id": "H-LEVEL", "reasons": ["close"], "sources": ["guess"]}]')
+    assert [o.sources for o in opts] == [["costar", "matterport"]] and opts[0].name == "Level Inn (fixture)"
+    assert refuge._options(patient(mobility="wheelchair_manual"), '[{"building_id": "H-STEPS"}]') == []   # no stored profile

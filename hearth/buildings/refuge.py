@@ -136,9 +136,9 @@ def _options(patient: Patient, options_json: str) -> list[RefugeOption]:
         rec, prof = tools.costar_record(o["building_id"]), store.get("profile", o["building_id"])
         if rec is None or prof is None or not eligible(BuildingProfile.model_validate(prof), patient)[0]:
             continue
+        layers = sorted({v["source"] for k, v in prof.items() if isinstance(v, dict) and v.get("source") not in (None, "default")})
         out.append(RefugeOption(building_id=o["building_id"], name=rec.get("name") or rec["address"], lat=rec["lat"], lon=rec["lon"],
-                                reasons=[str(r) for r in o.get("reasons", [])], sources=[str(s) for s in o.get("sources", [])],
-                                score=float(o.get("score", 0))))
+                                reasons=[str(r) for r in o.get("reasons", [])], sources=layers, score=float(o.get("score", 0))))
     return out
 
 

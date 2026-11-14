@@ -67,6 +67,17 @@ agent wrote a to-do plan, ran three layer subagents in parallel, saved each laye
 and stopped at the approval interrupt before writing the profile, then finished on approval.
 22.7 seconds end to end. Real data tools and vision reads will add time.
 
+**Amended Nov 13 after the toolkit arrived** (details in `docs/toolkit-notes.md`; this paragraph
+wins over the bullets above where they differ). CoStar is a data extract, and it already states
+walk-up and elevator status for most Houston apartment buildings, so those come from CoStar, not
+from a vision read. Matterport scans are mostly unit interiors with labeled rooms. The `interior`
+subagent therefore reads the unit: room layout, room sizes, door and hallway widths, interior
+steps. The crew access brief becomes two parts: getting to the door (stories, walk-up or elevator
+from CoStar; where to stop and the entrance side from the aerial image) and inside the unit (the
+floor plan's rooms and the path from the front door to the bedroom, from the scan). The refuge
+finder checks a hotel or senior unit's interior the same way. The brief says "floor plan of this
+unit type", never "the patient's own rooms".
+
 ## Voice and text (lean)
 
 - One ElevenLabs voice agent whose model endpoint is our server. Each caller turn goes to Claude
