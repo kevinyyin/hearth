@@ -360,6 +360,13 @@ def matterport_faces(building_id: str, pano: dict) -> list[Path]:
     return paths
 
 
+def matterport_scan_ids(building_id: str) -> list[str]:
+    """The building's real scan models. Fixture scans are hand-written readings with no model behind them."""
+    if _fixtures_on():
+        return []
+    return (costar_record(building_id) or {}).get("matterport_model_ids") or []
+
+
 def matterport_embed_url(building_id: str) -> str | None:
     if _fixtures_on():
         scan = _fixture(building_id, "matterport")

@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class PlanState(StrEnum):
@@ -153,6 +153,46 @@ class RefugeProposal(BaseModel):
     status: Literal["pending", "approved", "rejected"]
     reason: str | None = None
     thread_id: str
+
+
+class Vec3(BaseModel):  # metres in the scan's own frame; a pointer on sky reports thousands, which is not a place
+    x: float = Field(ge=-1000, le=1000)
+    y: float = Field(ge=-1000, le=1000)
+    z: float = Field(ge=-1000, le=1000)
+
+
+class OutsidePin(BaseModel):
+    kind: Literal["park", "entrance", "blocked", "route"]
+    x: float = Field(ge=0, le=1)  # fraction of the aerial image's width and height
+    y: float = Field(ge=0, le=1)
+
+
+class InsidePin(BaseModel):
+    kind: Literal["machine", "blocked", "route"]
+    position: Vec3
+    normal: Vec3
+
+
+class Home(BaseModel):
+    """What a resident says about their own home. Route order is list order among the route pins."""
+    patient_id: str
+    building_id: str
+    ok_without_h: float = Field(ge=0, le=720)
+    backup_plan: str = Field("", max_length=500)
+    size: Literal["shoebox", "microwave", "carry_on", "mini_fridge", "custom"]
+    size_cm: tuple[float, float, float] | None = None  # width, depth, height; only for "custom"
+    scan_id: str | None = None  # the scan the resident says is laid out like their home; None: none of them
+    note: str = Field("", max_length=500)
+    outside: list[OutsidePin] = Field(default_factory=list, max_length=50)
+    inside: list[InsidePin] = Field(default_factory=list, max_length=50)
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        if self.size == "custom" and not (self.size_cm and all(1 <= v <= 300 for v in self.size_cm)):
+            raise ValueError("a custom size needs width, depth and height between 1 and 300 cm")
+        if self.inside and not self.scan_id:
+            raise ValueError("inside pins need a chosen scan")
+        return self
 
 
 class TraceEvent(BaseModel):

@@ -20,7 +20,7 @@ from hearth.buildings.agent import survey
 from hearth.buildings.brief import access_brief
 from hearth.buildings.profile import hours_to_unsafe, layer_effects
 from hearth.config import ROOT
-from hearth.contracts import BuildingProfile, Patient, TraceEvent
+from hearth.contracts import BuildingProfile, Home, Patient, TraceEvent
 
 RESULTS = ROOT / "results"
 DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
@@ -174,7 +174,9 @@ def building(building_id: str):
     rec = _building(building_id)
     out = {"building_id": building_id, "name": rec.get("name"), "address": rec["address"], "lat": rec["lat"], "lon": rec["lon"],
            "profile": None, "brief": None, "layer_effects": None, "hours_to_unsafe": None,
-           "embed_url": tools.matterport_embed_url(building_id), "image_url": f"/api/buildings/{building_id}/image"}
+           "embed_url": tools.matterport_embed_url(building_id), "image_url": f"/api/buildings/{building_id}/image",
+           # the embed SDK key is a browser key by design; it travels here so it sits behind the password, not in the web bundle
+           "scan_ids": tools.matterport_scan_ids(building_id), "scan_sdk_key": os.environ.get("MATTERPORT_SDK_KEY") or None}
     if doc := store.get("profile", building_id):
         p = BuildingProfile.model_validate(doc)
         # validated, so profiles stored before a contract field existed get it as unknown
@@ -196,6 +198,46 @@ def building_image(building_id: str):
 def building_survey(building_id: str, fresh: bool = False):
     rec = _building(building_id)
     return _sse(survey(building_id, rec["address"], rec["lat"], rec["lon"], use_cache=not fresh))
+
+
+# ---- home markup: what a resident persona says about their own home, shown to the responder ----
+@app.get("/api/demo-patients")
+def demo_patients():
+    return json.loads(DEMO_PATIENTS.read_text()) if DEMO_PATIENTS.exists() else []
+
+
+@app.get("/api/patients/{patient_id}/home")
+def home(patient_id: str):
+    patient = _patient(patient_id)
+    doc = store.get("home", patient_id)
+    return {"patient": patient, "home": Home.model_validate(doc) if doc else None}
+
+
+@app.put("/api/patients/{patient_id}/home")
+def save_home(patient_id: str, body: Home):
+    if body.patient_id != patient_id:
+        raise HTTPException(400, "patient id does not match")
+    _patient(patient_id)
+    try:
+        _building(body.building_id)
+    except HTTPException:
+        raise HTTPException(422, "no such building")
+    if body.scan_id and body.scan_id not in tools.matterport_scan_ids(body.building_id):
+        raise HTTPException(422, "that scan is not one of this building's")
+    store.put("home", patient_id, body)
+    return body
+
+
+@app.get("/api/homes")
+def homes():
+    out = []
+    for doc in store.all("home"):
+        h = Home.model_validate(doc)
+        try:
+            out.append({"home": h, "patient": _patient(h.patient_id), "address": _building(h.building_id)["address"]})
+        except HTTPException:  # the patient or building is gone: not a job a responder can take
+            continue
+    return out
 
 
 # ---- refuge proposals and the approval gate ----
