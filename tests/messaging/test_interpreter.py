@@ -12,6 +12,11 @@ def test_keypad_one_means_safe():
     assert t.safe is True and t.confidence == 1.0
 
 
+def test_bare_digit_reply_means_the_keypad_choice(monkeypatch):
+    monkeypatch.setattr(interpreter, "_call_model", lambda *a: pytest.fail("a keypad digit must not reach the model"))
+    assert interpret_turn(" 1 ", None, ctx, []).safe is True
+
+
 def test_keypad_two_means_help_now():
     t = interpret_turn("", "2", ctx, [])
     assert t.needs_help_now is True and t.safe is None

@@ -45,8 +45,9 @@ Fields (null when the turn does not say):
 - device_running: whether the device is running now.
 - backup_hours: hours of backup they say they have, as a number (forty minutes = 0.67, an hour and a half = 1.5).
   Only a number the person states. Vague amounts ("half a tank", "a while", "not much") are null. If they correct
-  themselves, use the corrected value. If a number could be misheard (fifteen/fifty, four/forty, thirteen/thirty),
-  give your best reading and set confidence below 0.7.
+  themselves, use the corrected value. Every number is read back to the caller before it counts, so for a number
+  that could be misheard (fifteen/fifty, four/forty) give your best reading; that alone does not lower confidence.
+  Pauses, fragments and "I think" are normal for breathless callers and do not lower confidence either.
 - can_move: whether they can leave home if needed.
 - destination_offered: a place they name to go to.
 - consents_to_move: yes or no to moving when the agent offered a move.
@@ -93,6 +94,7 @@ def _call_model(text: str, patient_context: dict, history: list[dict]) -> str:
 
 
 def interpret_turn(text: str, keypad: str | None, patient_context: dict, history: list[dict]) -> Turn:
+    keypad = keypad or text.strip()  # phone keypad and "Reply 1/2" texts both arrive as a bare digit
     if keypad in KEYPAD:
         return KEYPAD[keypad].model_copy()
     if not text.strip():

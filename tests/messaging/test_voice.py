@@ -135,3 +135,8 @@ def test_inbound_from_a_known_number_starts_an_impact_call():
     r = client().post("/voice/v1/chat/completions", json={
         "stream": True, "messages": [{"role": "user", "content": "hello?"}], "elevenlabs_extra_body": {"caller_number": "+15550100001"}})
     assert "automated" in sse_text(r) and [c["kind"] for c in store.all("call")] == ["impact"]
+
+
+def test_demo_patient_profile_is_read_back_in_plain_words():
+    c = start_call("demo-1", "impact"); line = respond(c, "hello?")
+    assert "your feeding pump" in line and "about four hours" in line

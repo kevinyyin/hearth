@@ -15,13 +15,14 @@ from fastapi import APIRouter, Body, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
 from hearth import store
-from hearth.config import a
+from hearth.config import ROOT, a
 from hearth.contracts import PlanState
 from hearth.messaging import guard, scripts
 from hearth.messaging.interpreter import interpret_turn
 from hearth.messaging.templates import allowed, render
 
 router = APIRouter()
+DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
 
 
 def start_call(patient_id: str, kind: Literal["impact", "move_consent"], proposal_id: str | None = None) -> str:
@@ -29,8 +30,8 @@ def start_call(patient_id: str, kind: Literal["impact", "move_consent"], proposa
     proposal = store.get("proposal", proposal_id) if proposal_id else None
     if kind == "move_consent" and not (proposal and proposal["status"] == "approved" and proposal["patient_id"] == patient_id):
         raise PermissionError(f"no approved proposal {proposal_id!r} for patient {patient_id}")
-    p = store.get("patient", patient_id) or {}  # the API stores the Patient before calling; missing fields fall back
-    ctx = {"county": a("voice.county"), "device": p.get("device_detail") or "medical device",
+    p = _patient(patient_id)
+    ctx = {"county": a("voice.county"), "device": p.get("device", "medical device").replace("_", " "),
            "hours": p.get("backup_hours_on_hand"), "supply": "backup",
            "place": proposal["options"][0]["name"] if proposal else None}
     call_id = f"C-{uuid.uuid4().hex[:8]}"
@@ -101,6 +102,13 @@ def _end(call: dict, status: str, event: str, why: str) -> None:
     call["events"].append({"type": event, "text": why, "t": time.time()})
 
 
+def _patient(patient_id: str) -> dict:
+    """A stored Patient, else the demo file the API serves; missing fields fall back to generic words and ask_hours."""
+    # shortcut: does not read the simulation parquet; store.put("patient", ...) any non-demo patient before calling
+    demo = json.loads(DEMO_PATIENTS.read_text()) if DEMO_PATIENTS.exists() else []
+    return store.get("patient", patient_id) or next((p for p in demo if p["patient_id"] == patient_id), {})
+
+
 def _latest_ride(patient_id: str) -> dict | None:
     rides = [j for j in store.all("job") if j["patient_id"] == patient_id and j["kind"] == "ride"]
     return rides[-1] if rides else None
@@ -128,10 +136,9 @@ def chat_completions(body: dict = Body(...), authorization: str | None = Header(
     content = last.get("content") or ""
     text = (content if isinstance(content, str) else " ".join(p.get("text", "") for p in content)).strip() \
         if last.get("role") == "user" else ""  # no new caller message: a silent turn
-    keypad = text if text in ("1", "2", "3") else None  # phone keypad digits arrive as a bare user turn
     call_id = extra.get("call_id") or _inbound(extra.get("caller_number"))
     if call_id and store.get("call", call_id):
-        line = respond(call_id, "" if keypad else text, keypad)
+        line = respond(call_id, text)  # keypad digits arrive as a bare user turn; the interpreter reads them
     else:
         line = render("human_handoff")
     return StreamingResponse(_sse(line, body.get("model", "hearth-voice")), media_type="text/event-stream")
