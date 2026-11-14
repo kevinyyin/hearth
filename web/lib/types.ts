@@ -131,6 +131,20 @@ export type BuildingDetail = {
   /** The building's real scan models; empty with fixtures or when CoStar lists none. */
   scan_ids: string[];
   scan_sdk_key: string | null;
+  /** What someone said by phone today about power and the elevator; one person's word at one time. */
+  status: BuildingStatus | null;
+  /** This building's office has a real number to call (never one from the CoStar kit). */
+  can_call: boolean;
+};
+
+export type BuildingStatus = {
+  building_id: string;
+  said_by: "resident" | "building_office";
+  call_id: string;
+  power: boolean | null;
+  elevator: "yes" | "no" | "unknown" | null;
+  /** Unix seconds. */
+  t: number;
 };
 
 // --- Home markup shapes (mirrors Patient and Home in hearth/contracts.py). ---

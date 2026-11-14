@@ -2,11 +2,11 @@
 
 impact:       open -> ask -> readback -> [elevator_now] -> temperature -> close
 move_consent: open -> move_offer -> consent_readback -> close
-register, check: see register.py
+register, check, menu: see register.py; building_check: see building_call.py
 """
 from hearth import store
 from hearth.buildings import status, tools
-from hearth.messaging import register
+from hearth.messaging import building_call, register
 from hearth.messaging.interpreter import Turn
 from hearth.messaging.templates import say_hours
 
@@ -14,6 +14,8 @@ Lines = list[tuple[str, dict]]
 
 
 def opening(call: dict) -> Lines:
+    if call["kind"] == "building_check":
+        return building_call.opening(call)
     if call["kind"] in ("register", "check", "menu"):
         return register.opening(call)
     c = call["ctx"]
@@ -30,6 +32,8 @@ def opening(call: dict) -> Lines:
 
 def advance(call: dict, t: Turn) -> Lines:
     """Mutates call (step, pending, facts, status) and returns what to say next."""
+    if call["kind"] == "building_check":
+        return building_call.advance(call, t)
     if call["kind"] in ("register", "check", "menu") or call["step"] in ("walk", "wheelchair"):
         return register.advance(call, t)
     if t.intent == "help" and call["patient_id"]:  # asking for help on an impact or move call opens the same request

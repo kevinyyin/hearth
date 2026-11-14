@@ -241,3 +241,12 @@ def test_a_browser_register_call_needs_a_listed_phone(monkeypatch):
 
 def test_storm_route_reports_what_it_sent():
     assert client.post("/api/storm").json() == {"alerted": [], "dialed": [], "failed": []}
+
+
+def test_calling_an_unlisted_building_is_refused(monkeypatch):
+    assert client.post("/api/buildings/H-LEVEL/call").status_code == 403
+    assert client.get("/api/buildings/H-LEVEL").json()["can_call"] is False
+    monkeypatch.setenv("HEARTH_BUILDING_PHONES", "H-LEVEL=+15551230000")
+    r = client.post("/api/buildings/H-LEVEL/call")
+    assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "building_check" and r.json()["conversation_id"] is None
+    assert client.get("/api/buildings/H-LEVEL").json()["can_call"] is True

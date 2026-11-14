@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AccessBrief from "@/components/AccessBrief";
 import AgentTrace from "@/components/AgentTrace";
 import ProposalCard from "@/components/ProposalCard";
-import { getJson } from "@/lib/api";
+import { getJson, sendJson } from "@/lib/api";
 import { useAuthedImage } from "@/lib/useAuthedImage";
 import { reduceTrace, streamEvents } from "@/lib/sse";
 import { PROFILE_FIELDS, type BuildingDetail, type RefugeProposal, type TraceEvent } from "@/lib/types";
@@ -31,6 +31,7 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
   const [running, setRunning] = useState<"survey" | "refuge" | null>(null);
   const [proposal, setProposal] = useState<RefugeProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [calling, setCalling] = useState<string | null>(null);
 
   const image = useAuthedImage(detail?.image_url ?? null);
 
@@ -60,6 +61,17 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
     }
   }
 
+  async function callBuilding() {
+    setError(null);
+    try {
+      const r = await sendJson<{ call_id: string; conversation_id: string | null }>("POST", `/api/buildings/${buildingId}/call`);
+      setCalling(r.conversation_id ? "Calling the building's office…" : "The phone line is not set up, so the call did not ring.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  const said = detail?.status;
   const trace = reduceTrace(events);
   // after a run, show what that run produced (a failed run shows its default-backed profile); otherwise the stored, cached one
   const failed = trace.done && !!trace.error;
@@ -79,6 +91,20 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
       {detail?.embed_url && (
         <iframe src={detail.embed_url} title="Matterport scan" className="h-48 w-full rounded border-0" allow="xr-spatial-tracking; fullscreen" />
       )}
+      {said && (
+        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+          {said.said_by === "building_office" ? "The building's office" : "A resident"} said by phone at{" "}
+          {new Date(said.t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}:
+          {said.power !== null && ` power ${said.power ? "on" : "off"};`}
+          {said.elevator && ` elevator ${said.elevator === "yes" ? "running" : said.elevator === "no" ? "not running" : "not known"}.`}
+        </p>
+      )}
+      {detail?.can_call && (
+        <button type="button" onClick={callBuilding} className="mr-2 rounded border px-3 py-1 text-xs font-medium" style={{ borderColor: "var(--border)" }}>
+          Call the building
+        </button>
+      )}
+      {calling && <p className="text-xs" style={{ color: "var(--text-muted)" }}>{calling}</p>}
       <button type="button" disabled={!!running} onClick={() => run("survey")} className="rounded border px-3 py-1 text-xs font-medium" style={{ borderColor: "var(--border)" }}>
         {running === "survey" ? "Surveying…" : p?.method === "agent" ? "Survey again" : "Survey building with the agent"}
       </button>

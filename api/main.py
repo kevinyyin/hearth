@@ -15,7 +15,8 @@ from pydantic import BaseModel, ValidationError
 
 from api import live
 from hearth import dispatch, remote, store
-from hearth.buildings import refuge, tools
+from hearth.buildings import refuge, status, tools
+from hearth.messaging import registry
 from hearth.buildings.agent import survey
 from hearth.buildings.brief import access_brief
 from hearth.buildings.profile import hours_to_unsafe, layer_effects
@@ -179,13 +180,26 @@ def building(building_id: str):
            "profile": None, "brief": None, "layer_effects": None, "hours_to_unsafe": None,
            "embed_url": tools.matterport_embed_url(building_id), "image_url": f"/api/buildings/{building_id}/image",
            # the embed SDK key is a browser key by design; it travels here so it sits behind the password, not in the web bundle
-           "scan_ids": tools.matterport_scan_ids(building_id), "scan_sdk_key": os.environ.get("MATTERPORT_SDK_KEY") or None}
+           "scan_ids": tools.matterport_scan_ids(building_id), "scan_sdk_key": os.environ.get("MATTERPORT_SDK_KEY") or None,
+           # what someone said by phone today about power and the elevator, and whether this building's office can be called
+           "status": status.latest(building_id), "can_call": building_id in registry.building_phones()}
     if doc := store.get("profile", building_id):
         p = BuildingProfile.model_validate(doc)
         # validated, so profiles stored before a contract field existed get it as unknown
         out.update(profile=p.model_dump(mode="json") | {"cached": True}, brief=access_brief(p).model_dump(), layer_effects=layer_effects(p),
                    hours_to_unsafe=hours_to_unsafe(p.heat_time_constant_h))
     return out
+
+
+@app.post("/api/buildings/{building_id}/call")
+def call_building(building_id: str):
+    """Rings the building's office about power and the elevator. Only a number in HEARTH_BUILDING_PHONES: every phone
+    number in the CoStar kit is fake."""
+    _building(building_id)
+    if building_id not in registry.building_phones():
+        raise HTTPException(403, "no phone number is set for this building")
+    call_id = live.start_call(None, "building_check", building_id=building_id)
+    return {"call_id": call_id, "conversation_id": live.dial(call_id)}
 
 
 @app.get("/api/buildings/{building_id}/image")

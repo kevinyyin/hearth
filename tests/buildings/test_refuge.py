@@ -45,9 +45,9 @@ def test_an_elevator_only_seen_in_a_scan_needs_a_call_before_it_counts():
     who = patient(mobility="wheelchair_manual")
     ok, why = eligible(scan_seen(), who)
     assert not ok and why[0] == "needs a call"
-    ok, why = eligible(scan_seen(), who, elevator_confirmed=True)
+    ok, why = eligible(scan_seen(), who, elevator_confirmed=refuge.SIMULATED_CALL)
     assert ok and any("simulated call" in w for w in why)
-    ok, why = eligible(scan_seen(count=0), who, elevator_confirmed=True)  # not seeing one in a scan proves nothing
+    ok, why = eligible(scan_seen(count=0), who, elevator_confirmed=refuge.SIMULATED_CALL)  # not seeing one in a scan proves nothing
     assert not ok and "unverified access" in why
 
 
@@ -135,3 +135,31 @@ def test_rejection_memory_survives_a_fresh_server_instance():
     Path(refuge.MEMORY_FILE).unlink()                     # a new instance starts with an empty temp folder
     refuge.sync_memory()
     assert "elevator out of service" in Path(refuge.MEMORY_FILE).read_text()
+
+
+def test_a_fresh_office_answer_decides(monkeypatch):
+    from hearth.buildings import status
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    status.record("H-LEVEL", "building_office", "C-B", power=True, elevator="no")
+    assert refuge.confirm_elevator("H-LEVEL", {"77002"}) is None  # outside the dark area, yet the office said no
+    status.record("H-LEVEL", "building_office", "C-B", power=True, elevator="yes")
+    said = refuge.confirm_elevator("H-LEVEL", {"77002"})
+    assert said.startswith("the building's office said so by phone at ") and ("AM" in said or "PM" in said)
+    ok, why = refuge.access(scan_seen(), patient(mobility="wheelchair_manual"), {"77002"})
+    assert ok and said in why and store.get("refuge_call", "H-LEVEL") is None  # no simulated call when the office answered
+
+
+def test_a_stale_office_answer_falls_back_to_the_simulated_call(monkeypatch):
+    import time
+    from hearth.buildings import status
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    status.record("H-LEVEL", "building_office", "C-B", elevator="no")
+    store.put("building_status", "H-LEVEL", store.get("building_status", "H-LEVEL") | {"t": time.time() - 7 * 3600})
+    assert refuge.confirm_elevator("H-LEVEL", {"77002"}) == refuge.SIMULATED_CALL
+
+
+def test_a_residents_answer_does_not_stand_in_for_the_office(monkeypatch):
+    from hearth.buildings import status
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    status.record("H-LEVEL", "resident", "C-1", elevator="no")
+    assert refuge.confirm_elevator("H-LEVEL", {"77002"}) == refuge.SIMULATED_CALL
