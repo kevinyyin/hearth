@@ -310,3 +310,49 @@ def test_the_fallback_puts_a_stair_carry_first(monkeypatch):
     monkeypatch.setattr(dispatch, "_ask_model", lambda rows: (_ for _ in ()).throw(RuntimeError("down")))
     dispatch.open_request("p2"), dispatch.open_request("p4")
     assert (dispatch.request("p4").rank, dispatch.request("p2").rank) == (1, 2)
+
+
+# ---- the central planner pairs crews and requests (hearth/routing.py) ----
+def order(monkeypatch, *ids):
+    """The model answers with this order, for whichever of these requests it is shown."""
+    monkeypatch.setattr(dispatch, "_ask_model", lambda rows: answer([i for i in ids if i in {r["patient_id"] for r in rows}]))
+
+
+def test_every_waiting_request_is_placed_in_one_pass_each_with_its_own_crew(monkeypatch):
+    order(monkeypatch, "p4", "p2")
+    dispatch.open_request("p4"), dispatch.open_request("p2")  # nobody on duty yet: both wait
+    crew("A", on_duty=False), crew("B", on_duty=False)
+    crew("A"), crew("B")
+    got = {r.patient_id: r.job.org_id for r in dispatch.requests()}
+    assert set(got) == {"p4", "p2"} and set(got.values()) == {"A", "B"}
+    assert all(r.state == "offered" for r in dispatch.requests())
+
+
+def test_one_crew_goes_to_the_models_first_request_when_both_are_as_near(monkeypatch):
+    order(monkeypatch, "p2", "p4")
+    dispatch.open_request("p4"), dispatch.open_request("p2")  # both live in B-SAMPLE
+    crew("A")
+    assert dispatch.request("p2").job.org_id == "A" and dispatch.request("p4").state == "waiting"
+
+
+def test_a_much_closer_request_can_go_before_a_higher_ranked_one(monkeypatch):
+    order(monkeypatch, "demo-2", "p4")  # demo-2 is 12 km from the crew; p4 is in the building the crew stands in
+    dispatch.open_request("demo-2"), dispatch.open_request("p4")
+    assert dispatch.request("demo-2").rank == 1
+    crew("A", base="B-SAMPLE")
+    assert dispatch.request("p4").job.org_id == "A"
+    first = dispatch.request("demo-2")
+    assert (first.state, first.blocked, first.job) == ("waiting", "", None)  # still first in line for the next free crew
+
+
+def test_a_request_still_waiting_for_a_crew_holds_its_refuge_place_only_while_the_pass_runs(monkeypatch):
+    monkeypatch.setattr(dispatch, "capacity", lambda rec: 1)
+    order(monkeypatch, "p4", "p2", "demo-2")
+    crew("A")
+    assert dispatch.open_request("p4").refuge.building_id == "H-STEPS"  # offered: the place is held for real
+    waiting = dispatch.open_request("p2")  # no free crew; H-LEVEL is the place it would take
+    assert (waiting.state, waiting.blocked, waiting.refuge) == ("waiting", "", None)
+    behind = dispatch.open_request("demo-2")  # only H-LEVEL passes for a wheelchair, and p2 is ahead of it there
+    assert behind.blocked.startswith("no refuge within 15 km")
+    dispatch.mark_safe("p2")  # p2 no longer needs the place
+    assert dispatch.request("demo-2").blocked == ""

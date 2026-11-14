@@ -1,7 +1,8 @@
 """The help loop: a resident's own request is ordered by a model, placed by code, and worked by a crew.
 
 A model only orders the waiting requests and gives each a one-line reason for crews and dispatchers. Code picks the
-refuge (the access rule in refuge.py, a place left) and the crew (planner.assign with a fit test). No dispatcher click
+refuge (the access rule in refuge.py, a place left) and the crew (the central planner's pairing, routing.plan, with a
+fit test); the model's order is the weight each request carries into that pairing. No dispatcher click
 is needed; a request code cannot place is marked `blocked` for a person. Every line a resident reads is fixed text
 chosen here by state, and nothing says a crew is coming before that crew has accepted.
 """
@@ -16,7 +17,7 @@ from zoneinfo import ZoneInfo
 import anthropic
 from pydantic import BaseModel, ValidationError
 
-from hearth import planner, store
+from hearth import planner, routing, store
 from hearth.buildings import status, tools
 from hearth.buildings.profile import service_minutes
 from hearth.buildings.refuge import eligible, outside_dark_area
@@ -245,7 +246,9 @@ def _release(r: HelpRequest, crew_id: str, declined: bool = True) -> None:
 
 
 def run() -> None:
-    """Offer every waiting request, in rank order, to a free crew that fits, with a refuge as the drop-off."""
+    """Offer waiting requests to free crews that fit, with a refuge as the drop-off. The central planner pairs them all
+    at once (hearth.routing): the model's order is each request's weight, so a much closer request can go before a
+    higher-ranked one when crews are short. Every request counts as already waiting; the model has weighed the hours."""
     with _lock:
         reqs = requests()
         waiting = sorted((r for r in reqs if r.state == "waiting"), key=lambda r: (r.rank or 10**6, r.patient_id))
@@ -253,36 +256,43 @@ def run() -> None:
             return
         people = {r.patient_id: who for r in reqs if r.state in LIVE and (who := person(r.patient_id))}
         dark = {locate(*who).zip for who in people.values()}  # a requester's own ZIP is dark by definition
-        taken = Counter(r.refuge.building_id for r in reqs if r.state in HOLDS_PLACE and r.refuge)
+        # places held for this pass only, in rank order: a request that gets no crew below keeps nothing
+        held = Counter(r.refuge.building_id for r in reqs if r.state in HOLDS_PLACE and r.refuge)
         busy = {r.job.org_id for r in reqs if r.state in WITH_CREW and r.job}
         on_duty = {c.crew_id: c for c in crews() if c.on_duty}
         profiles = {p["building_id"]: p for p in store.all("profile") if "building_id" in p}
+        placed = {}  # patient id -> (request, patient, home, where they are, refuge), in rank order
         for r in waiting:
             if r.patient_id not in people:
                 continue
             patient, home = people[r.patient_id]
             here = locate(patient, home)
-            fit = lambda c, strict=False: _fits(on_duty[c.crew_id], patient, home, r.declined_by, strict)  # noqa: E731
-            refuge = _refuge(patient, here, dark, taken, profiles)
-            jobs = []
+            refuge = _refuge(patient, here, dark, held, profiles)
             if refuge is None:
                 r.blocked = NO_REFUGE.format(km=a("refuge.search_radius_km"))
-            elif not any(fit(c) for c in on_duty.values()):
+            elif not any(_fits(c, patient, home, r.declined_by) for c in on_duty.values()):
                 r.blocked = NO_CREW
             else:
                 r.blocked = ""  # crews that fit exist; if all are busy this simply waits its turn
-                free = [planner.Crew(c.crew_id, c.crew_id, c.lat, c.lon) for c in on_duty.values() if c.crew_id not in busy]
-                need = planner.Need(r.patient_id, "ride", "", 1.0, 1.0, here.lat, here.lon, 0.0, 0.0, dest=(refuge.lat, refuge.lon))
-                for strict in (True, False):
-                    if jobs := planner.assign([need], free, {}, planner.Flags(), 0.0, fits=lambda n, c: fit(c, strict)):
-                        break
-            if jobs:
-                c = on_duty[jobs[0].org_id]
-                r.job, r.refuge = jobs[0].model_copy(update={"status": "created", "eta": _eta(c, here)}), refuge
-                taken[refuge.building_id] += 1
-                busy.add(c.crew_id)
-                _enter(r, "offered")
-            _save(r)
+                held[refuge.building_id] += 1
+                placed[r.patient_id] = (r, patient, home, here, refuge)
+        needs = [planner.Need(pid, "ride", "", float(len(placed) - k), 0.0, here.lat, here.lon, 0.0, 0.0, dest=(refuge.lat, refuge.lon))
+                 for k, (pid, (_, _, _, here, refuge)) in enumerate(placed.items())]
+        jobs = []
+        for strict in (True, False):  # crews carrying what the device leans on first, then any crew that fits
+            def fits(n, c, strict=strict):
+                r, patient, home, _, _ = placed[n.patient_id]
+                return _fits(on_duty[c.crew_id], patient, home, r.declined_by, strict)
+            sent, gone = {j.patient_id for j in jobs}, busy | {j.org_id for j in jobs}
+            free = [planner.Crew(c.crew_id, c.crew_id, c.lat, c.lon) for c in on_duty.values() if c.crew_id not in gone]
+            jobs += routing.plan([n for n in needs if n.patient_id not in sent], free, {}, planner.Flags(), 0.0, routing="paired", fits=fits)
+        for job in jobs:
+            r, _, _, here, refuge = placed[job.patient_id]
+            r.job, r.refuge = job.model_copy(update={"status": "created", "eta": _eta(on_duty[job.org_id], here)}), refuge
+            _enter(r, "offered")
+        for r in waiting:
+            if r.patient_id in people:
+                _save(r)
 
 
 def _notify(*changed: str) -> None:
