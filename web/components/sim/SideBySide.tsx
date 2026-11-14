@@ -42,7 +42,7 @@ function Tally({
   hour: number;
   time: number;
 }) {
-  const t = county.tallyAt(hour, which);
+  const t = county.tallyAt(time, which);
   return (
     <dl className="mt-3 grid grid-cols-4 gap-3">
       <div>
@@ -227,7 +227,7 @@ export default function SideBySide() {
             county={county}
             center={center}
             which="hearthAt"
-            hour={hour}
+            time={time}
             vehicles={running ? county.vehiclesAt(time, "hearthAt") : []}
             onMap={register("a")}
             ariaLabel={`With Hearth at hour ${hour}: ${county.tallyAt(hour, "hearthAt").reached} of ${total} households reached.`}
@@ -244,7 +244,7 @@ export default function SideBySide() {
             county={county}
             center={center}
             which="todayAt"
-            hour={hour}
+            time={time}
             vehicles={running ? county.vehiclesAt(time, "todayAt") : []}
             onMap={register("b")}
             ariaLabel={`Today at hour ${hour}: ${county.tallyAt(hour, "todayAt").reached} of ${total} households reached.`}

@@ -79,14 +79,26 @@ export default function BuildingViews({
           view="floorplan"
         />
       ) : (
-        <p
-          className="rounded-lg border px-3 py-2 text-xs"
+        <div
+          className="rounded-lg border px-3 py-2.5 text-xs"
           style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
         >
-          {live
-            ? "CoStar lists no Matterport model for this building, so there is no interior to open. Most apartment models in the kit are unit floor plans rather than entrances; hotel lobby scans are the ones that show a way in."
-            : "No scan reachable. The model id comes from CoStar and the viewer key from the API."}
-        </p>
+          {live ? (
+            "CoStar lists no Matterport model for this building, so there is no interior to open. Most apartment models in the kit are unit floor plans rather than entrances; hotel lobby scans are the ones that show a way in."
+          ) : (
+            <>
+              <strong style={{ color: "var(--text-primary)" }}>
+                The 3D space cannot load on this machine.
+              </strong>{" "}
+              The walkthrough is Matterport&rsquo;s, opened in an iframe with a viewer key that only
+              the API holds, from a model id that only the CoStar extract holds. Neither is in this
+              checkout, and neither can be — the key would be in the browser bundle and the extract
+              is kept out of the repository on purpose. Set{" "}
+              <code>NEXT_PUBLIC_API</code> to a Hearth API that has both and the real scan opens
+              here, from above, with the resident&rsquo;s pins in it.
+            </>
+          )}
+        </div>
       )}
 
       {/* --- the stand-in, and the route, which no source provides --- */}

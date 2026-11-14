@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CrewsChart from "@/components/CrewsChart";
+import { formatHours } from "@/lib/results";
 import SideBySide from "@/components/sim/SideBySide";
 import { API, getJson } from "@/lib/api";
 import { POLICY_LABELS, POLICY_ORDER, type PolicyId, type SweepRow } from "@/lib/types";
@@ -10,7 +11,6 @@ import { POLICY_LABELS, POLICY_ORDER, type PolicyId, type SweepRow } from "@/lib
 /** Everything p3 is shown against in the card. */
 const COMPARISONS: PolicyId[] = ["p0", "p3__nobld", "p3__aid"];
 
-const fmt = new Intl.NumberFormat("en-US");
 
 /** Colour follows the policy, never its rank, so the card and the chart agree. */
 function policyColor(policy: PolicyId): string {
@@ -158,7 +158,7 @@ export default function ResultsPage() {
                 Hearth, at {crews ?? "—"} crews
               </p>
               <p className="tnum display text-[52px] leading-[0.85]" style={{ color: "var(--accent)" }}>
-                {hearth == null ? "—" : fmt.format(hearth)}
+                {hearth == null ? "—" : formatHours(hearth)}
               </p>
             </div>
 
@@ -176,7 +176,7 @@ export default function ResultsPage() {
                         {POLICY_LABELS[policy]}
                       </span>
                       <span className="tnum text-sm font-semibold">
-                        {value == null ? "—" : fmt.format(value)}
+                        {value == null ? "—" : formatHours(value)}
                       </span>
                     </div>
                     <div
@@ -196,8 +196,8 @@ export default function ResultsPage() {
                     {delta != null && (
                       <p className="tnum mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
                         {delta >= 0
-                          ? `${fmt.format(delta)} more patient-hours than Hearth`
-                          : `${fmt.format(-delta)} fewer than Hearth`}
+                          ? `${formatHours(delta)} more patient-hours than Hearth`
+                          : `${formatHours(-delta)} fewer than Hearth`}
                       </p>
                     )}
                   </li>

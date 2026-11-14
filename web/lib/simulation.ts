@@ -540,15 +540,38 @@ export function buildCounty(households: Household[]): CountySim {
     todayAt: runSide(households, "todayAt"),
   };
 
-  const stateAt = (i: number, hour: number, which: SideKey): HouseholdState => {
-    const mine = sides[which].jobs.filter((j) => j.h === i);
-    const due = mine.filter((j) => j.dueAt <= hour);
-    if (due.length === 0) return "unaffected";
+  // Jobs grouped by household once, rather than filtering the whole list per dot:
+  // the dots are now recomputed continuously, so this runs a few hundred times a
+  // second and the scan would have been the cost.
+  const byHousehold: Record<SideKey, Job[][]> = {
+    hearthAt: households.map(() => []),
+    todayAt: households.map(() => []),
+  };
+  for (const key of ["hearthAt", "todayAt"] as SideKey[]) {
+    for (const j of sides[key].jobs) byHousehold[key][j.h].push(j);
+  }
 
-    const open = due.some((j) => j.servedAt === null || j.servedAt > hour);
-    if (!open) return "reached";
+  /**
+   * `time` is continuous, not an hour index: a household turns green the moment
+   * its van arrives, which is what you watch for when a crew is on its way.
+   */
+  const stateAt = (i: number, time: number, which: SideKey): HouseholdState => {
+    const mine = byHousehold[which][i];
+
+    let anyDue = false;
+    let openNow = false;
+    let servedBefore = false;
+
+    for (const j of mine) {
+      if (j.dueAt > time) continue;
+      anyDue = true;
+      if (j.servedAt === null || j.servedAt > time) openNow = true;
+      else servedBefore = true;
+    }
+
+    if (!anyDue) return "unaffected";
+    if (!openNow) return "reached";
     // blue once they have been helped before: this is a resupply, not a first call
-    const servedBefore = mine.some((j) => j.servedAt !== null && j.servedAt <= hour);
     return servedBefore ? "resupply" : "waiting";
   };
 

@@ -44,7 +44,7 @@ function Panel({
         county={county}
         center={center}
         which={which}
-        hour={hour}
+        time={hour}
         interactive={false}
         height={150}
         ariaLabel={`${title} at hour ${hour}: ${t.reached} of ${county.households.length} households reached, ${t.waiting} waiting.`}
