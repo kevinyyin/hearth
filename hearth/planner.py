@@ -1,5 +1,6 @@
 """Greedy crew assignment: the highest risk weight per hour left goes first, to the nearest free crew allowed to serve it."""
 from dataclasses import dataclass
+from typing import Callable
 
 from hearth.config import a
 from hearth.contracts import Job
@@ -41,17 +42,18 @@ def travel_h(a_: tuple[float, float], b: tuple[float, float], multiplier: float 
     return float(km(a_[0], a_[1], b[0], b[1])) * a("travel.detour_factor") / a("travel.speed_kmh") * multiplier
 
 
-def assign(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_h: float, fcfs: bool = False) -> list[Job]:
+def assign(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_h: float, fcfs: bool = False,
+           fits: Callable[[Need, Crew], bool] | None = None) -> list[Job]:
     """Accepted jobs for free crews. Mutates the chosen crews (busy until done, at the drop-off) and stock.
     A delivery needs a crew of the patient's supplier (any supplier with mutual aid) and a unit of that crew's stock;
-    a need nobody can serve now stays in `needs` for the caller to offer again."""
+    a need nobody can serve now stays in `needs` for the caller to offer again. `fits` refuses crews that cannot take a need."""
     key = (lambda n: (n.since_h, n.patient_id)) if fcfs else (lambda n: (-n.weight / max(n.hours_until_empty, 0.1), n.patient_id))
     free, jobs = [c for c in crews if c.free_at_h <= now_h], []
     for n in sorted(needs, key=key):
         if not free:
             break
-        ok = [c for c in free if n.kind != "delivery"
-              or ((flags.mutual_aid or c.org_id == n.supplier_id) and stock.get(c.org_id, 0) > 0)]
+        ok = [c for c in free if (n.kind != "delivery" or ((flags.mutual_aid or c.org_id == n.supplier_id) and stock.get(c.org_id, 0) > 0))
+              and (fits is None or fits(n, c))]
         if not ok:
             continue
         c = min(ok, key=lambda c: (travel_h((c.lat, c.lon), (n.lat, n.lon)), c.crew_id))

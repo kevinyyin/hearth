@@ -7,20 +7,20 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterator, Literal
 
-from fastapi import Body, FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Path as PathParam, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ValidationError
 
 from api import live
-from hearth import remote, store
+from hearth import dispatch, remote, store
 from hearth.buildings import refuge, tools
 from hearth.buildings.agent import survey
 from hearth.buildings.brief import access_brief
 from hearth.buildings.profile import hours_to_unsafe, layer_effects
 from hearth.config import ROOT
-from hearth.contracts import BuildingProfile, Home, Patient, TraceEvent
+from hearth.contracts import BuildingProfile, Equipment, Home, Patient, TraceEvent, Vehicle
 
 RESULTS = ROOT / "results"
 DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
@@ -248,6 +248,108 @@ def homes():
         except HTTPException:  # the patient or building is gone: not a job a responder can take
             continue
     return out
+
+
+# ---- help loop: a resident asks, a model orders, code offers the job to a crew with a refuge as the drop-off ----
+CrewName = PathParam(pattern=r"^[A-Za-z0-9 _-]{1,40}$")
+
+
+def _tracker(patient_id: str) -> dict:
+    """What the resident may read: fixed lines by state, never the model's reason."""
+    return dispatch.tracker(dispatch.request(patient_id))
+
+
+@app.get("/api/patients/{patient_id}/help")
+def help_status(patient_id: str):
+    if dispatch.person(patient_id) is None:  # polled every few seconds: look the record up (and store it) only once
+        _patient(patient_id)
+    dispatch.expire()
+    return _tracker(patient_id)
+
+
+@app.post("/api/patients/{patient_id}/help")
+def ask_for_help(patient_id: str):
+    _patient(patient_id)  # also stores the patient record, which dispatch reads
+    try:
+        dispatch.open_request(patient_id)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return _tracker(patient_id)
+
+
+@app.post("/api/patients/{patient_id}/safe")
+def say_safe(patient_id: str):
+    _patient(patient_id)
+    try:
+        dispatch.mark_safe(patient_id)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return _tracker(patient_id)
+
+
+class CrewIn(BaseModel):
+    base_building_id: str
+    vehicle: Vehicle
+    equipment: list[Equipment] = []
+    on_duty: bool = True
+
+
+@app.put("/api/crews/{crew_id}")
+def save_crew(body: CrewIn, crew_id: str = CrewName):
+    try:
+        return dispatch.save_crew(crew_id, body.base_building_id, body.vehicle, body.equipment, body.on_duty)
+    except KeyError:
+        raise HTTPException(422, "no such building")
+
+
+def _crew_view(crew_id: str) -> dict:
+    """The crew and its current offer or job, with what the job card shows."""
+    crew, req, job = dispatch.crew(crew_id), dispatch.crew_job(crew_id), None
+    if crew and req and (who := dispatch.person(req.patient_id)):
+        patient, home = who
+        here = dispatch.locate(patient, home)
+        job = {"request": req, "patient": patient, "home": home, "address": here.address, "building_id": here.building_id,
+               "km": round(tools._km((crew.lat, crew.lon), (here.lat, here.lon)), 1)}
+    return {"crew": crew, "job": job}
+
+
+@app.get("/api/crews/{crew_id}/job")
+def crew_job(crew_id: str = CrewName):
+    dispatch.expire()
+    return _crew_view(crew_id)
+
+
+class JobAction(BaseModel):
+    action: dispatch.Action
+    patient_id: str  # the resident on the card the crew pressed the button on
+
+
+@app.post("/api/crews/{crew_id}/job")
+def crew_action(body: JobAction, crew_id: str = CrewName):
+    try:
+        dispatch.crew_action(crew_id, body.action, body.patient_id)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return _crew_view(crew_id)
+
+
+@app.get("/api/dispatch")
+def dispatch_board():
+    dispatch.expire()
+    rows = []
+    for req in dispatch.board():
+        if who := dispatch.person(req.patient_id):
+            rows.append({"request": req, "device": who[0].device, "mobility": who[0].mobility, "address": dispatch.locate(*who).address})
+    on = {r.job.org_id: r.patient_id for r in dispatch.requests() if r.state in dispatch.WITH_CREW and r.job}
+    return {"requests": rows, "crews": [{"crew": c, "patient_id": on.get(c.crew_id)} for c in dispatch.crews()]}
+
+
+@app.post("/api/dispatch/{patient_id}/handled")
+def handled(patient_id: str):
+    try:
+        return dispatch.mark_handled(patient_id)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
 
 
 # ---- refuge proposals and the approval gate ----

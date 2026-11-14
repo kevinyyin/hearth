@@ -191,6 +191,53 @@ export type Person = { name: string; relation: string; phone: string; note: stri
 
 export type HomeRow = { home: Home; patient: Patient; address: string };
 
+export type Vehicle = "car" | "van" | "wheelchair_van" | "ambulance";
+export type Equipment = "oxygen" | "power" | "wheelchair_lift" | "stretcher";
+export type HelpState = "waiting" | "offered" | "accepted" | "at_door" | "riding" | "dropped_off" | "safe" | "handled";
+
+/** A crew persona's setup. Mirrors Responder in hearth/contracts.py. */
+export type Responder = {
+  crew_id: string;
+  base_building_id: string;
+  lat: number;
+  lon: number;
+  vehicle: Vehicle;
+  equipment: Equipment[];
+  on_duty: boolean;
+};
+
+/** A resident's request for help, as crews and dispatchers see it. `reason` is a model's line and never reaches the resident. */
+export type HelpRequest = {
+  patient_id: string;
+  state: HelpState;
+  times: Partial<Record<HelpState, string>>;
+  rank: number | null;
+  reason: string;
+  ranked_by: "model" | "rule" | null;
+  blocked: string;
+  declined_by: string[];
+  refuge: RefugeOption | null;
+  job: { job_id: string; org_id: string; status: string; eta: string | null } | null;
+};
+
+/** What the resident reads: fixed lines chosen by the API. The accepted line carries a {window} slot for local times. */
+export type Tracker = {
+  state: HelpState | null;
+  steps: { text: string; at: string | null; done: boolean }[];
+  window: [string, string] | null;
+  refuge_note: string | null;
+};
+
+export type CrewJob = {
+  crew: Responder | null;
+  job: { request: HelpRequest; patient: Patient; home: Home | null; address: string | null; building_id: string | null; km: number } | null;
+};
+
+export type DispatchView = {
+  requests: { request: HelpRequest; device: string; mobility: string; address: string | null }[];
+  crews: { crew: Responder; patient_id: string | null }[];
+};
+
 export type TraceEvent = {
   seq: number;
   t: number;

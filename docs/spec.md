@@ -151,7 +151,9 @@ the agent trace and approval, Photon the call and the text.
 - No sentence that says help is coming is written by a model. Those are fixed templates, chosen by code, allowed
   only after a job is accepted.
 - No medical advice. Medical questions get one fixed hand-off line.
-- No move is messaged, called or dispatched before a dispatcher approves it.
+- A move Hearth starts on its own is not messaged, called or dispatched before a dispatcher approves it. Help a
+  resident asks for themselves is dispatched without one (there are not enough dispatchers to approve every job); a
+  dispatcher is asked only when code cannot place the request.
 - No reply is never treated as safe.
 - Same seed, same output bytes.
 - Every default number is in `config/assumptions.yaml` with a source and a `confirmed` flag. Each run copies the
@@ -232,6 +234,29 @@ Field names and coverage are in `docs/toolkit-notes.md`.
   callers, and it took "about 40 hours" at face value where the case meant 4.
 - **Not done**: the Photon follow-up text and the real number over SIP. No real phone call has been placed.
 
+## Help loop (resident and responder sides)
+
+- **Personas, not logins** (`/start`): a resident picks a demo patient, a responder types a crew name; the choice
+  lives in the browser. `/resident` holds the home markup and the help panel, `/responder` the crew's setup and
+  jobs, `/dispatch` the queue.
+- **A resident's request is the go-ahead** (`hearth/dispatch.py`). "I need help" opens a request; "I'm safe" closes
+  one that no crew has picked up. Silence is never read as safe.
+- **A model orders, code places.** One Claude Sonnet call per new request orders the waiting requests and gives each
+  a one-line reason, shown to crews and dispatchers only. The answer counts only if it is exactly the ids sent;
+  otherwise the planner's risk-per-hour order is used and the request says so. Code then picks the nearest refuge
+  that passes the access rule and has a place left, and offers the job to the nearest free crew that fits (a power
+  wheelchair needs a lift, a bedbound resident a stretcher, the device must fit the vehicle), preferring one that
+  carries what the device leans on.
+- **The crew accepts.** An offer not answered in 90 seconds passes to the next crew and sets the first off duty
+  until it says otherwise. A dispatcher can take over any open request, for example when a crew goes quiet.
+  The resident's tracker is fixed lines chosen by state; the crew and arrival window appear only after Accept.
+- **A person only by exception.** No refuge passes, or no crew on duty can carry the resident: the request is
+  listed under "needs a person". A request waiting for a busy crew is just queued.
+- **Refuge capacity** is 5% of the building's CoStar unit count, at least 1: a placeholder. Nothing is booked and
+  power at the refuge is not verified; every screen that shows a refuge says so.
+- **Limit.** Records-only profiles do not know whether an entrance is step-free, so for a wheelchair or bedbound
+  resident almost no refuge passes and the request goes to a person.
+
 ## Simulation
 
 - **Population**: 23,273 patients from emPOWER July 2024 ZIP totals, homes placed at random inside each ZIP.
@@ -273,6 +298,10 @@ Sources, corrections and the two oddities we investigated are in `docs/sim-notes
 | `GET /api/proposals`, `POST /api/proposals/{id}/decision` | Approve or reject, with a reason on reject |
 | `POST /api/calls`, `GET /api/calls/{id}` | Start a call (refused without an approved proposal); read its transcript and confirmed facts |
 | `POST /voice/v1/chat/completions` | The model endpoint ElevenLabs calls |
+| `GET`, `PUT /api/patients/{id}/home`, `GET /api/homes`, `GET /api/demo-patients` | The resident's home markup |
+| `GET`, `POST /api/patients/{id}/help`, `POST /api/patients/{id}/safe` | A resident asks for help or says they are safe; the tracker's fixed lines |
+| `PUT /api/crews/{crew}`, `GET`, `POST /api/crews/{crew}/job` | Crew setup; the crew's current offer or job and its next step |
+| `GET /api/dispatch`, `POST /api/dispatch/{id}/handled` | Every help request in order, and the ones that need a person |
 
 The map opens the county Hearth replay when one has been generated, else a sample. With no API configured the web
 app reads hand-made files and shows a "Sample data, not results" banner.

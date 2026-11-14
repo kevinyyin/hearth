@@ -209,6 +209,37 @@ class Home(BaseModel):
         return self
 
 
+Vehicle = Literal["car", "van", "wheelchair_van", "ambulance"]
+Equipment = Literal["oxygen", "power", "wheelchair_lift", "stretcher"]
+HelpState = Literal["waiting", "offered", "accepted", "at_door", "riding", "dropped_off", "safe", "handled"]
+
+
+class Responder(BaseModel):
+    """A crew persona's setup. The position is the base until a drop-off moves it to that refuge."""
+    crew_id: str = Field(pattern=r"^[A-Za-z0-9 _-]{1,40}$")
+    base_building_id: str
+    lat: float
+    lon: float
+    vehicle: Vehicle
+    equipment: list[Equipment] = Field(default_factory=list)
+    on_duty: bool = True
+
+
+class HelpRequest(BaseModel):
+    """A resident's own request for help, one per resident. `reason` is a model's line for crews and dispatchers and is
+    never shown to the resident. `blocked` says why the request needs a person; empty while it is only queued."""
+    patient_id: str
+    state: HelpState = "waiting"
+    times: dict[str, datetime] = Field(default_factory=dict)  # state -> when it was entered
+    rank: int | None = None
+    reason: str = Field("", max_length=140)
+    ranked_by: Literal["model", "rule"] | None = None
+    blocked: str = ""
+    declined_by: list[str] = Field(default_factory=list)
+    refuge: RefugeOption | None = None
+    job: Job | None = None  # kind "ride", org_id the crew; created while offered, accepted until drop-off, then completed
+
+
 class TraceEvent(BaseModel):
     seq: int
     t: float

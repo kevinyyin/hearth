@@ -59,3 +59,14 @@ def test_every_assumption_has_source():
 
 def test_a_reads_values():
     assert a("decision.margin_h") == 12 and a("risk_weight.ventilator") == 5
+
+
+def test_responder_name_and_help_reason_bounds():
+    from hearth.contracts import HelpRequest, Responder
+
+    crew = dict(base_building_id="B", lat=29.7, lon=-95.4, vehicle="van")
+    assert Responder(crew_id="Crew Alpha-1", **crew).on_duty and HelpRequest(patient_id="x").state == "waiting"
+    for bad in (lambda: Responder(crew_id="a/b", **crew), lambda: Responder(crew_id="ok", **crew | {"vehicle": "bike"}),
+                lambda: Responder(crew_id="ok", equipment=["laser"], **crew), lambda: HelpRequest(patient_id="x", reason="r" * 141)):
+        with pytest.raises(ValidationError):
+            bad()

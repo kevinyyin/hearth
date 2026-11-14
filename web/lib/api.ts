@@ -22,13 +22,13 @@ export function onUnauthorized(): never {
   throw new Error("password required");
 }
 
-/** PUTs JSON to the live API. There is no dev-file fallback for writes. */
-export async function putJson<T>(path: string, body: unknown): Promise<T> {
+/** Sends JSON to the live API. There is no dev-file fallback for writes. */
+export async function sendJson<T>(method: "PUT" | "POST", path: string, body?: unknown): Promise<T> {
   if (!API) throw new Error("This page needs the Hearth API.");
   const res = await fetch(`${API}${path}`, {
-    method: "PUT",
+    method,
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (res.status === 401) onUnauthorized();
   if (!res.ok) {
@@ -38,6 +38,8 @@ export async function putJson<T>(path: string, body: unknown): Promise<T> {
   }
   return (await res.json()) as T;
 }
+
+export const putJson = <T,>(path: string, body: unknown): Promise<T> => sendJson<T>("PUT", path, body);
 
 /**
  * Fetches `${API}${path}`. With no API configured it reads the static dev files

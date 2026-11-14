@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import AerialPins from "@/components/AerialPins";
+import Choice from "@/components/Choice";
+import HelpPanel from "@/components/HelpPanel";
 import { API, getJson, putJson } from "@/lib/api";
 import PeopleFields from "@/components/PeopleFields";
 import ScanPins from "@/components/ScanPins";
@@ -40,22 +42,6 @@ function NumberField({ value, onChange, min, max, step }: { value: number; onCha
         setText(e.target.value);
         onChange(Number(e.target.value) || 0);
       }} />
-  );
-}
-
-/** A toggle in a row of choices (pin kind, size). */
-function Choice({ on, color, onClick, children }: { on: boolean; color?: string; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className="rounded border px-2.5 py-1 text-xs font-medium"
-      style={on ? { background: color ?? "var(--text-primary)", borderColor: color ?? "var(--text-primary)", color: color ? "#fff" : "var(--surface-1)" }
-        : { borderColor: "var(--border)", color: "var(--text-secondary)" }}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -128,6 +114,8 @@ export default function ResidentPage() {
         <Link href="/start" className="text-xs underline underline-offset-2" style={{ color: "var(--text-secondary)" }}>Switch role</Link>
       </header>
       <p className="text-xs" style={{ color: "var(--text-muted)" }}>Simulated resident {patient.patient_id}</p>
+
+      <HelpPanel patientId={patient.patient_id} />
 
       <Section title="Your device">
         <p className="text-sm">{words(patient.device)} ({words(patient.device_detail)})</p>

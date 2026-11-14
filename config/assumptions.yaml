@@ -10,6 +10,7 @@ models:
   subagent: {value: claude-haiku-5-5, source: "our call: layer subagents only call tools and summarize; speed", confirmed: false}
   agent_effort: {value: medium, source: "our call: survey latency target ~30 s", confirmed: false}
   subagent_effort: {value: low, source: "our call: survey latency target ~30 s", confirmed: false}
+  dispatch: {value: claude-sonnet-5-5, source: "our call: orders open help requests on every new request; speed over depth", confirmed: false}
   vision_effort: {value: low, source: "our call: one short visual answer per call", confirmed: false}
 
 decision:
@@ -107,3 +108,10 @@ building_records:
 sweep:
   crews: {value: [20, 40, 80, 160, 320], source: "user decision Nov 13: 5-80 covered only the start of the curve (about 13 deliveries per crew-day against ~10,000 a day at peak)", confirmed: true}
   seeds: {value: 10, source: "plan Task S4", confirmed: true}
+
+# ---- help loop (slice 2): a resident's own request is dispatched to a crew, with a refuge as the drop-off ----
+dispatch:
+  refuge_capacity_share: {value: 0.05, source: "user decision Nov 14: a refuge takes this share of its CoStar unit count, at least 1; placeholder", confirmed: false}
+  eta_window_min: {value: 15, source: "our call: width of the arrival window shown to a resident; placeholder", confirmed: false}
+  offer_timeout_s: {value: 90, source: "our call: an offer a crew does not answer in this time passes to the next crew; placeholder", confirmed: false}
+  vehicle_max_item_cm: {value: {car: 60, van: 150, wheelchair_van: 150, ambulance: 100}, source: "our call: longest side of a device each vehicle can carry beside a passenger; placeholder", confirmed: false}

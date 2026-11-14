@@ -37,3 +37,12 @@ def test_delivery_takes_stock_and_busies_the_crew():
 
 def test_travel_is_haversine_times_detour_over_speed():
     assert abs(travel_h((29.76, -95.37), (29.76 + 0.36, -95.37)) - 40.0 * 1.4 / 40) < 0.01  # 0.36 deg lat ~ 40 km
+
+
+def test_assign_skips_crews_that_do_not_fit():
+    near, far = crew("near"), Crew(crew_id="far", org_id="s1", lat=29.95, lon=-95.60)
+    ride = lambda: [need("a", kind="ride")]
+    assert assign(ride(), [near, far], {}, Flags(), 0)[0].data["crew_id"] == "near"
+    near.free_at_h = 0.0
+    assert assign(ride(), [near, far], {}, Flags(), 0, fits=lambda n, c: c.crew_id != "near")[0].data["crew_id"] == "far"
+    assert assign(ride(), [crew("x")], {}, Flags(), 0, fits=lambda n, c: False) == []
