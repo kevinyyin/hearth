@@ -1,5 +1,10 @@
 {
  "run_id": "sample__p3__c5__s1",
  "risk_hours_unweighted": 52.0,
- "risk_hours_weighted": 70.0
+ "risk_hours_weighted": 70.0,
+ "device_hours": 8.0,
+ "temp_hours": 47.5,
+ "moves": 98,
+ "patients_reaching_zero": 5,
+ "assumptions_sha256": "b7514cc1b1d449292e5dae675c3a02c23bf7eb7249f8b54a592b6c0bb6ae8ee0"
 }
