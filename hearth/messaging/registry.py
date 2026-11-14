@@ -91,3 +91,13 @@ def reset(phone: str) -> int:
         for kind in KINDS:
             store.delete(kind, pid)
     return len(mine)
+
+
+def facts_for(patient_id: str) -> dict:
+    """A registration's answers in the facts shape the call scripts use, all of them already confirmed."""
+    p, h = store.get("patient", patient_id) or {}, store.get("home", patient_id) or {}
+    return {"has_equipment": True, "home_confirmed": True, "device": p.get("device"), "device_words": h.get("device_name"),
+            "building_id": h.get("building_id"), "address": (tools.costar_record(h.get("building_id") or "") or {}).get("address"),
+            "unit": h.get("unit"), "scan_id": h.get("scan_id"), "complex_building": h.get("complex_building"),
+            "backup_hours": h.get("ok_without_h"), "floor": p.get("floor"), "has_elevator": h.get("has_elevator"),
+            "door": h.get("door"), "door_from_aerial": h.get("door_from_aerial"), "room": h.get("room"), "scan_room": h.get("scan_room")}

@@ -2,7 +2,9 @@
 
 impact:       open -> ask -> readback -> temperature -> close
 move_consent: open -> move_offer -> consent_readback -> close
+register, check: see register.py
 """
+from hearth.messaging import register
 from hearth.messaging.interpreter import Turn
 from hearth.messaging.templates import say_hours
 
@@ -10,6 +12,8 @@ Lines = list[tuple[str, dict]]
 
 
 def opening(call: dict) -> Lines:
+    if call["kind"] in ("register", "check"):
+        return register.opening(call)
     c = call["ctx"]
     if call["kind"] == "move_consent":
         call["step"] = "move_offer"
@@ -24,6 +28,8 @@ def opening(call: dict) -> Lines:
 
 def advance(call: dict, t: Turn) -> Lines:
     """Mutates call (step, pending, facts, status) and returns what to say next."""
+    if call["kind"] in ("register", "check"):
+        return register.advance(call, t)
     step, c, facts = call["step"], call["ctx"], call["facts"]
     # plain statements; only confident turns reach here. Never "safe": on a call, keypad 1 means "yes" to the question
     for k in ("device_running", "can_move"):
