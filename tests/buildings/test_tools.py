@@ -44,3 +44,10 @@ def test_search_filters_type_and_radius():
 def test_path_like_ids_are_rejected():
     with pytest.raises(ValueError):
         costar_record("../../etc")
+
+
+def test_an_entrance_reading_is_a_point_on_the_tile_or_nothing():
+    assert tools.parse_entrance('Here: {"x": 0.44, "y": 0.69, "note": "canopy on the south side"}') == {
+        "x": 0.44, "y": 0.69, "note": "canopy on the south side"}
+    for answer in ("cannot tell", '{"x": 1.4, "y": 0.2}', '{"x": "left", "y": 0.2}', '{"note": "no door visible"}', "{not json}"):
+        assert tools.parse_entrance(answer) is None

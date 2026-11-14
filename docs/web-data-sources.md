@@ -80,10 +80,13 @@ Still placeholder regardless of the API, because nothing serves them yet:
 
 - **The call transcripts.** The voice lane owns the real wording, and the rule
   that no sentence promising help is model-written.
-- **The room layout behind the Recommended path.** CoStar and Matterport give
-  scan ids and access facts, not a floor polygon, so `web/lib/floorplan.ts` is a
-  schematic. The route across it is really planned; the shape it is planned over
-  is invented.
+- **A route when no scan opens.** With a scan the route is planned over the
+  scan's own spots and drawn on its floor plan (`web/lib/scanRoute.ts`).
+  Without one no route is shown.
+- **The machine and the two entrances, until the resident pins them.** The
+  machine is placed in the farthest room from where the scan starts, the inside
+  entrance is where the scan starts, and the entrance on the aerial tile is a
+  vision model's reading of that tile. Each is labelled as such on the page.
 - **The crews, stations, cruising speed and the queue rate** in the side-by-side.
   The simulation in this repository reports patient-hours at risk and has never
   modelled a fleet. That panel says so on its face.

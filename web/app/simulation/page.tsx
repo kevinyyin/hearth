@@ -6,7 +6,6 @@ import CallTranscript from "@/components/sim/CallTranscript";
 import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
 import BuildingViews from "@/components/sim/BuildingViews";
-import FloorPlan from "@/components/sim/FloorPlan";
 import FullRun from "@/components/sim/FullRun";
 import { useResidentFeed } from "@/lib/simSource";
 import {
@@ -202,7 +201,7 @@ export default function SimulationPage() {
       return {
         lines: ENROLMENT_CALL,
         revealed: stage === "enrolled" ? ENROLMENT_CALL.length : enrol.n,
-        title: `Enrolment call · ${callMode === "real" ? realNumber || "no number yet" : resident.phone}`,
+        title: `Enrollment call · ${callMode === "real" ? realNumber || "no number yet" : resident.phone}`,
         live: stage === "enrol" && !callDone,
       };
     }
@@ -223,7 +222,10 @@ export default function SimulationPage() {
       ? Math.round((phaseIdx / (EVENT_PHASES.length - 1)) * RUN_HOURS)
       : 0;
 
-  const entranceKnown = stage === "enrolled" || enrol.n >= 11;
+  /** A field is known once the resident's answer to it has been said. */
+  const landed = (label: string) =>
+    stage === "enrolled" || enrol.n > (ENROLMENT_FIELDS.find((f) => f.label === label)?.after ?? Infinity);
+  const entranceKnown = landed("Entrance");
 
   return (
     <div className="min-h-full">
@@ -242,7 +244,7 @@ export default function SimulationPage() {
                   ? "Three ways in: one household, step by step, or the whole county"
                   : stage === "full"
                     ? "The whole county, both ways at once"
-                    : "Before the event · enrolment"}
+                    : "Before the event · enrollment"}
             </p>
           </div>
 
@@ -298,7 +300,7 @@ export default function SimulationPage() {
                   </span>
                   <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     <strong style={{ color: "var(--text-primary)" }}>Before the event.</strong> A call
-                    goes out to enrol the household, and what they say becomes their record.
+                    goes out to enroll the household, and what they say becomes their record.
                   </span>
                 </li>
                 <li className="flex gap-4">
@@ -328,7 +330,7 @@ export default function SimulationPage() {
                 className="mt-7 rounded-xl border p-5"
                 style={{ borderColor: "var(--border)", background: "var(--surface-0)" }}
               >
-                <h3 className="mb-3 text-sm font-semibold">How to place the enrolment call</h3>
+                <h3 className="mb-3 text-sm font-semibold">How to place the enrollment call</h3>
                 <div
                   role="group"
                   aria-label="Call mode"
@@ -425,7 +427,7 @@ export default function SimulationPage() {
                   className="rounded-lg px-6 py-3.5 text-base font-semibold"
                   style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
                 >
-                  Start stage 1 — the enrolment call
+                  Start stage 1 — the enrollment call
                 </button>
                 <button
                   type="button"
@@ -445,7 +447,7 @@ export default function SimulationPage() {
                 style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
               >
                 Every call, transcript and record in this simulation is a fixed placeholder written
-                into the page. The real enrolment call, its wording and the resident record belong to
+                into the page. The real enrollment call, its wording and the resident record belong to
                 the registration lane, and this screen is built to have them dropped in.
               </p>
             </div>
@@ -474,7 +476,7 @@ export default function SimulationPage() {
                 </p>
                 <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
                   {stage === "enrolled"
-                    ? "Call ended. Five fields captured."
+                    ? `Call ended. ${fields.length} fields captured.`
                     : callDone
                       ? "The call has ended."
                       : "On the call. The transcript is being written as it goes."}
@@ -483,21 +485,20 @@ export default function SimulationPage() {
 
               <h3 className="mb-3 text-sm font-semibold">What the call captured</h3>
               <dl className="space-y-0">
-                {fields.map((f, i) => {
-                  const landed = stage === "enrolled" || enrol.n >= (i + 1) * 2 + 1;
-                  return (
-                    <div
-                      key={f.label}
-                      className="flex items-baseline justify-between gap-4 border-b py-2.5 last:border-b-0"
-                      style={{ borderColor: "var(--border)", opacity: landed ? 1 : 0.35 }}
-                    >
-                      <dt className="text-sm" style={{ color: "var(--text-muted)" }}>
-                        {f.label}
-                      </dt>
-                      <dd className="m-0 text-right text-sm font-medium">{landed ? f.value : "—"}</dd>
-                    </div>
-                  );
-                })}
+                {fields.map((f) => (
+                  <div
+                    key={f.label}
+                    className="flex items-baseline justify-between gap-4 border-b py-2.5 last:border-b-0"
+                    style={{ borderColor: "var(--border)", opacity: landed(f.label) ? 1 : 0.35 }}
+                  >
+                    <dt className="text-sm" style={{ color: "var(--text-muted)" }}>
+                      {f.label}
+                    </dt>
+                    <dd className="m-0 text-right text-sm font-medium">
+                      {landed(f.label) ? f.value : "—"}
+                    </dd>
+                  </div>
+                ))}
               </dl>
 
               {/* the markers the call produced, and a route planned over the layout */}
@@ -528,12 +529,87 @@ export default function SimulationPage() {
                 </button>
               )}
 
-              {stage === "enrol" && callDone && (
-                <StepButton
-                  label="Finish enrolment"
-                  hint="The operator confirms what the call captured."
-                  onClick={() => setStage("enrolled")}
-                />
+              {/* the profile is corrected before it is confirmed, on this screen rather than another */}
+              {stage === "enrol" && callDone && editing && (
+                <form
+                  className="mt-5 space-y-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setEditing(false);
+                  }}
+                >
+                  {fields.map((f, i) => (
+                    <div key={f.label}>
+                      <label
+                        htmlFor={`field-${i}`}
+                        className="mb-1 block text-xs font-medium"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {f.label}
+                      </label>
+                      <input
+                        id={`field-${i}`}
+                        value={f.value}
+                        onChange={(e) =>
+                          setFields((prev) =>
+                            prev.map((p, j) =>
+                              j === i ? { ...p, value: e.target.value } : p,
+                            ),
+                          )
+                        }
+                        className="w-full rounded-lg border px-3 py-2.5 text-sm"
+                        style={{
+                          borderColor: "var(--border)",
+                          background: "var(--surface-1)",
+                          color: "var(--text-primary)",
+                          minHeight: 44,
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    <button
+                      type="submit"
+                      className="rounded-lg px-4 py-2.5 text-sm font-semibold"
+                      style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFields(ENROLMENT_FIELDS.map((f) => ({ ...f })));
+                        setEditing(false);
+                      }}
+                      className="rounded-lg border px-4 py-2.5 text-sm font-medium"
+                      style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {stage === "enrol" && callDone && !editing && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="mt-5 w-full rounded-lg border px-4 py-3 text-sm font-semibold"
+                    style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)", minHeight: 48 }}
+                  >
+                    Edit profile
+                  </button>
+                  <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                    Anything said on the call can be corrected before it is confirmed. Edits stay on
+                    this screen; the registration lane&rsquo;s full editor is still being built.
+                  </p>
+                  <StepButton
+                    label="Finish enrollment"
+                    hint="The operator confirms what the call captured."
+                    onClick={() => setStage("enrolled")}
+                  />
+                </>
               )}
 
               {stage === "enrolled" && (
@@ -543,93 +619,19 @@ export default function SimulationPage() {
                 >
                   <p className="text-sm font-semibold">Enrolled.</p>
                   <p className="mt-1.5 text-sm" style={{ color: "var(--text-secondary)" }}>
-                    Anything said on the call can be corrected by the household themselves.
+                    The profile is confirmed. A dispatcher will see it if the power goes out.
                   </p>
 
-                  {/* edits happen here, in the same box, rather than on another screen */}
-                  {editing ? (
-                    <form
-                      className="mt-4 space-y-3"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        setEditing(false);
-                      }}
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={startEvent}
+                      className="rounded-lg border px-4 py-2.5 text-sm font-semibold"
+                      style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)" }}
                     >
-                      {fields.map((f, i) => (
-                        <div key={f.label}>
-                          <label
-                            htmlFor={`field-${i}`}
-                            className="mb-1 block text-xs font-medium"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            {f.label}
-                          </label>
-                          <input
-                            id={`field-${i}`}
-                            value={f.value}
-                            onChange={(e) =>
-                              setFields((prev) =>
-                                prev.map((p, j) =>
-                                  j === i ? { ...p, value: e.target.value } : p,
-                                ),
-                              )
-                            }
-                            className="w-full rounded-lg border px-3 py-2.5 text-sm"
-                            style={{
-                              borderColor: "var(--border)",
-                              background: "var(--surface-1)",
-                              color: "var(--text-primary)",
-                              minHeight: 44,
-                            }}
-                          />
-                        </div>
-                      ))}
-                      <div className="flex flex-wrap gap-3 pt-1">
-                        <button
-                          type="submit"
-                          className="rounded-lg px-4 py-2.5 text-sm font-semibold"
-                          style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFields(ENROLMENT_FIELDS.map((f) => ({ ...f })));
-                            setEditing(false);
-                          }}
-                          className="rounded-lg border px-4 py-2.5 text-sm font-medium"
-                          style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(true)}
-                        className="rounded-lg px-4 py-2.5 text-sm font-semibold"
-                        style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
-                      >
-                        Edit profile
-                      </button>
-                      <button
-                        type="button"
-                        onClick={startEvent}
-                        className="rounded-lg border px-4 py-2.5 text-sm font-semibold"
-                        style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)" }}
-                      >
-                        Continue to stage 2
-                      </button>
-                    </div>
-                  )}
-
-                  <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                    Edits stay on this screen. The registration lane&rsquo;s full editor is still
-                    being built.
-                  </p>
+                      Continue to stage 2
+                    </button>
+                  </div>
                 </div>
               )}
             </Section>
@@ -846,6 +848,18 @@ export default function SimulationPage() {
                         </li>
                       ))}
                     </ul>
+                    <dl className="mt-4 space-y-1.5 border-t pt-4 text-sm" style={{ borderColor: "var(--border)" }}>
+                      {fields
+                        .filter((f) => f.label === "Where the device is" || f.label === "Can it be moved")
+                        .map((f) => (
+                          <div key={f.label} className="flex gap-3">
+                            <dt className="w-36 shrink-0" style={{ color: "var(--text-muted)" }}>
+                              {f.label}
+                            </dt>
+                            <dd className="m-0" style={{ color: "var(--text-secondary)" }}>{f.value}</dd>
+                          </div>
+                        ))}
+                    </dl>
                     <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
                       The blocked kerb came from the resident, not the imagery. No layer can tell you
                       what happened tonight.

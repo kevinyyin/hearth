@@ -2,8 +2,7 @@
 
 import AerialPins from "@/components/AerialPins";
 import ScanPins from "@/components/ScanPins";
-import FloorPlan from "@/components/sim/FloorPlan";
-import { useBuildingFeed } from "@/lib/simSource";
+import { useBuildingFeed, useEntranceFeed } from "@/lib/simSource";
 import type { InsidePin, OutsidePin } from "@/lib/types";
 
 /**
@@ -19,8 +18,8 @@ import type { InsidePin, OutsidePin } from "@/lib/types";
  *     listed, with the SDK key the API hands over.
  *
  * So there is no floor plan to fetch from anyone. When a scan exists we open it
- * from above, which is the nearest real thing; when none of it is reachable the
- * schematic below is a stand-in and says so.
+ * from above, which is the nearest real thing, and the route is drawn on that.
+ * With no scan there is no route: nothing is drawn over an invented layout.
  */
 export default function BuildingViews({
   buildingId,
@@ -48,6 +47,11 @@ export default function BuildingViews({
       : (listed[0] ?? null);
   const imagePath = data?.image_url ?? (buildingId ? `/api/buildings/${buildingId}/image` : null);
 
+  // The resident's own entrance pin wins. Without one the API reads the way in off the tile.
+  const marked = outside.some((p) => p.kind === "entrance");
+  const read = useEntranceFeed(live && !marked ? buildingId : null).data;
+  const outsidePins = read ? [...outside, { kind: "entrance" as const, x: read.x, y: read.y }] : outside;
+
   return (
     <div>
       {/* The record loads from the fixture too, so the address shows either way;
@@ -72,7 +76,14 @@ export default function BuildingViews({
         Outside — Vexcel aerial
       </h4>
       {live && imagePath ? (
-        <AerialPins imagePath={imagePath} pins={outside} />
+        <>
+          <AerialPins imagePath={imagePath} pins={outsidePins} />
+          {read && (
+            <p className="mt-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+              The resident has not marked a way in, so this entrance is a vision model&rsquo;s reading of the tile: {read.note}
+            </p>
+          )}
+        </>
       ) : (
         <p
           className="rounded-lg border px-3 py-2 text-xs"
@@ -97,6 +108,7 @@ export default function BuildingViews({
           sdkKey={data?.scan_sdk_key ?? null}
           pins={inside}
           view="floorplan"
+          route
         />
       ) : (
         <div
@@ -120,20 +132,6 @@ export default function BuildingViews({
           )}
         </div>
       )}
-
-      {/* --- the stand-in, and the route, which no source provides --- */}
-      <h4
-        className="mt-4 mb-1.5 text-xs font-semibold"
-        style={{ color: "var(--text-secondary)" }}
-      >
-        Recommended path — planned, not fetched
-      </h4>
-      <FloorPlan showEntrance showMachine showBlocked showPath />
-      <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-        Neither CoStar nor Matterport gives a floor polygon, so the grid this route is planned
-        over is a schematic. The planning is real — it runs over the layout and around what the
-        resident reported — but the layout is a stand-in until someone traces one from a scan.
-      </p>
     </div>
   );
 }
