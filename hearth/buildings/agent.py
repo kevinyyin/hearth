@@ -157,7 +157,10 @@ during a multi-day power outage. You produce one outage profile. Work in this or
    layer showed; never fill a field from your own assumptions. When layers disagree, keep the value from the more
    direct evidence, give it confidence 0.5 or less, and record the conflict in plain words. Exception: elevator_count
    and walk-up come from CoStar whenever its record states them; a scan that shows no elevator is a conflict to note,
-   not a replacement. List layers that returned nothing in layers_missing. Evidence refs are image file names,
+   not a replacement. When CoStar's record has no elevator information and a panorama shows an elevator, write
+   elevator_count 1 from matterport with confidence 0.5 or less and that panorama as evidence: it is seen, not
+   confirmed running. When no panorama shows one, leave elevator_count out; not seeing an elevator in a scan does not
+   show there is none. List layers that returned nothing in layers_missing. Evidence refs are image file names,
    "detect", or panorama ids.
 Do not write medical advice or promises of help. Be brief."""
 
@@ -185,7 +188,7 @@ SUBAGENTS = [
                       "unit_rooms (the list from matterport_rooms), hallway_width_m, min_door_width_m, interior_steps, and "
                       "step_free_entrance and entrance_steps only if a lobby or building entrance was seen; each with a "
                       "confidence 0..1 and the pano_id as evidence. Do not report elevator_count (CoStar is its source); just "
-                      "say whether any panorama shows an elevator. Scans show a unit type, never a resident's own rooms. "
+                      "say whether any panorama shows an elevator, and give the pano_id that shows it. Scans show a unit type, never a resident's own rooms. "
                       "Save your findings with write_file to /<building_id>/matterport.md, then return a short summary."},
 ]
 
