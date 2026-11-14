@@ -317,7 +317,7 @@ def aerial_entrance(building_id: str, lat: float, lon: float) -> dict | None:
 
 LOT_QUESTION = (
     "This top-down aerial image is 300 m across with north up, centred on one commercial building. Where is its open "
-    "surface parking, relative to the building, and from which side or street does a van drive in?")
+    "surface parking, relative to the building, and from which side or street does a van drive in? One sentence, under 30 words.")
 
 
 def lot_reading(building_id: str, lat: float, lon: float) -> dict | None:

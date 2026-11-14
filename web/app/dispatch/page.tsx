@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import StagingCard from "@/components/StagingCard";
 import { API, sendJson } from "@/lib/api";
 import { EQUIPMENT, VEHICLES } from "@/lib/help";
 import type { DispatchView, Registrations } from "@/lib/types";
@@ -69,6 +70,7 @@ export default function DispatchPage() {
           </p>
         )}
       </section>
+      <StagingCard />
             {(failed ?? error) && <p role="alert" className="text-sm" style={{ color: "#d03b3b" }}>{failed ?? error}</p>}
 
       <section className={card} style={cardStyle}>

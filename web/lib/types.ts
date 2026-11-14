@@ -268,7 +268,16 @@ export type Tracker = {
 export type CrewJob = {
   crew: Responder | null;
   job: { request: HelpRequest; patient: Patient; home: Home | null; address: string | null; building_id: string | null; km: number } | null;
+  staging: StagingLot | null;
 };
+
+/** A parking lot proposed for crews to gather at, from CoStar's parking and lot fields. `stale` is set on the chosen lot
+ *  once someone in its ZIP has asked for help. */
+export type StagingLot = {
+  building_id: string; name: string; address: string; zip: string; property_type: string;
+  surface_spaces: number; lot_acres: number | null; km: number; stale?: boolean;
+};
+export type StagingView = { chosen: StagingLot | null; options: StagingLot[] };
 
 export type DispatchView = {
   requests: { request: HelpRequest; device: string; mobility: string; address: string | null }[];
