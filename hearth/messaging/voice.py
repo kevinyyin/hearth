@@ -236,6 +236,7 @@ def setup(public_url: str) -> str:
                 "prompt": "Every reply comes from the Hearth custom model endpoint. "
                           "caller={{system__caller_id}} conversation={{system__conversation_id}}", "llm": "custom-llm", "custom_llm": custom}},
             "turn": {"turn_timeout": a("voice.turn_timeout_s"), "turn_eagerness": "patient"},
+            "tts": {"optimize_streaming_latency": a("voice.tts_streaming_optimization")},
             "conversation": {"dtmf_input_settings": {"dtmf_input_timeout": 2, "hash_terminator": True}},
         },
         "platform_settings": {"overrides": {"custom_llm_extra_body": True,  # carries call_id to our endpoint
