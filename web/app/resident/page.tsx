@@ -28,6 +28,22 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** A number input that keeps its own text, so it can be emptied and retyped; it reports 0 while empty. */
+function NumberField({ value, onChange, min, max, step }: { value: number; onChange: (n: number) => void; min: number; max: number; step?: number }) {
+  const [text, setText] = useState(value ? String(value) : "");
+  useEffect(() => {
+    if ((Number(text) || 0) !== value) setText(value ? String(value) : ""); // the value changed from outside (a load, a reset)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only an outside change should rewrite what was typed
+  }, [value]);
+  return (
+    <input type="number" inputMode="decimal" min={min} max={max} step={step} value={text} placeholder="0" className={input} style={inputStyle}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(Number(e.target.value) || 0);
+      }} />
+  );
+}
+
 /** The resident persona's own setup: their device, and their home marked up outside and inside for whoever comes to help. */
 export default function ResidentPage() {
   const router = useRouter();
@@ -102,8 +118,7 @@ export default function ResidentPage() {
         <p className="text-sm">{words(patient.device)} ({words(patient.device_detail)})</p>
         <label className="block text-xs" style={{ color: "var(--text-secondary)" }}>
           Without it I&apos;m OK for … hours
-          <input type="number" min={0} max={720} step={0.5} value={home.ok_without_h} className={input} style={inputStyle}
-            onChange={(e) => set({ ok_without_h: Number(e.target.value) || 0 })} />
+          <NumberField min={0} max={720} step={0.5} value={home.ok_without_h} onChange={(n) => set({ ok_without_h: n })} />
         </label>
         <label className="block text-xs" style={{ color: "var(--text-secondary)" }}>
           Backup plan
@@ -122,8 +137,8 @@ export default function ResidentPage() {
               {(["Width", "Depth", "Height"] as const).map((name, i) => (
                 <label key={name} className="block text-xs" style={{ color: "var(--text-secondary)" }}>
                   {name} (cm)
-                  <input type="number" min={1} max={300} value={cm[i]} className={input} style={inputStyle}
-                    onChange={(e) => set({ size_cm: cm.map((v, j) => (j === i ? Number(e.target.value) || 0 : v)) as [number, number, number] })} />
+                  <NumberField min={1} max={300} value={cm[i]}
+                    onChange={(n) => set({ size_cm: cm.map((v, j) => (j === i ? n : v)) as [number, number, number] })} />
                 </label>
               ))}
             </div>

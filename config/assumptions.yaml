@@ -83,6 +83,7 @@ voice:
   min_confidence: {value: 0.7, source: "plan Task V2: an interpreted turn below 0.7 goes to a person", confirmed: false}
   silences_to_escalate: {value: 3, source: "plan Task V2: three empty turns in a row end the call", confirmed: false}
   turn_timeout_s: {value: 7, source: "ElevenLabs default turn_timeout; seconds of caller silence before a turn counts as empty", confirmed: false}
+  tts_streaming_optimization: {value: 1, source: "ElevenLabs optimize_streaming_latency 0-4; 3 sounded robotic on the first real call while speech started 0.07 s after text, so quality wins", confirmed: false}
 
 # ---- lane S (simulation) ----
 outage:

@@ -173,8 +173,10 @@ crews and what each is doing.
 
 ### Demo data
 
-Two more synthetic residents in `data/demo/patients.json`, each in a real CoStar building (ids only), so that with
-`demo-2` there are three: one who walks, two who do not.
+None added. `main` gained three synthetic residents in real CoStar buildings (`demo-3`, `demo-4`, `demo-5`, from the
+demo-polish change) while this was being built, and `/api/demo-patients` now lists only personas whose building is
+in the data being served. With `demo-2` that is four residents on real data: two who walk or use a manual
+wheelchair, two who need a lift or a stretcher.
 
 ## Known limits
 
