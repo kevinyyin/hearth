@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PlanState(StrEnum):
@@ -176,6 +176,15 @@ class InsidePin(BaseModel):
 Cm = Annotated[float, Field(ge=1, le=300)]  # a bound also refuses NaN and infinity, which the store cannot read back
 
 
+class Person(BaseModel):
+    """Someone the resident names. Invented, like the resident: the app holds no real person's details."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=80)
+    relation: str = Field("", max_length=40)
+    phone: str = Field("", max_length=30, pattern=r"^[0-9+() .-]*$")
+    note: str = Field("", max_length=200)
+
+
 class Home(BaseModel):
     """What a resident says about their own home. Route order is list order among the route pins."""
     patient_id: str
@@ -188,6 +197,8 @@ class Home(BaseModel):
     note: str = Field("", max_length=500)
     outside: list[OutsidePin] = Field(default_factory=list, max_length=50)
     inside: list[InsidePin] = Field(default_factory=list, max_length=50)
+    contacts: list[Person] = Field(default_factory=list, max_length=5)  # family or trusted people to reach as well; shown, never messaged
+    helpers: list[Person] = Field(default_factory=list, max_length=5)  # people who live there and can help before a crew arrives
 
     @model_validator(mode="after")
     def _consistent(self):

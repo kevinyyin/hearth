@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import AccessBrief from "@/components/AccessBrief";
 import AerialPins from "@/components/AerialPins";
 import CrewSetup from "@/components/CrewSetup";
+import { PeopleList } from "@/components/PeopleFields";
 import ScanPins from "@/components/ScanPins";
 import { API, getJson, sendJson } from "@/lib/api";
 import { EQUIPMENT, NEXT_ACTION, VEHICLES } from "@/lib/help";
@@ -71,6 +72,13 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
           <li style={{ color: "var(--text-muted)" }}>This resident has not marked up their home.</li>
         )}
       </ul>
+      {/* who is already there comes before how to get in */}
+      {home && (
+        <Part title="At home with the resident">
+          {home.helpers.length > 0 ? <PeopleList people={home.helpers} />
+            : <p className="text-xs" style={{ color: "var(--text-muted)" }}>The resident listed no one at home.</p>}
+        </Part>
+      )}
       {buildingId && (
         <Part title="Outside">
           <AerialPins imagePath={`/api/buildings/${buildingId}/image`} pins={home?.outside ?? []} />
@@ -89,6 +97,11 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
           ) : (
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>The resident did not match a scan to their home.</p>
           )}
+        </Part>
+      )}
+      {home && home.contacts.length > 0 && (
+        <Part title="People to contact">
+          <PeopleList people={home.contacts} />
         </Part>
       )}
       {detail?.brief && <AccessBrief brief={detail.brief} scanShown={!!home?.scan_id} />}

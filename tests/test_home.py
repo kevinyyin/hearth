@@ -85,3 +85,36 @@ def test_a_stored_home_that_no_longer_validates_is_skipped():
     store.put("home", "demo-2", {"patient_id": "demo-2", "building_id": "B-SAMPLE"})  # e.g. saved before a field became required
     assert [r["home"]["patient_id"] for r in client.get("/api/homes").json()] == ["demo-1"]
     assert client.get("/api/patients/demo-2/home").json()["home"] is None
+
+
+PERSON = {"name": "Sam Rivera", "relation": "daughter", "phone": "555-0100", "note": "has a key"}  # invented, like the resident
+BAD_PEOPLE = [[{"name": "  "}], [{"name": "Sam", "phone": "call me maybe"}], [PERSON] * 6, [{"name": "x" * 81}]]
+
+
+def test_contacts_round_trip_and_reach_the_responder():
+    assert put(HOME | {"contacts": [PERSON]}).status_code == 200
+    assert client.get("/api/patients/demo-1/home").json()["home"]["contacts"] == [PERSON]
+    assert client.get("/api/homes").json()[0]["home"]["contacts"][0]["name"] == "Sam Rivera"
+    put(HOME)  # a home saved without the field has none
+    assert client.get("/api/patients/demo-1/home").json()["home"]["contacts"] == []
+
+
+@pytest.mark.parametrize("bad", BAD_PEOPLE)
+def test_contact_validation(bad):
+    assert put(HOME | {"contacts": bad}).status_code == 422
+
+
+HELPER = {"name": "Jo Rivera", "relation": "husband", "phone": "", "note": "can swap the oxygen tank"}
+
+
+def test_people_at_home_round_trip_and_reach_the_responder():
+    assert put(HOME | {"helpers": [HELPER], "contacts": [PERSON]}).status_code == 200
+    home = client.get("/api/homes").json()[0]["home"]
+    assert home["helpers"] == [HELPER] and home["contacts"] == [PERSON]  # two separate lists
+    put(HOME)
+    assert client.get("/api/patients/demo-1/home").json()["home"]["helpers"] == []
+
+
+@pytest.mark.parametrize("bad", BAD_PEOPLE)
+def test_people_at_home_validation(bad):
+    assert put(HOME | {"helpers": bad}).status_code == 422
