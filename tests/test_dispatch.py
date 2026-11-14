@@ -112,7 +112,9 @@ def test_refuge_capacity_and_access(monkeypatch):
     assert stuck.state == "waiting" and stuck.blocked.startswith("no refuge within 15 km") and stuck.refuge is None
     assert dispatch.crew_job("C") is None
     assert dispatch.tracker(stuck)["steps"][1]["text"] == "A person at the health department is looking at your request."
+    assert dispatch.board()[0].patient_id == "demo-2"  # what needs a person is listed first
     assert dispatch.mark_handled("demo-2").state == "handled"
+    assert dispatch.board()[-1].patient_id == "demo-2"  # once a person has it, it drops below the live requests
     with pytest.raises(ValueError):
         dispatch.mark_handled("p4")
 
@@ -174,7 +176,10 @@ def test_the_model_sees_the_residents_own_words_and_a_long_reason_is_cut(monkeyp
     assert len(dispatch.open_request("p4").reason) == 140
     assert seen[0] | {"minutes_waiting": 0} == {
         "patient_id": "p4", "device": "oxygen", "device_detail": seen[0]["device_detail"], "mobility": "walks", "temp_sensitive": "heat",
-        "ok_without_h": 4, "backup_plan": "one spare tank", "note": "put me first", "minutes_waiting": 0}
+        "backup_hours_on_record": 13.0, "ok_without_h": 4, "backup_plan": "one spare tank", "note": "put me first", "minutes_waiting": 0}
+    monkeypatch.setattr(dispatch, "_ask_model", lambda rows: seen.append(rows[-1]) or answer([r["patient_id"] for r in rows]))
+    dispatch.open_request("p2")  # no home markup: the model is told the resident has not said, not given a guess
+    assert seen[-1]["ok_without_h"] is None and seen[-1]["backup_hours_on_record"] == 21.8
 
 
 def test_safe():
