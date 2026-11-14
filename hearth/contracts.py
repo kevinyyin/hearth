@@ -1,7 +1,7 @@
 """Shared contracts. Every lane reads and writes these shapes; change them only through lane M."""
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -173,6 +173,9 @@ class InsidePin(BaseModel):
     normal: Vec3
 
 
+Cm = Annotated[float, Field(ge=1, le=300)]  # a bound also refuses NaN and infinity, which the store cannot read back
+
+
 class Home(BaseModel):
     """What a resident says about their own home. Route order is list order among the route pins."""
     patient_id: str
@@ -180,7 +183,7 @@ class Home(BaseModel):
     ok_without_h: float = Field(ge=0, le=720)
     backup_plan: str = Field("", max_length=500)
     size: Literal["shoebox", "microwave", "carry_on", "mini_fridge", "custom"]
-    size_cm: tuple[float, float, float] | None = None  # width, depth, height; only for "custom"
+    size_cm: tuple[Cm, Cm, Cm] | None = None  # width, depth, height; needed only for "custom", checked whenever sent
     scan_id: str | None = None  # the scan the resident says is laid out like their home; None: none of them
     note: str = Field("", max_length=500)
     outside: list[OutsidePin] = Field(default_factory=list, max_length=50)
@@ -188,7 +191,7 @@ class Home(BaseModel):
 
     @model_validator(mode="after")
     def _consistent(self):
-        if self.size == "custom" and not (self.size_cm and all(1 <= v <= 300 for v in self.size_cm)):
+        if self.size == "custom" and not self.size_cm:
             raise ValueError("a custom size needs width, depth and height between 1 and 300 cm")
         if self.inside and not self.scan_id:
             raise ValueError("inside pins need a chosen scan")

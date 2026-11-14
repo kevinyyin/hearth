@@ -67,3 +67,19 @@ def test_homes_list_demo_patients_and_building_detail():
     assert {"demo-1", "demo-2"} <= {p["patient_id"] for p in demo} and all(p["synthetic"] for p in demo)
     d = client.get("/api/buildings/B-SAMPLE").json()
     assert d["scan_ids"] == [] and "scan_sdk_key" in d
+
+
+def test_a_size_that_is_not_a_number_is_refused_and_not_stored():
+    quiet = TestClient(app, raise_server_exceptions=False)  # the error reply cannot carry NaN, so it may be a 500
+    body = '{"patient_id": "demo-1", "building_id": "B-SAMPLE", "ok_without_h": 4, "size": "microwave", "size_cm": [NaN, Infinity, -5]}'
+    r = quiet.put("/api/patients/demo-1/home", content=body, headers={"Content-Type": "application/json"})
+    assert r.status_code >= 400
+    assert store.get("home", "demo-1") is None
+    assert put(HOME | {"size_cm": [40, 0, 30]}).status_code == 422  # checked for every size, not only custom
+
+
+def test_a_stored_home_that_no_longer_validates_is_skipped():
+    put(HOME)
+    store.put("home", "demo-2", {"patient_id": "demo-2", "building_id": "B-SAMPLE"})  # e.g. saved before a field became required
+    assert [r["home"]["patient_id"] for r in client.get("/api/homes").json()] == ["demo-1"]
+    assert client.get("/api/patients/demo-2/home").json()["home"] is None

@@ -11,7 +11,7 @@ from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from api import live
 from hearth import remote, store
@@ -206,11 +206,18 @@ def demo_patients():
     return json.loads(DEMO_PATIENTS.read_text()) if DEMO_PATIENTS.exists() else []
 
 
+def _home(doc: dict | None) -> Home | None:
+    """A stored home, or None when there is none or it no longer fits the contract: the resident then starts a fresh
+    one, and one bad document cannot take the responder's whole list down."""
+    try:
+        return Home.model_validate(doc) if doc else None
+    except ValidationError:
+        return None
+
+
 @app.get("/api/patients/{patient_id}/home")
 def home(patient_id: str):
-    patient = _patient(patient_id)
-    doc = store.get("home", patient_id)
-    return {"patient": patient, "home": Home.model_validate(doc) if doc else None}
+    return {"patient": _patient(patient_id), "home": _home(store.get("home", patient_id))}
 
 
 @app.put("/api/patients/{patient_id}/home")
@@ -232,7 +239,8 @@ def save_home(patient_id: str, body: Home):
 def homes():
     out = []
     for doc in store.all("home"):
-        h = Home.model_validate(doc)
+        if (h := _home(doc)) is None:
+            continue
         try:
             out.append({"home": h, "patient": _patient(h.patient_id), "address": _building(h.building_id)["address"]})
         except HTTPException:  # the patient or building is gone: not a job a responder can take

@@ -24,9 +24,10 @@ function Part({ title, children }: { title: string; children: ReactNode }) {
 /** One job: what the resident said about their device and home, on the same aerial image and scan, above the crew brief. */
 function JobCard({ row }: { row: HomeRow }) {
   const { home, patient } = row;
-  const [detail, setDetail] = useState<BuildingDetail | null>(null);
+  // undefined: still loading; null: the building detail (which carries the scan key and the brief) did not load
+  const [detail, setDetail] = useState<BuildingDetail | null | undefined>(undefined);
   useEffect(() => {
-    setDetail(null);
+    setDetail(undefined);
     getJson<BuildingDetail>(`/api/buildings/${home.building_id}`).then(setDetail).catch(() => setDetail(null));
   }, [home.building_id]);
 
@@ -52,8 +53,8 @@ function JobCard({ row }: { row: HomeRow }) {
       <Part title="Inside">
         {home.scan_id ? (
           <>
-            {/* the key arrives with the building detail; until then the scan would report that it cannot open */}
-            {detail && <ScanPins scanId={home.scan_id} sdkKey={detail.scan_sdk_key} pins={home.inside} />}
+            {/* the key arrives with the building detail. Without it the scan cannot open, and the pins are still listed */}
+            {detail !== undefined && <ScanPins scanId={home.scan_id} sdkKey={detail?.scan_sdk_key ?? null} pins={home.inside} />}
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               Sample unit from this building. The resident says their home is laid out like it.
             </p>
