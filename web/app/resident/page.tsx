@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import AerialPins from "@/components/AerialPins";
+import Choice from "@/components/Choice";
 import HelpPanel from "@/components/HelpPanel";
 import { API, getJson, putJson } from "@/lib/api";
 import ScanPins from "@/components/ScanPins";
@@ -24,22 +25,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="text-sm font-semibold">{title}</h2>
       {children}
     </section>
-  );
-}
-
-/** A toggle in a row of choices (pin kind, size). */
-function Choice({ on, color, onClick, children }: { on: boolean; color?: string; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className="rounded border px-2.5 py-1 text-xs font-medium"
-      style={on ? { background: color ?? "var(--text-primary)", borderColor: color ?? "var(--text-primary)", color: color ? "#fff" : "var(--surface-1)" }
-        : { borderColor: "var(--border)", color: "var(--text-secondary)" }}
-    >
-      {children}
-    </button>
   );
 }
 
