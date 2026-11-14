@@ -350,7 +350,7 @@ export function drawHouseholds(n = 140, seed = 20240708): Household[] {
     out.push({
       lon: COUNTY_CENTER[0] + Math.cos(angle) * radius * SPREAD_LON,
       lat: COUNTY_CENTER[1] + Math.sin(angle) * radius * SPREAD_LAT,
-      needsAt: Math.floor(rnd() * rnd() * 10),
+      needsAt: rnd() * rnd() * 10,
       repeats: rnd() < 0.45,
     });
   }
@@ -433,7 +433,7 @@ function runSide(households: Household[], which: SideKey): SideSim {
       job.knownAt = dueAt;
       events.push({ t: dueAt, kind: "call", text: `Called household ${h + 1} — on the registry, device down` });
     } else if (callsIn(h, CALLS_IN.todayAt)) {
-      // people ring some time in the hour their device runs out, not on the hour
+      // people ring some time in the hour after their device runs out, not the moment it does
       const at = dueAt + mulberry32(jobs.length)();
       let k = calls.length;
       while (k > nextCall && calls[k - 1].at > at) k -= 1;
@@ -538,6 +538,9 @@ function runSide(households: Household[], which: SideKey): SideSim {
         const travel = dist(from, to) / CRUISE;
         legs[c].push({ from, to, t0: clock, t1: clock + travel, departure: k === 0 });
         clock += travel;
+        // parked at the door; the household changes colour when the van pulls away
+        legs[c].push({ from: to, to, t0: clock, t1: clock + SERVICE_H, departure: false });
+        clock += SERVICE_H;
 
         j.servedAt = clock;
         stops += 1;
@@ -547,7 +550,7 @@ function runSide(households: Household[], which: SideKey): SideSim {
           kind: j.refill ? "restock" : "arrive",
           text: j.refill
             ? `Crew ${c + 1} restocked household ${j.h + 1}`
-            : `Crew ${c + 1} reached household ${j.h + 1}`,
+            : `Crew ${c + 1} helped household ${j.h + 1}`,
         });
 
         // a delivery runs down: a repeat household needs another visit later, and
@@ -556,7 +559,6 @@ function runSide(households: Household[], which: SideKey): SideSim {
           addJob(j.h, clock + REFILL_H, true);
         }
 
-        clock += SERVICE_H;
         from = to;
       }
 
@@ -640,13 +642,17 @@ export function buildCounty(households: Household[]): CountySim {
   const vehiclesAt = (time: number, which: SideKey): Vehicle[] => {
     const out: Vehicle[] = [];
     for (let c = 0; c < CREW_COUNT; c++) {
-      const leg = sides[which].legs[c].find((l) => time >= l.t0 && time <= l.t1);
-      if (!leg) continue;
+      const legs = sides[which].legs[c];
+      const k = legs.findIndex((l) => time >= l.t0 && time <= l.t1);
+      if (k < 0) continue;
+      const leg = legs[k];
+      // parked at a door: keep facing the way it drove in
+      const aim = leg.from === leg.to && k > 0 ? legs[k - 1] : leg;
       const p = (time - leg.t0) / Math.max(leg.t1 - leg.t0, 1e-6);
       out.push({
         lon: leg.from[0] + (leg.to[0] - leg.from[0]) * p,
         lat: leg.from[1] + (leg.to[1] - leg.from[1]) * p,
-        bearing: bearingOf(leg.from, leg.to),
+        bearing: bearingOf(aim.from, aim.to),
       });
     }
     return out;

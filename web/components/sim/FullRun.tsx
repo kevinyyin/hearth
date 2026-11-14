@@ -298,8 +298,8 @@ export default function FullRun() {
         role="presentation"
       >
         <div
-          className="h-full rounded-full transition-[width] duration-700 ease-linear"
-          style={{ width: `${(hour / RUN_HOURS) * 100}%`, background: "var(--accent, #a8441a)" }}
+          className="h-full rounded-full"
+          style={{ width: `${(time / RUN_HOURS) * 100}%`, background: "var(--accent, #a8441a)" }}
         />
       </div>
 

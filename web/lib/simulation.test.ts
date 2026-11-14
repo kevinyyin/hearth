@@ -48,6 +48,29 @@ describe("today's phone queue", () => {
   });
 });
 
+describe("what the map shows", () => {
+  const households = drawHouseholds();
+  const county = buildCounty(households);
+
+  it("sends households into need one at a time, not in hourly batches", () => {
+    expect(new Set(households.map((h) => h.needsAt)).size).toBe(households.length);
+  });
+
+  it("changes a household's colour when the van pulls away, and shows the van parked until then", () => {
+    const side = county.sides.hearthAt;
+    const job = side.jobs.find((j) => j.servedAt !== null && !j.refill)!;
+    const legs = side.legs.find((ls) => ls.some((l) => l.from === l.to && l.t1 === job.servedAt))!;
+    const parked = legs.find((l) => l.from === l.to && l.t1 === job.servedAt)!;
+    const mid = (parked.t0 + parked.t1) / 2;
+
+    expect(county.stateAt(job.h, mid, "hearthAt")).toBe("waiting");
+    expect(county.stateAt(job.h, job.servedAt!, "hearthAt")).toBe("reached");
+    expect(
+      county.vehiclesAt(mid, "hearthAt").some((v) => v.lon === parked.to[0] && v.lat === parked.to[1]),
+    ).toBe(true);
+  });
+});
+
 describe("dispatch", () => {
   // the fixture, and a population built so orders outnumber vans while restocks
   // are due: 20 households helped early whose deliveries run down around hour 10,

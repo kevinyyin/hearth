@@ -178,8 +178,8 @@ export default function SideBySide() {
         role="presentation"
       >
         <div
-          className="h-full rounded-full transition-[width] duration-500 ease-linear"
-          style={{ width: `${(hour / RUN_HOURS) * 100}%`, background: "var(--accent, #a8441a)" }}
+          className="h-full rounded-full"
+          style={{ width: `${(time / RUN_HOURS) * 100}%`, background: "var(--accent, #a8441a)" }}
         />
       </div>
 

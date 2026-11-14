@@ -76,9 +76,9 @@ function toHousehold(p: Snap["patients"][number]): Household {
   return {
     lon: p.lon,
     lat: p.lat,
-    // Not capped at the end of the run: backups go to 48 h, and a cap put every
-    // household that outlasts the day into need at hour 24, all at once.
-    needsAt: Math.max(0, Math.floor(p.unpowered ? hours : hours + 1)),
+    // The exact hour, not rounded to the hour or capped at the end of the run:
+    // either one sends a batch of households into need at the same instant.
+    needsAt: Math.max(0, p.unpowered ? hours : hours + 1),
     // a short battery is the one that runs down again inside the same day
     repeats: hours <= 6,
   };
