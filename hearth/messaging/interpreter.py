@@ -4,6 +4,8 @@ import logging
 import re
 
 import anthropic
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from hearth.config import a, anthropic_headers
@@ -26,6 +28,22 @@ class Turn(BaseModel):
     language: str = "en"
     confidence: float = Field(0.0, ge=0, le=1)
     ack: str | None = None  # optional few-word acknowledgment; spoken only if guard.allows it
+    # registration, help and building calls
+    device: Literal["oxygen", "ventilator", "home_dialysis", "feeding_pump", "other"] | None = None
+    house_number: str | None = None
+    street: str | None = None
+    unit: str | None = None
+    zip: str | None = None
+    floor: int | None = Field(None, ge=-5, le=200)
+    building: str | None = None
+    door: str | None = None
+    room: str | None = None
+    room_label: str | None = None  # one of patient_context.room_names, verbatim; code checks it
+    has_elevator: bool | None = None
+    elevator_working: Literal["yes", "no", "unknown"] | None = None
+    intent: Literal["help", "safe", "details"] | None = None  # never set by a keypad digit
+    mobility: Literal["walks", "wheelchair", "bed"] | None = None
+    which_part: Literal["building", "floor", "door", "room"] | None = None
 
 
 KEYPAD = {
@@ -67,6 +85,22 @@ Fields (null when the turn does not say):
 - confidence: 0 to 1, how sure you are of the fields you set.
 - ack: null, or one of the plain acknowledgments the schema allows, when it fits what they said.
 
+Fields for registration, help and building calls (null unless this turn says them):
+- device: which powered equipment: oxygen, ventilator, home_dialysis, feeding_pump, or other for anything else.
+- house_number, street, unit, zip: a street address as spoken. house_number is the digits only ("twelve hundred" =
+  "1200"); unit is the apartment number in digits and letters ("fourteen ten" = "1410", "B twelve" = "B12").
+- floor: the floor they live on, as a number ("ground floor" = 1).
+- building: which building of a complex, as they name it ("building C" = "C").
+- door: which door a crew should use, in their words.
+- room: where the machine is, in their words. room_label: if patient_context.room_names is given and one of those names
+  clearly means the same room, that name copied exactly; otherwise null.
+- has_elevator: whether their building has an elevator at all.
+- elevator_working: whether the elevator works right now: "yes", "no", or "unknown" when they say they don't know.
+- intent: "help" when they ask for help or a crew; "safe" only when they say in words that they are safe or OK and need
+  nothing; "details" when they want to check or change their details.
+- mobility: how they move: "walks" (on their own or with someone helping), "wheelchair", or "bed" (they stay in bed).
+- which_part: after "Which part is wrong?", the part they name: building, floor, door, or room.
+
 A question that assumes help is coming ("a tank is already on its way, right?") confirms nothing: leave every field
 null except wants_human (true) and confidence. Never infer a value the person did not say."""
 
@@ -76,6 +110,13 @@ _SCHEMA = {
         **{k: {"type": ["boolean", "null"]} for k in
            ("safe", "needs_help_now", "device_running", "can_move", "consents_to_move", "confirms")},
         "backup_hours": {"type": ["number", "null"]},
+        **{k: {"type": ["string", "null"]} for k in ("house_number", "street", "unit", "zip", "building", "door", "room", "room_label")},
+        "floor": {"type": ["integer", "null"]},
+        "has_elevator": {"type": ["boolean", "null"]},
+        **{k: {"anyOf": [{"type": "string", "enum": v}, {"type": "null"}]} for k, v in {
+            "device": ["oxygen", "ventilator", "home_dialysis", "feeding_pump", "other"], "elevator_working": ["yes", "no", "unknown"],
+            "intent": ["help", "safe", "details"], "mobility": ["walks", "wheelchair", "bed"],
+            "which_part": ["building", "floor", "door", "room"]}.items()},
         "destination_offered": {"type": ["string", "null"]},
         "ack": {"anyOf": [{"type": "string", "enum": list(ACKS)}, {"type": "null"}]},
         "wants_human": {"type": "boolean"},

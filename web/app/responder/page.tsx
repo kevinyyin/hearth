@@ -50,8 +50,8 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
     getJson<BuildingDetail>(`/api/buildings/${buildingId}`).then(setDetail).catch(() => setDetail(null));
   }, [buildingId]);
 
-  const cm = home && (home.size === "custom" ? home.size_cm : SIZES[home.size].cm);
-  const size = home && `${home.size === "custom" ? "measured" : SIZES[home.size].label}${cm ? ` (${cm.join(" × ")} cm)` : ""}`;
+  const cm = home?.size && (home.size === "custom" ? home.size_cm : SIZES[home.size].cm);
+  const size = !home?.size ? "not asked" : `${home.size === "custom" ? "measured" : SIZES[home.size].label}${cm ? ` (${cm.join(" × ")} cm)` : ""}`;
 
   return (
     <article className={card} style={cardStyle}>

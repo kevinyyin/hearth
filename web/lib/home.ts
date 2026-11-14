@@ -35,7 +35,9 @@ export function tapToFraction(
 export function emptyHome(patient: Patient): Home {
   const device = `${patient.device} ${patient.device_detail ?? ""}`.replace(/_/g, " ").trim();
   return { patient_id: patient.patient_id, building_id: patient.building_id ?? "", ok_without_h: 0, device_name: device, movable: null,
-    backup_plan: "", size: "microwave", size_cm: null, scan_id: null, note: "", outside: [], inside: [], contacts: [], helpers: [] };
+    backup_plan: "", size: "microwave", size_cm: null, scan_id: null, note: "", outside: [], inside: [], contacts: [], helpers: [],
+    source: "web", unit: null, complex_building: null, door: "", door_from_aerial: false, room: "", scan_room: null, has_elevator: null,
+    mobility_asked: false, said_at: null };
 }
 
 /** What a resident marks from above. Blocked and route pins were dropped from the outside view. */

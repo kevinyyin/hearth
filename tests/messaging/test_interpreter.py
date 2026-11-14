@@ -107,3 +107,16 @@ def test_out_of_range_hours_count_as_invalid_output(monkeypatch, hours):
     monkeypatch.setattr(interpreter, "_call_model", lambda *a: GOOD.replace('"backup_hours": 0.67', f'"backup_hours": {hours}'))
     t = interpret_turn("forty minutes", None, ctx, [])
     assert t.wants_human and t.backup_hours is None
+
+
+def test_keypad_1_sets_no_intent():
+    assert interpret_turn("", "1", ctx, []).intent is None
+
+
+def test_the_eval_grades_the_new_fields():
+    from evals.run_interpreter import score
+    from hearth.messaging.interpreter import Turn
+    case = lambda exp: {"expected": exp, "must_escalate": False}  # noqa: E731
+    s = score([(case({"floor": 3}), Turn(floor=3, confidence=0.9)), (case({"door": "the side door"}), Turn(door="The side door by the pool", confidence=0.9)),
+               (case({"intent": "safe"}), Turn(intent="help", confidence=0.9))])
+    assert s["other"] == (2, 3)

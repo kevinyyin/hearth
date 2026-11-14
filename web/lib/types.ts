@@ -177,7 +177,8 @@ export type Home = {
   movable: boolean | null;
   /** No longer asked on the resident page; older saved homes may carry one. */
   backup_plan: string;
-  size: SizeId;
+  /** null: not asked (a home registered by phone). */
+  size: SizeId | null;
   /** Width, depth, height in cm; only for a custom size. */
   size_cm: [number, number, number] | null;
   /** The scan the resident says is laid out like their home; null: none of them. */
@@ -189,6 +190,17 @@ export type Home = {
   contacts: Person[];
   /** People who live with the resident and can help before a crew arrives. */
   helpers: Person[];
+  /** What a caller said by phone; a home saved on the resident page keeps the defaults. */
+  source: "web" | "phone";
+  unit: string | null;
+  complex_building: string | null;
+  door: string;
+  door_from_aerial: boolean;
+  room: string;
+  scan_room: string | null;
+  has_elevator: boolean | null;
+  mobility_asked: boolean;
+  said_at: string | null;
 };
 
 /** Someone the resident names. Invented, like the resident. */
