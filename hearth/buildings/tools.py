@@ -248,10 +248,10 @@ def look(image: Path, question: str) -> str:
     media = "image/png" if image.suffix.lower() == ".png" else "image/jpeg"
     client = anthropic.Anthropic(default_headers=anthropic_headers())
     msg = client.messages.create(
-        model=a("models.vision"), max_tokens=400,
+        model=a("models.vision"), max_tokens=2000, output_config={"effort": a("models.vision_effort")},
         messages=[{"role": "user", "content": [
             {"type": "image", "source": {"type": "base64", "media_type": media, "data": base64.b64encode(image.read_bytes()).decode()}},
             {"type": "text", "text": question + " Answer in two sentences or fewer. Say 'cannot tell' if the image does not show it."},
         ]}],
     )
-    return msg.content[0].text
+    return " ".join(b.text for b in msg.content if b.type == "text").strip()  # skip thinking blocks

@@ -7,6 +7,10 @@ models:
   guard: {value: claude-haiku-5-5, source: "design: model access confirmed Nov 13", confirmed: true}
   agent: {value: claude-sonnet-5-5, source: "design: model access confirmed Nov 13", confirmed: true}
   vision: {value: claude-sonnet-5-5, source: "design: model access confirmed Nov 13", confirmed: true}
+  subagent: {value: claude-haiku-5-5, source: "our call: layer subagents only call tools and summarize; speed", confirmed: false}
+  agent_effort: {value: medium, source: "our call: survey latency target ~30 s", confirmed: false}
+  subagent_effort: {value: low, source: "our call: survey latency target ~30 s", confirmed: false}
+  vision_effort: {value: low, source: "our call: one short visual answer per call", confirmed: false}
 
 decision:
   margin_h: {value: 12, source: "hearth-spec v5 §4", confirmed: true}
