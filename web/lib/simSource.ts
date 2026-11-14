@@ -19,7 +19,6 @@ import { API, authHeaders, getJson, onUnauthorized } from "@/lib/api";
 import {
   COUNTY_CENTER,
   FIXTURE_COUNTY,
-  RUN_HOURS,
   buildCounty,
   type CountySim,
   type Household,
@@ -77,7 +76,9 @@ function toHousehold(p: Snap["patients"][number]): Household {
   return {
     lon: p.lon,
     lat: p.lat,
-    needsAt: Math.max(0, Math.min(RUN_HOURS, Math.floor(p.unpowered ? hours : hours + 1))),
+    // The exact hour, not rounded to the hour or capped at the end of the run:
+    // either one sends a batch of households into need at the same instant.
+    needsAt: Math.max(0, p.unpowered ? hours : hours + 1),
     // a short battery is the one that runs down again inside the same day
     repeats: hours <= 6,
   };
