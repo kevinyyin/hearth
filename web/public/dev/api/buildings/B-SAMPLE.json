@@ -1,9 +1,9 @@
 {
   "building_id": "B-SAMPLE",
-  "name": "Simulated mid-rise",
-  "address": "Simulated address, Harris County",
-  "lat": 29.76,
-  "lon": -95.37,
+  "name": "1720 Crestdale Dr",
+  "address": "1720 Crestdale Dr, Houston, TX 77080",
+  "lat": 29.804345,
+  "lon": -95.530708,
   "profile": null,
   "brief": null,
   "layer_effects": null,
