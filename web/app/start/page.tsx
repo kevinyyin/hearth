@@ -67,6 +67,9 @@ export default function StartPage() {
             value={crew}
             onChange={(e) => setCrew(e.target.value)}
             required
+            maxLength={40}
+            pattern="[A-Za-z0-9 _\-]+"
+            title="Letters, numbers, spaces, dashes and underscores"
             className="mt-1 w-full rounded border px-3 py-2 text-sm"
             style={{ borderColor: "var(--border)", background: "var(--surface-0)", color: "var(--text-primary)" }}
           />
@@ -78,7 +81,10 @@ export default function StartPage() {
 
       <section className={card} style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
         <h2 className="text-sm font-semibold">Dispatcher</h2>
-        <Link href="/" className="text-sm underline underline-offset-2">Open the map</Link>
+        <div className="flex gap-4">
+          <Link href="/" className="text-sm underline underline-offset-2">Open the map</Link>
+          <Link href="/dispatch" className="text-sm underline underline-offset-2">Help requests</Link>
+        </div>
       </section>
     </div>
   );
