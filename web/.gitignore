@@ -6,3 +6,5 @@ next-env.d.ts
 .env*.local
 .vercel
 .env*
+# the template is the one env file that should be in the repo; it holds no secrets
+!.env.example
