@@ -32,6 +32,7 @@ import pytest  # noqa: E402
 @pytest.mark.live
 def test_postgres_roundtrip_and_order(monkeypatch):
     """Runs against HEARTH_DATABASE_URL (Supabase) only on purpose: pytest -m live tests/test_store.py."""
+    import hearth.config  # noqa: F401 (loads .env)
     if not os.environ.get("HEARTH_DATABASE_URL"):
         pytest.skip("HEARTH_DATABASE_URL not set")
     monkeypatch.delenv("HEARTH_DB", raising=False)
