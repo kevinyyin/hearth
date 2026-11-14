@@ -40,3 +40,28 @@ def test_postgres_roundtrip_and_order(monkeypatch):
     store.put(kind, "a", {"n": 1}); store.put(kind, "b", {"n": 2}); store.put(kind, "a", {"n": 3})
     assert store.get(kind, "a") == {"n": 3} and store.get(kind, "zz") is None
     assert store.all(kind) == [{"n": 2}, {"n": 3}]  # a replaced doc moves to the end
+
+
+def test_postgres_keeps_one_connection_and_replaces_a_dropped_one(monkeypatch):
+    import psycopg
+
+    opened = []
+
+    class Conn:
+        closed = broken = False
+
+        def __init__(self): self.fail_next = False; opened.append(self)
+        def close(self): self.closed = True
+        def execute(self, sql, params=()):
+            if self.fail_next:
+                self.broken = True; raise psycopg.OperationalError("server closed the connection")
+            return type("Cur", (), {"fetchone": lambda s: ({"ok": 1},), "fetchall": lambda s: []})()
+
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **k: Conn())
+    monkeypatch.delenv("HEARTH_DB", raising=False)
+    monkeypatch.setenv("HEARTH_DATABASE_URL", "postgresql://fake/one-connection")
+    monkeypatch.setattr(store, "_pg_conns", {})
+    store.get("call", "c1"); store.put("call", "c1", {"ok": 1}); store.all("call")
+    assert len(opened) == 1  # each read or write used to open its own connection: about 150 ms each from Vercel
+    opened[0].fail_next = True  # the pooler dropped an idle connection
+    assert store.get("call", "c1") == {"ok": 1} and len(opened) == 2 and opened[0].closed
