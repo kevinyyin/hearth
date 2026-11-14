@@ -115,7 +115,7 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
       ...L.obstacles.map((o) =>
         new maplibregl.Marker({ element: pill(`⚠ ${OBSTACLE_STYLE[o.kind].label}`, OBSTACLE_STYLE[o.kind].color, false) })
           .setLngLat(o.at).addTo(m)),
-      new maplibregl.Marker({ element: pill(L.job.split(" · ")[0], "#0e7a54", true), anchor: "bottom", offset: [0, -6] })
+      new maplibregl.Marker({ element: pill(L.job.split(" · ")[0], "#0e7a54", true), anchor: "bottom", offset: [0, -22] })
         .setLngLat(L.path[L.path.length - 1]).addTo(m),
     ];
     const bounds = L.path.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(L.path[0], L.path[0]));
