@@ -5,10 +5,10 @@ import time
 from hearth.contracts import TraceEvent
 
 # subagent chunks carry only a namespace id, so the agent is named from the tool it calls
-TOOL_AGENT = {"costar_record": "costar", "vexcel_attributes": "aerial", "aerial_look": "aerial",
-              "matterport_panoramas": "interior", "scan_look": "interior",
+TOOL_AGENT = {"costar_record": "costar", "vexcel_attributes": "aerial", "aerial_look": "aerial", "aerial_detect": "aerial",
+              "matterport_rooms": "interior", "matterport_panoramas": "interior", "scan_look": "interior",
               "search_refuges": "refuge", "check_access": "refuge", "submit_proposal": "refuge"}
-LOOK_TOOLS = {"aerial_look", "scan_look"}
+LOOK_TOOLS = {"aerial_look", "scan_look", "aerial_detect"}  # their results are shown in the trace
 FILE_AGENT = {"costar": "costar", "vexcel": "aerial", "matterport": "interior"}  # /<id>/<layer>.md
 
 

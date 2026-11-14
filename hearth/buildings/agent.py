@@ -45,11 +45,27 @@ def vexcel_attributes(building_id: str) -> str:
 
 
 @tool
+def aerial_detect(building_id: str) -> str:
+    """Find parking spaces, driveways, loading zones, ramps and building entrances in the aerial image, with the side of the
+    building each sits on and how far from the building point."""
+    _, lat, lon = _where(building_id)
+    rows = tools.vexcel_detect(lat, lon)
+    return "; ".join(f"{r['label']}: {r['side']}, {r['distance_m']} m (conf {r['confidence']})" for r in rows) or "Nothing detected."
+
+
+@tool
 def aerial_look(building_id: str, question: str) -> str:
     """Ask a vision model one question about the building's top-down Vexcel image."""
     _, lat, lon = _where(building_id)
     img = tools.vexcel_image(building_id, lat, lon)
     return f"[{img.name}] {tools.look(img, question)}" if img else "No aerial image for this building."
+
+
+@tool
+def matterport_rooms(building_id: str) -> str:
+    """The building's scans as unit types (e.g. "2BR, 2BA - 1,000SF") with their rooms and sizes in meters."""
+    units = tools.matterport_rooms(building_id)
+    return json.dumps(units) if units else "No Matterport scan for this building."
 
 
 @tool
@@ -78,7 +94,8 @@ def write_profile(building_id: str, fields_json: str, evidence_json: str, confli
 
     fields_json: {field: {"value": ..., "source": "costar"|"vexcel"|"matterport", "confidence": 0..1}} for any of:
       floors, units, year_built, construction, property_type, elevator_count, roof_tone, tree_cover_fraction,
-      step_free_entrance, entrance_steps, stair_width_m, min_door_width_m, van_dropoff. Leave out fields no layer showed.
+      step_free_entrance, entrance_steps, stair_width_m, min_door_width_m, van_dropoff, unit_type, unit_rooms
+      (list of {room, width_m, length_m, area_m2}), hallway_width_m, interior_steps. Leave out fields no layer showed.
     evidence_json: [{"field", "layer", "ref" (image file or pano_id), "note"}].
     conflicts_json: ["plain sentence per disagreement between layers"].
     layers_missing_json: subset of ["costar", "vexcel", "matterport"] that returned nothing.
@@ -117,28 +134,37 @@ during a multi-day power outage. You produce one outage profile. Work in this or
    conflict, ask the relevant subagent one follow-up question with the task tool.
 4. Call write_profile once. Every field needs the layer it came from and a confidence 0..1. Leave out any field no
    layer showed; never fill a field from your own assumptions. When layers disagree, keep the value from the more
-   direct evidence, give it confidence 0.5 or less, and record the conflict in plain words. List layers that
-   returned nothing in layers_missing. Evidence refs are image file names or panorama ids.
+   direct evidence, give it confidence 0.5 or less, and record the conflict in plain words. Exception: elevator_count
+   and walk-up come from CoStar whenever its record states them; a scan that shows no elevator is a conflict to note,
+   not a replacement. List layers that returned nothing in layers_missing. Evidence refs are image file names,
+   "detect", or panorama ids.
 Do not write medical advice or promises of help. Be brief."""
 
 SUBAGENTS = [
     {"name": "costar", "description": "Reads the building's CoStar record.", "tools": [costar_record],
      "system_prompt": "Call costar_record once. Report floors, units, year_built, construction, property_type and "
-                      "elevator_count (quote the elevator note), each with a confidence 0..1. If the record lacks a field, say "
-                      "'not in record'; never guess. If there is no record, say so. Save your findings with write_file to "
+                      "elevator_count (quote the elevator note; a walk-up has 0 passenger elevators), each with a confidence "
+                      "0..1. CoStar is the source for elevators and walk-ups. If the record lacks a field, say 'not in record'; "
+                      "never guess. If there is no record, say so. Save your findings with write_file to "
                       "/<building_id>/costar.md, then return a short summary."},
-    {"name": "aerial", "description": "Reads Vexcel aerial attributes and the top-down image.", "tools": [vexcel_attributes, aerial_look],
-     "system_prompt": "Call vexcel_attributes, then aerial_look at most twice: roof tone (light, medium or dark) and where a "
-                      "van can stop near an entrance. Report roof_tone, tree_cover_fraction (the roof tree cover as a 0..1 "
-                      "fraction) and van_dropoff (short text), each with a confidence 0..1 and the image file as evidence. "
+    {"name": "aerial", "description": "Reads Vexcel aerial attributes, detects parking and entrances, and looks at the image.",
+     "tools": [vexcel_attributes, aerial_detect, aerial_look],
+     "system_prompt": "Call vexcel_attributes, then aerial_detect once, then aerial_look once to read the roof tone (light, "
+                      "medium or dark) and confirm where a van can stop near an entrance. Report roof_tone (say in the evidence "
+                      "note whether it came from the image or the roof material class), tree_cover_fraction (the roof tree "
+                      "cover as a 0..1 fraction) and van_dropoff (short text naming the side of the building, e.g. 'driveway "
+                      "on the south side, 45 m'), each with a confidence 0..1 and the image file or 'detect' as evidence. "
                       "Save your findings with write_file to /<building_id>/vexcel.md, then return a short summary."},
-    {"name": "interior", "description": "Reads the Matterport scan: entrances, steps, doors, stairs, elevators.",
-     "tools": [matterport_panoramas, scan_look],
-     "system_prompt": "Call matterport_panoramas. If there is no scan, say 'no scan' and stop. Otherwise call scan_look on "
-                      "the entrance, lobby and stair panoramas (and any elevator panorama) with one specific question each. "
-                      "Report step_free_entrance (true if any entrance is level), entrance_steps, min_door_width_m, "
-                      "stair_width_m and elevator_count if elevators are visible (or 'none visible'), each with a confidence "
-                      "0..1 and the pano_id as evidence. Scans show common areas only; never describe a resident's unit. "
+    {"name": "interior", "description": "Reads the Matterport scans: unit types, room sizes, door and hallway widths, steps.",
+     "tools": [matterport_rooms, matterport_panoramas, scan_look],
+     "system_prompt": "Call matterport_rooms. If there is no scan, say 'no scan' and stop. Each scan is a unit type with rooms "
+                      "and sizes; pick the one that best fits a person in a wheelchair (fewest steps, widest doors). Then call "
+                      "matterport_panoramas and scan_look on at most three panoramas of that unit's entry and hallway, or of "
+                      "a lobby or building entrance if one exists, with one specific question each. Report unit_type, "
+                      "unit_rooms (the list from matterport_rooms), hallway_width_m, min_door_width_m, interior_steps, and "
+                      "step_free_entrance and entrance_steps only if a lobby or building entrance was seen; each with a "
+                      "confidence 0..1 and the pano_id as evidence. Do not report elevator_count (CoStar is its source); just "
+                      "say whether any panorama shows an elevator. Scans show a unit type, never a resident's own rooms. "
                       "Save your findings with write_file to /<building_id>/matterport.md, then return a short summary."},
 ]
 

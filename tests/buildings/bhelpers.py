@@ -8,6 +8,8 @@ _MAP = {  # short name -> (profile field, layer)
     "roof": ("roof_tone", "vexcel"), "tree": ("tree_cover_fraction", "vexcel"), "van": ("van_dropoff", "vexcel"),
     "step_free": ("step_free_entrance", "matterport"), "steps": ("entrance_steps", "matterport"),
     "stair_w": ("stair_width_m", "matterport"), "door_w": ("min_door_width_m", "matterport"),
+    "unit_type": ("unit_type", "matterport"), "rooms": ("unit_rooms", "matterport"),
+    "hallway_w": ("hallway_width_m", "matterport"), "int_steps": ("interior_steps", "matterport"),
 }
 
 

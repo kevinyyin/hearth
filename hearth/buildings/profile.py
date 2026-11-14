@@ -8,7 +8,8 @@ from hearth.config import a
 from hearth.contracts import BuildingProfile, Sourced
 
 FIELDS = ["floors", "units", "year_built", "construction", "property_type", "elevator_count", "roof_tone",
-          "tree_cover_fraction", "step_free_entrance", "entrance_steps", "stair_width_m", "min_door_width_m", "van_dropoff"]
+          "tree_cover_fraction", "step_free_entrance", "entrance_steps", "stair_width_m", "min_door_width_m", "van_dropoff",
+          "unit_type", "unit_rooms", "hallway_width_m", "interior_steps"]
 LAYERS = ("costar", "vexcel", "matterport")
 UNKNOWN = Sourced(value=None, source="default", confidence=0.0)
 

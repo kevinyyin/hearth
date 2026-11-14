@@ -2,20 +2,24 @@
 
 import type { AccessBrief as Brief } from "@/lib/types";
 
-/** One screen for a crew. Built only from layer-sourced fields; the scan shows common areas, never a resident's unit. */
+const Part = ({ title, lines, empty }: { title: string; lines: string[]; empty: string }) => (
+  <div>
+    <p className="font-medium">{title}</p>
+    {lines.length ? (
+      <ul className="list-disc pl-4" style={{ color: "var(--text-secondary)" }}>{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+    ) : (
+      <p style={{ color: "var(--text-muted)" }}>{empty}</p>
+    )}
+  </div>
+);
+
+/** One screen for a crew, built only from layer-sourced fields. The scan shows a unit type, never the patient's own rooms. */
 export default function AccessBrief({ brief }: { brief: Brief }) {
-  const rows: [string, string | null][] = [["Stop at", brief.stop_at], ["Entrance", brief.entrance], ["Widths", brief.widths]];
   return (
-    <section className="space-y-1 text-xs">
+    <section className="space-y-2 text-xs">
       <h4 className="font-semibold" style={{ color: "var(--text-muted)" }}>Crew access brief</h4>
-      {rows.map(([k, v]) => (
-        <p key={k}><span style={{ color: "var(--text-muted)" }}>{k}: </span>{v ?? <em style={{ color: "var(--text-muted)" }}>not shown by any layer</em>}</p>
-      ))}
-      {brief.route.length > 0 && (
-        <ol className="list-decimal pl-4" style={{ color: "var(--text-secondary)" }}>{brief.route.map((r, i) => <li key={i}>{r}</li>)}</ol>
-      )}
-      {brief.missing.includes("matterport") && <p style={{ color: "var(--text-muted)" }}>No 3D scan: the route inside is not shown.</p>}
-      <p style={{ color: "var(--text-muted)" }}>Scans show common areas and model units, not the patient's own rooms.</p>
+      <Part title="Getting to the door" lines={brief.to_door} empty="No layer showed stories, elevators or where to stop." />
+      <Part title="Inside the unit" lines={brief.inside_unit} empty="No 3D scan: the layout inside is not shown." />
     </section>
   );
 }

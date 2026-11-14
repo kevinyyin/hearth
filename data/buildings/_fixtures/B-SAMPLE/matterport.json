@@ -27,6 +27,43 @@
       "label": "Main stairwell",
       "path": null,
       "reading": "Concrete stairs about 1.1 m wide with a handrail on one side."
+    },
+    {
+      "pano_id": "pano-unit-hall",
+      "label": "1BR, 1BA - 700SF (fixture): hallway, Floor 1, sweep 2",
+      "path": null,
+      "reading": "Unit hallway from the front door to the bedroom, about 1.0 m wide; bedroom door about 0.8 m clear; no steps inside."
+    }
+  ],
+  "units": [
+    {
+      "unit_type": "1BR, 1BA - 700SF (fixture)",
+      "rooms": [
+        {
+          "room": "hallway",
+          "width_m": 1.0,
+          "length_m": 4.2,
+          "area_m2": 4.2
+        },
+        {
+          "room": "bedroom",
+          "width_m": 3.0,
+          "length_m": 3.4,
+          "area_m2": 10.2
+        },
+        {
+          "room": "living",
+          "width_m": 3.8,
+          "length_m": 4.5,
+          "area_m2": 17.1
+        },
+        {
+          "room": "bathroom",
+          "width_m": 1.6,
+          "length_m": 2.4,
+          "area_m2": 3.8
+        }
+      ]
     }
   ]
 }

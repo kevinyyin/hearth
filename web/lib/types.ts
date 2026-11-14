@@ -92,6 +92,7 @@ export type Evidence = { field: string; layer: string; ref: string; note: string
 export const PROFILE_FIELDS = [
   "floors", "units", "year_built", "construction", "property_type", "elevator_count", "roof_tone",
   "tree_cover_fraction", "step_free_entrance", "entrance_steps", "stair_width_m", "min_door_width_m", "van_dropoff",
+  "unit_type", "unit_rooms", "hallway_width_m", "interior_steps",
 ] as const;
 
 export type BuildingProfile = { [K in (typeof PROFILE_FIELDS)[number]]: Sourced } & {
@@ -106,11 +107,11 @@ export type BuildingProfile = { [K in (typeof PROFILE_FIELDS)[number]]: Sourced 
   error: string | null;
 };
 
+/** Two parts (design amendment Nov 13): getting to the door, and inside the scanned unit type. */
 export type AccessBrief = {
-  stop_at: string | null;
-  entrance: string | null;
-  route: string[];
-  widths: string | null;
+  unit_type: string | null;
+  to_door: string[];
+  inside_unit: string[];
   frames: Evidence[];
   missing: string[];
 };

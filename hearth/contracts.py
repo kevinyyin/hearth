@@ -85,6 +85,11 @@ class BuildingProfile(BaseModel):
     stair_width_m: Sourced
     min_door_width_m: Sourced
     van_dropoff: Sourced
+    # inside the unit, from the scan (design amendment Nov 13); default unknown
+    unit_type: Sourced = Field(default_factory=lambda: Sourced(value=None, source="default", confidence=0.0))
+    unit_rooms: Sourced = Field(default_factory=lambda: Sourced(value=None, source="default", confidence=0.0))
+    hallway_width_m: Sourced = Field(default_factory=lambda: Sourced(value=None, source="default", confidence=0.0))
+    interior_steps: Sourced = Field(default_factory=lambda: Sourced(value=None, source="default", confidence=0.0))
     heat_time_constant_h: float
     cold_time_constant_h: float
     layers_missing: list[str]

@@ -15,5 +15,18 @@
       "path": null,
       "reading": "Front desk and a wooden staircase; no elevator visible."
     }
+  ],
+  "units": [
+    {
+      "unit_type": "Lobby",
+      "rooms": [
+        {
+          "room": "lobby, living",
+          "width_m": 12.0,
+          "length_m": 15.0,
+          "area_m2": 180.0
+        }
+      ]
+    }
   ]
 }

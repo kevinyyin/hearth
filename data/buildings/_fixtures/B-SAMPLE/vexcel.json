@@ -4,5 +4,19 @@
   "roof_condition": "fair",
   "tree_cover_fraction": 0.05,
   "image": "vexcel.png",
-  "fixture": true
+  "fixture": true,
+  "detections": [
+    {
+      "label": "loading zone",
+      "confidence": 0.72,
+      "side": "south",
+      "distance_m": 22
+    },
+    {
+      "label": "parking space",
+      "confidence": 0.55,
+      "side": "east",
+      "distance_m": 31
+    }
+  ]
 }

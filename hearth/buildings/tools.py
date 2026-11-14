@@ -192,7 +192,49 @@ def normalize_vexcel(j: dict) -> dict | None:
         "parcel_tree_cover_fraction": pct(p.get("parcel-tree-cover.percent")),
         "footprint_area_m2": s.get("footprint.area"), "structure_count": p.get("structure.count"),
         "solar_panels": s.get("roof-objects.solar-panel-photovoltaic.count"),
+        "stories_below_eave": s.get("roof-characteristics.number-of-stories-below-eave"),
+        "max_roof_height_m": s.get("roof-characteristics.maximum-roof-height"),
+        "entrance_elevation_m": s.get("roof-characteristics.entrance-elevation"), "ac_units": s.get("roof-objects.ac-unit.count"),
     }
+
+
+DETECT_LABELS = ("building entrance", "loading zone", "parking space", "driveway", "ramp")
+_SIDES = ("north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest")
+
+
+def summarize_detections(j: dict, lat: float, lon: float) -> list[dict]:
+    """elements/detect -> [{label, confidence, side, distance_m}], best first: where each found thing sits from the point."""
+    rows = []
+    for f in j.get("features") or []:
+        for d in f["properties"].get("detections") or []:
+            pts = [tuple(map(float, xy.split())) for xy in re.findall(r"-?[\d.]+ -?[\d.]+", d.get("bbox") or "")]
+            if not pts:
+                continue
+            ring = pts[:-1] if len(pts) > 1 and pts[0] == pts[-1] else pts  # a WKT ring repeats its first point
+            clon, clat = sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring)
+            dy, dx = (clat - lat) * 111_320, (clon - lon) * 111_320 * math.cos(math.radians(lat))
+            side = _SIDES[round(math.degrees(math.atan2(dx, dy)) / 45) % 8]
+            rows.append({"label": f["properties"]["label"], "confidence": round(d["confidence"], 2), "side": side,
+                         "distance_m": round(math.hypot(dx, dy))})
+    return sorted(rows, key=lambda r: -r["confidence"])
+
+
+def vexcel_detect(lat: float, lon: float, labels: tuple[str, ...] = DETECT_LABELS) -> list[dict]:
+    """Open-vocabulary detection (sam3) on the ortho around the point; where parking, driveways and entrances are."""
+    if _fixtures_on():
+        for p in sorted(FIXTURES.glob("*/costar.json")):
+            r = json.loads(p.read_text())
+            if _km((lat, lon), (r["lat"], r["lon"])) < 0.05:
+                return (_fixture(r["building_id"], "vexcel") or {}).get("detections", [])
+        return []
+    pt = f"POINT({lon} {lat})"
+    r = _vexcel("POST", "/elements/detect", json={
+        "wkt": pt, "srid": 4326, "buffer-meter": 40,
+        "images": [{"endpoint": "ortho/extract", "request": {"layer": VEXCEL_LAYERS, "srid": 4326, "wkt": pt, "buffer-meter": 40, "crop": "bounding_box"}}],
+        "model-input": {"elements": [{"label": lab, "model": "sam3", "detection-threshold": 0.4} for lab in labels],
+                        "include": ["bbox", "confidence"]}})
+    r.raise_for_status()
+    return summarize_detections(r.json(), lat, lon)[:12]
 
 
 def vexcel_attributes(lat: float, lon: float) -> dict | None:
@@ -267,6 +309,37 @@ def matterport_panoramas(building_id: str) -> list[dict]:
         if model:
             panos += normalize_matterport(mid, model)[:MP_SWEEPS_PER_MODEL]
     return panos
+
+
+_MP_ROOMS = """query($id: ID!) { model(id: $id) { name rooms { label tags dimensions(units: metric) { areaFloor width depth } } } }"""
+
+
+def normalize_rooms(model: dict) -> dict:
+    """One scan's unit type (the model name, e.g. "2BR, 2BA - 1,000SF") and its rooms with sizes; blank rooms dropped."""
+    rooms = []
+    for r in model.get("rooms") or []:
+        name, dims = r.get("label") or ", ".join(r.get("tags") or []), r.get("dimensions") or {}
+        if not name and not dims:
+            continue
+        w, d = dims.get("width"), dims.get("depth")
+        rooms.append({"room": name or "unlabeled room",
+                      "width_m": round(min(w, d), 1) if w and d else None, "length_m": round(max(w, d), 1) if w and d else None,
+                      "area_m2": round(dims["areaFloor"], 1) if dims.get("areaFloor") else None})
+    return {"unit_type": model.get("name"), "rooms": rooms}
+
+
+def matterport_rooms(building_id: str) -> list[dict]:
+    """[{unit_type, rooms: [{room, width_m, length_m, area_m2}]}] per scan; [] when the building has no scan."""
+    if _fixtures_on():
+        return (_fixture(building_id, "matterport") or {}).get("units", [])
+    auth = (os.environ["MATTERPORT_API_KEY"], os.environ["MATTERPORT_API_TOKEN"])
+    units = []
+    for mid in (costar_record(building_id) or {}).get("matterport_model_ids", [])[:MP_MODELS_PER_BUILDING]:
+        r = httpx.post(MATTERPORT_GRAPH, json={"query": _MP_ROOMS, "variables": {"id": mid}}, auth=auth, timeout=30)
+        r.raise_for_status()
+        if model := (r.json().get("data") or {}).get("model"):
+            units.append(normalize_rooms(model))
+    return units
 
 
 def matterport_faces(building_id: str, pano: dict) -> list[Path]:

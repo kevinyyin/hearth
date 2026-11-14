@@ -54,7 +54,7 @@ def test_building_detail_before_and_after_survey():
     assert d["profile"] is None and d["image_url"].endswith("/api/buildings/B-SAMPLE/image")
     store.put("profile", "B-SAMPLE", profile("B-SAMPLE", floors=8, roof="dark", step_free=True))
     d = client.get("/api/buildings/B-SAMPLE").json()
-    assert d["profile"]["floors"]["source"] == "costar" and d["brief"]["entrance"] and set(d["layer_effects"]) == {"costar", "vexcel", "matterport"}
+    assert d["profile"]["floors"]["source"] == "costar" and any("8 stories" in line for line in d["brief"]["to_door"]) and set(d["layer_effects"]) == {"costar", "vexcel", "matterport"}
     assert client.get("/api/buildings/B-SAMPLE/image").headers["content-type"] == "image/png"
 
 

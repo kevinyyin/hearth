@@ -15,7 +15,11 @@ const MISSING_WORDS: Record<string, string> = {
 };
 const LAYER_NAMES: Record<string, string> = { costar: "CoStar", vexcel: "Vexcel", matterport: "Matterport" };
 
-const show = (v: unknown) => (v === null || v === undefined ? "unknown" : typeof v === "boolean" ? (v ? "yes" : "no") : String(v));
+const show = (v: unknown): string =>
+  v === null || v === undefined ? "unknown"
+  : typeof v === "boolean" ? (v ? "yes" : "no")
+  : Array.isArray(v) ? v.map((r) => (r && typeof r === "object" ? Object.values(r).filter((x) => x != null).join(" ") : String(r))).join("; ")
+  : String(v);
 
 /** The building agent for one building: aerial tile, scan, live trace, sourced profile, unsafe-time by layer, access brief,
  *  and (for a patient) the refuge proposal the dispatcher approves or rejects. */

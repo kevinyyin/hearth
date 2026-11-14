@@ -15,5 +15,18 @@
       "path": null,
       "reading": "Two elevator doors with call buttons beside the front desk; doors about 1.0 m wide."
     }
+  ],
+  "units": [
+    {
+      "unit_type": "Lobby",
+      "rooms": [
+        {
+          "room": "lobby, living",
+          "width_m": 12.0,
+          "length_m": 15.0,
+          "area_m2": 180.0
+        }
+      ]
+    }
   ]
 }
