@@ -198,23 +198,24 @@ export default function ResidentPage() {
 
       <Section title="Inside">
         {!detail ? (
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Choose your building to see its scans.</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Choose your building to see its scan.</p>
         ) : (
           <>
-            {detail.scan_ids.length === 0 && (
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>No 3D scan for this building.</p>
-            )}
-            {home.scan_id && detail.scan_ids.includes(home.scan_id) && (
+            {home.scan_id && detail.scan_ids.includes(home.scan_id) ? (
               <>
-                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Mark where your machine is.</p>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Simulated: this resident&apos;s home is this scanned unit.</p>
                 <div className="flex flex-wrap gap-1.5">
                   {INSIDE_KINDS.map((k) => (
                     <Choice key={k} on={insideKind === k} color={PIN_COLOR[k]} onClick={() => setInsideKind(k)}>{PIN_LABEL[k]}</Choice>
                   ))}
                 </div>
-                <ScanPins scanId={home.scan_id} sdkKey={detail.scan_sdk_key} pins={home.inside} kind={insideKind} onChange={(inside) => set({ inside })} />
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Mark where your machine is.</p>
+                {/* opens on the floor plan; going inside from it, and pins showing in both, are the scan viewer's own behaviour */}
+                <ScanPins view="floorplan" scanId={home.scan_id} sdkKey={detail.scan_sdk_key} pins={home.inside} kind={insideKind}
+                  onChange={(inside) => set({ inside })} />
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Simulated: this resident&apos;s home is this scanned unit.</p>
               </>
+            ) : (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>No 3D scan for this building.</p>
             )}
             <label className="block text-xs" style={{ color: "var(--text-secondary)" }}>
               Note for the responder

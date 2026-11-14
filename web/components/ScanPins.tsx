@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { PIN_COLOR, pinLabels } from "@/lib/home";
 import type { InsideKind, InsidePin, Vec3 } from "@/lib/types";
 
@@ -11,10 +11,17 @@ const HOLD_MS = 800;
 
 // The slice of Matterport's embed SDK used here (verified Nov 14 on a real scan).
 type Hit = { position: Vec3; normal: Vec3; object: string };
+type Sweep = { position: Vec3; enabled?: boolean }; // a spot the scan was taken from, which the viewer can stand at
 type Sdk = {
   App: { state: { waitUntil(f: (s: { phase: string }) => boolean): Promise<unknown> }; Phase: { PLAYING: string } };
   Tag: { add(...tags: object[]): Promise<string[]>; remove(...ids: string[]): Promise<unknown> };
   Mattertag: { navigateToTag(id: string, transition: unknown): Promise<unknown>; Transition: { FLY: unknown } };
+  Mode: { moveTo(mode: unknown): Promise<unknown>; Mode: { FLOORPLAN: string }; current: { subscribe(f: (mode: string) => void): { cancel(): void } } };
+  Sweep: {
+    data: { subscribe(o: { onCollectionUpdated(sweeps: Record<string, Sweep>): void }): { cancel(): void } };
+    moveTo(id: string, options: object): Promise<unknown>;
+    Transition: { FLY: unknown };
+  };
   Pointer: { intersection: { subscribe(f: (hit: Hit) => void): { cancel(): void } } };
   Camera: { getPose(): Promise<unknown> };
   Conversion: { worldToScreen(p: Vec3, pose: unknown, size: { w: number; h: number }): { x: number; y: number } };
@@ -41,12 +48,15 @@ const rgb = (hex: string) => ({ r: parseInt(hex.slice(1, 3), 16) / 255, g: parse
 /** One of the building's 3D scans with the resident's inside pins. With `onChange`, holding the pointer still on a
  *  surface offers "Drop pin here"; without it the pins are only shown and the view turns to the machine pin.
  *  The pins are always listed as text below, so they survive a scan that does not open. */
-export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
+export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = "inside" }: {
   scanId: string;
   sdkKey: string | null;
   pins: InsidePin[];
   kind?: InsideKind;
   onChange?: (pins: InsidePin[]) => void;
+  /** "floorplan" opens the scan from straight above; a click on a spot there takes the viewer inside at that spot.
+   *  Pins are dropped in the in-person view only, so clicking around the floor plan never places one by accident. */
+  view?: "inside" | "floorplan";
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [sdk, setSdk] = useState<Sdk | null>(null);
@@ -55,6 +65,8 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
   const tagIds = useRef<string[]>([]);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const turned = useRef(false);
+  const sweeps = useRef<Record<string, Sweep>>({});
+  const [mode, setMode] = useState<string | null>(null);
   const editable = !!onChange;
   const labels = pinLabels(pins);
 
@@ -83,6 +95,7 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
         if (!connect) throw new Error("the scan script is missing");
         const s = await connect(iframe, sdkKey, "");
         await s.App.state.waitUntil((a) => a.phase === s.App.Phase.PLAYING);
+        if (view === "floorplan") await s.Mode.moveTo(s.Mode.Mode.FLOORPLAN).catch(() => {}); // a refused move leaves the walk-through view
         if (cancelled) return;
         opened = true;
         setSdk(s);
@@ -99,7 +112,7 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
       seen.disconnect();
       iframe.removeEventListener("load", onLoad);
     };
-  }, [scanId, sdkKey]);
+  }, [scanId, sdkKey, view]);
 
   // Keep the scan's tags equal to the pins. Runs are queued so a quick second change cannot interleave with the first.
   useEffect(() => {
@@ -125,6 +138,36 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- labels derive from pins
   }, [sdk, pins, editable]);
 
+  // Which view the scan is in, and the spots a viewer can stand at: both feed the floor plan's double-click.
+  useEffect(() => {
+    if (!sdk) return;
+    const a = sdk.Mode.current.subscribe(setMode);
+    const b = sdk.Sweep.data.subscribe({ onCollectionUpdated: (all) => { sweeps.current = all; } });
+    return () => {
+      a.cancel();
+      b.cancel();
+    };
+  }, [sdk]);
+
+  /** A double-click on the floor plan: stand at the scan spot nearest to it on screen, in the in-person view. */
+  async function standAt(e: MouseEvent<HTMLDivElement>) {
+    const iframe = frame.current;
+    if (!sdk || !iframe) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    const at = { x: e.clientX - box.left, y: e.clientY - box.top };
+    const pose = await sdk.Camera.getPose();
+    const size = { w: iframe.clientWidth, h: iframe.clientHeight };
+    let nearest: string | null = null;
+    let best = Infinity;
+    for (const [id, s] of Object.entries(sweeps.current)) {
+      if (s.enabled === false) continue;
+      const p = sdk.Conversion.worldToScreen(s.position, pose, size);
+      const d = (p.x - at.x) ** 2 + (p.y - at.y) ** 2;
+      if (d < best) [nearest, best] = [id, d];
+    }
+    if (nearest) await sdk.Sweep.moveTo(nearest, { transition: sdk.Sweep.Transition.FLY, transitionTime: 1200 }).catch(() => {});
+  }
+
   // Editing: a pointer held still on a real surface offers the drop button under it.
   useEffect(() => {
     if (!sdk || !editable) return;
@@ -137,7 +180,9 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
         // sky, a window or anything outside the model reports another object and a position thousands of metres away
         if (!iframe || hit.object !== "intersectedobject.model") return;
         const size = { w: iframe.clientWidth, h: iframe.clientHeight };
-        const p = sdk.Conversion.worldToScreen(hit.position, await sdk.Camera.getPose(), size);
+        const pose = await sdk.Camera.getPose();
+        if ((pose as { mode?: string }).mode !== "mode.inside") return; // on the floor plan a click means "go there", not "pin this"
+        const p = sdk.Conversion.worldToScreen(hit.position, pose, size);
         // the value the SDK replays on subscribe is not under the pointer and can project outside the view
         if (p.x >= 0 && p.x <= size.w && p.y >= 0 && p.y <= size.h) setSpot({ hit, x: p.x, y: p.y });
       }, HOLD_MS);
@@ -152,6 +197,11 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
     <div className="space-y-2">
       <div className="relative w-full overflow-hidden rounded" style={{ aspectRatio: "16 / 10", background: "var(--grid)", display: sdkKey ? "block" : "none" }}>
         <iframe ref={frame} title="3D scan of the home" className="h-full w-full border-0" allow="xr-spatial-tracking; fullscreen" />
+        {view === "floorplan" && sdk && mode === sdk.Mode.Mode.FLOORPLAN && (
+          // The scan lives in another site's frame, which keeps its own clicks. This sheet over the floor plan catches
+          // the double-click instead; it is gone once the viewer is inside, so the in-person view works as usual.
+          <div className="absolute inset-0 cursor-pointer" title="Double-click a spot to stand there" onDoubleClick={standAt} />
+        )}
         {state === "opening" && (
           <p className="absolute inset-x-0 bottom-2 text-center text-xs" style={{ color: "var(--text-muted)" }}>Opening the 3D scan…</p>
         )}
@@ -173,7 +223,10 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
       </div>
       {state === "failed" && <p className="text-xs" style={{ color: "#d03b3b" }}>The 3D scan did not open.</p>}
       {editable && state !== "failed" && (
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>Hold the pointer still on the spot, then press &quot;Drop pin here&quot;.</p>
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          {view === "floorplan" && "Double-click a spot on the floor plan to stand there. "}
+          In the in-person view, hold the pointer still on the spot, then press &quot;Drop pin here&quot;.
+        </p>
       )}
       {pins.length > 0 && (
         <ol className="space-y-1 text-xs" aria-label="Inside pins">
