@@ -23,8 +23,14 @@ is compiled into the JavaScript every visitor downloads.
 | Where | `NEXT_PUBLIC_API` | What the maps show |
 | --- | --- | --- |
 | A laptop with no kit | unset | Drawn households, labelled "Fixture" in the panel |
+| A laptop pointed at the hosted API | `https://hearth-api-six.vercel.app` | The real replay, scan and tile |
 | The machine with the kit | `http://localhost:8000` | The replay's own patients |
-| Vercel | the `hearth-api` deployment URL | The replay's own patients |
+| Vercel | already set to the hosted API | The real replay |
+
+The hosted API is **`https://hearth-api-six.vercel.app`** — not the project name.
+`web/.env.example` has it ready to copy to `web/.env.local`. Next inlines
+`NEXT_PUBLIC_` variables at build time, so restart the dev server after changing
+it; a reload will not do.
 
 ### On the machine that has the CoStar kit
 
@@ -48,7 +54,7 @@ The two projects are already split: `hearth` serves the web app and `hearth-api`
 serves the API. In the `hearth` project's settings, set
 
 ```
-NEXT_PUBLIC_API = https://<the hearth-api deployment>
+NEXT_PUBLIC_API = https://hearth-api-six.vercel.app
 ```
 
 for Production and Preview. Sponsor keys go in the **`hearth-api`** project's
