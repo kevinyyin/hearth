@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import AerialPins from "@/components/AerialPins";
+import HelpPanel from "@/components/HelpPanel";
 import { API, getJson, putJson } from "@/lib/api";
 import ScanPins from "@/components/ScanPins";
 import { emptyHome, getPersona, PIN_COLOR, PIN_LABEL, SIZES, withBuilding, withScan } from "@/lib/home";
@@ -109,6 +110,8 @@ export default function ResidentPage() {
         <Link href="/start" className="text-xs underline underline-offset-2" style={{ color: "var(--text-secondary)" }}>Switch role</Link>
       </header>
       <p className="text-xs" style={{ color: "var(--text-muted)" }}>Simulated resident {patient.patient_id}</p>
+
+      <HelpPanel patientId={patient.patient_id} />
 
       <Section title="Your device">
         <p className="text-sm">{words(patient.device)} ({words(patient.device_detail)})</p>
