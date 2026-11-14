@@ -253,6 +253,35 @@ def test_calling_an_unlisted_building_is_refused(monkeypatch):
     assert client.get("/api/buildings/H-LEVEL").json()["can_call"] is True
 
 
+def test_sim_day_returns_a_side_and_refuses_runaway_requests():
+    import json
+    from hearth.config import ROOT
+    fx = json.loads((ROOT / "tests/fixtures/sim_day.json").read_text())
+    r = client.post("/api/sim/day", json={"households": fx["households"][:20], "constants": fx["constants"]})
+    assert r.status_code == 200 and len(r.json()["legs"]) == 15 and r.json()["stops"] >= 20
+    big = [fx["households"][0]] * 100_000
+    assert client.post("/api/sim/day", json={"households": big, "constants": fx["constants"]}).status_code == 422
+    for bad in ({"dt": 0}, {"runHours": 10_000}, {"capacity": 0}, {"cruise": 0}, {"stations": []}, {"crewsPerStation": 99}):
+        assert client.post("/api/sim/day", json={"households": [], "constants": {**fx["constants"], **bad}}).status_code == 422, bad
+    odd = {**fx["households"][0], "needsAt": float("1e9")}
+    assert client.post("/api/sim/day", json={"households": [odd], "constants": fx["constants"]}).status_code == 422
+    assert client.post("/api/sim/day", json={"households": [{"lon": "x"}], "constants": fx["constants"]}).status_code == 422
+
+
+def test_sim_day_bounds_the_work_not_only_each_field():
+    import json
+    from hearth.config import ROOT
+    fx = json.loads((ROOT / "tests/fixtures/sim_day.json").read_text())
+    post = lambda **k: client.post("/api/sim/day", json={"households": [], "constants": {**fx["constants"], **k}}).status_code  # noqa: E731
+    assert post() == 200
+    ten = [{"name": f"S{i}", "at": [-95.37, 29.76]} for i in range(10)]
+    assert post(stations=ten, crewsPerStation=10) == 422  # 100 vans: each field is legal, the fleet is not
+    assert post(stations=ten, crewsPerStation=3) == 200  # 30 vans is the most
+    assert post(dt=0.05, runHours=48) == 422  # 960 steps
+    assert post(dt=0.25, runHours=48) == 200  # 192 steps
+    assert post(stations=[{"name": "far", "at": [1e308, 29.76]}]) == 422  # not a place on Earth
+
+
 def test_staging_options_choice_and_clear(monkeypatch):
     from hearth import staging
     opt = {"building_id": "B-SAMPLE", "name": "Lot", "address": "1 Lot St", "zip": "77027", "property_type": "retail",

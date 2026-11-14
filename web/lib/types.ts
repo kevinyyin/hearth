@@ -10,7 +10,7 @@ export type SweepRow = {
 };
 
 /** Policy ids in the order the results page shows them. */
-export const POLICY_ORDER = ["p0", "p3", "p3__nobld", "p3__nomove", "p3__aid"] as const;
+export const POLICY_ORDER = ["p0", "p3", "p3__nobld", "p3__nomove", "p3__aid", "p3__paired", "p3__alns"] as const;
 
 export type PolicyId = (typeof POLICY_ORDER)[number];
 
@@ -20,12 +20,15 @@ export const POLICY_LABELS: Record<PolicyId, string> = {
   p3__nobld: "Hearth without building data",
   p3__nomove: "Hearth without moves",
   p3__aid: "Hearth with supplier mutual aid",
+  // the central planner: same crews and rules as Hearth, only who goes where changes
+  p3__paired: "Hearth, best pairing",
+  p3__alns: "Hearth, pairing and route search",
 };
 
-/** The three policies drawn when the page loads; the other two are toggles. */
-export const DEFAULT_POLICIES: PolicyId[] = ["p0", "p3", "p3__nobld"];
+/** The policies drawn when the page loads; the others are toggles. */
+export const DEFAULT_POLICIES: PolicyId[] = ["p0", "p3", "p3__nobld", "p3__paired"];
 
-export const OPTIONAL_POLICIES: PolicyId[] = ["p3__nomove", "p3__aid"];
+export const OPTIONAL_POLICIES: PolicyId[] = ["p3__nomove", "p3__aid", "p3__alns"];
 
 export function policyLabel(policy: string): string {
   return POLICY_LABELS[policy as PolicyId] ?? policy;

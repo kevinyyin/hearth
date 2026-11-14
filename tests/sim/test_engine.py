@@ -9,7 +9,8 @@ import pytest
 from hearth.contracts import Event, PlanState, Snapshot
 from hearth.decision import decide, with_hysteresis
 from hearth.population import load_population
-from hearth.sim.engine import run
+from hearth.planner import Flags
+from hearth.sim.engine import policy_label, run
 from hearth.sim.policies import CODE, decide_vec, hysteresis_vec
 
 from conftest import ctx, pat
@@ -95,8 +96,27 @@ def test_sweep_rows_take_median_and_percentiles():
 def test_sweep_writes_one_row_per_policy_and_crew_count(tmp_path):
     from hearth.sim.sweep import sweep
     rows = sweep("sample", [5, 10], 2, out_root=tmp_path)
-    assert len(rows) == 10 and json.loads((tmp_path / "sweep_sample.json").read_text()) == rows
-    assert {r["policy"] for r in rows} == {"p0", "p3", "p3__nobld", "p3__nomove", "p3__aid"}
+    assert len(rows) == 14 and json.loads((tmp_path / "sweep_sample.json").read_text()) == rows
+    assert [r["policy"] for r in rows[::2]] == ["p0", "p3", "p3__nobld", "p3__nomove", "p3__aid", "p3__paired", "p3__alns"]
+
+
+def test_routing_changes_the_label_and_leaves_greedy_alone():
+    assert policy_label("p3", Flags()) == "p3"
+    assert policy_label("p3", Flags(routing="alns")) == "p3__alns"
+    assert policy_label("p3", Flags(use_buildings=False, routing="paired")) == "p3__nobld__paired"
+
+
+@pytest.mark.parametrize("routing", ["paired", "alns"])
+def test_a_routed_run_is_reproducible_and_valid(routing):
+    s1 = run("sample", "p3", 1, 5, Flags(routing=routing), out_root=None)
+    s2 = run("sample", "p3", 1, 5, Flags(routing=routing), out_root=None)
+    assert s1 == s2 and s1["run_id"] == f"sample__p3__{routing}__c5__s1"
+
+
+def test_a_routed_run_sends_crews(tmp_path):
+    run("sample", "p3", 1, 5, Flags(routing="alns"), out_root=tmp_path)
+    events = [json.loads(line) for line in (tmp_path / "sample__p3__alns__c5__s1" / "events.jsonl").read_text().splitlines()]
+    assert any(e["type"] == "job_created" for e in events) and any(e["type"] == "job_completed" for e in events)
 
 
 def test_documented_case_replay_is_labeled_and_moves_once_the_home_turns_hot(tmp_path):
@@ -161,3 +181,25 @@ def test_a_moved_patient_is_no_longer_safe_once_their_refuge_goes_dark():
     dest = np.array([0, 1, -1, 1])                    # -1: moved somewhere always open (hospital or shelter)
     dest_dark_now = np.array([False, True])
     assert refuge_open(moved, dest, dest_dark_now).tolist() == [True, False, True, False]
+
+
+@pytest.mark.parametrize("routing", ["paired", "alns"])
+def test_a_routed_crew_does_one_job_at_a_time_and_a_patient_has_one_job_at_a_time(tmp_path, routing):
+    run("sample", "p3", 1, 5, Flags(routing=routing), out_root=tmp_path)
+    events = [json.loads(line) for line in (tmp_path / f"sample__p3__{routing}__c5__s1" / "events.jsonl").read_text().splitlines()]
+    created = [e for e in events if e["type"] == "job_created"]
+    assert created
+    busy_until, open_jobs = {}, set()
+    for e in events:
+        if e["type"] == "job_created":
+            crew = e["data"]["crew_id"]
+            assert busy_until.get(crew, "") <= e["t"], f"{crew} was sent again before it was done"
+            assert e["patient_id"] not in open_jobs
+            busy_until[crew] = e["data"]["eta"]
+            open_jobs.add(e["patient_id"])
+        elif e["type"] == "job_completed":
+            open_jobs.discard(e["patient_id"])
+
+
+def test_the_phone_tree_is_never_labelled_with_a_routing_it_does_not_use():
+    assert policy_label("p0", Flags(routing="paired")) == "p0"

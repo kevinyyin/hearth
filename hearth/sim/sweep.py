@@ -10,7 +10,7 @@ from hearth.planner import Flags
 from hearth.sim.engine import policy_label, run
 
 SWEEP = [("p0", Flags()), ("p3", Flags()), ("p3", Flags(use_buildings=False)), ("p3", Flags(allow_moves=False)),
-         ("p3", Flags(mutual_aid=True))]
+         ("p3", Flags(mutual_aid=True)), ("p3", Flags(routing="paired")), ("p3", Flags(routing="alns"))]
 
 
 def _one(job: tuple) -> dict:

@@ -9,7 +9,7 @@ import { API, getJson } from "@/lib/api";
 import { POLICY_LABELS, POLICY_ORDER, type PolicyId, type SweepRow } from "@/lib/types";
 
 /** Everything p3 is shown against in the card. */
-const COMPARISONS: PolicyId[] = ["p0", "p3__nobld", "p3__aid"];
+const COMPARISONS: PolicyId[] = ["p0", "p3__nobld", "p3__aid", "p3__paired"];
 
 
 /** Colour follows the policy, never its rank, so the card and the chart agree. */
@@ -260,7 +260,9 @@ export default function ResultsPage() {
                 <h3 className="mb-1.5 text-sm font-semibold">Why Hearth matters</h3>
                 <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   Every line falls as you add crews. Only the ones that know who needs help fall
-                  fast.
+                  fast. The two central planner lines use the same crews and the same rules as
+                  Hearth; only who goes where changes: the jointly best pairing of crews and needs
+                  among the candidates, then that pairing with an ALNS route search on top.
                 </p>
               </div>
             </div>

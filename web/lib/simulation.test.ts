@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DT, OPERATORS, RUN_HOURS, buildCounty, drawHouseholds, type SideSim } from "./simulation";
+import { DT, OPERATORS, RUN_HOURS, buildCounty, drawHouseholds, parseSide, type SideSim } from "./simulation";
 
 const steps = () => Array.from({ length: Math.floor(RUN_HOURS / DT) + 1 }, (_, k) => k * DT);
 
@@ -107,5 +107,45 @@ describe("dispatch", () => {
     });
     expect(contended).toBe(true);
     expect(side.refills).toBeGreaterThan(0);
+  });
+});
+
+describe("a Hearth side from the API", () => {
+  const households = drawHouseholds();
+  const local = buildCounty(households).sides.hearthAt;
+  const wire = () => JSON.parse(JSON.stringify(local)); // what arrives over HTTP
+
+  it("is used as given", () => {
+    const side = parseSide(wire(), households.length)!;
+    expect(side).not.toBeNull();
+    expect(buildCounty(households, side).sides.hearthAt).toBe(side);
+  });
+
+  it("leaves today's side to the browser", () => {
+    const county = buildCounty(households, parseSide(wire(), households.length)!);
+    expect(county.sides.todayAt.calls.length).toBeGreaterThan(0);
+  });
+
+  it("draws a parked van facing the way it drove in", () => {
+    const county = buildCounty(households, parseSide(wire(), households.length)!);
+    const reference = buildCounty(households);
+    for (const t of steps()) {
+      expect(county.vehiclesAt(t + 0.01, "hearthAt")).toEqual(reference.vehiclesAt(t + 0.01, "hearthAt"));
+    }
+  });
+
+  it("is refused when it is not the shape the page draws", () => {
+    const n = households.length;
+    expect(parseSide(null, n)).toBeNull();
+    expect(parseSide("side", n)).toBeNull();
+    expect(parseSide({ ...wire(), legs: wire().legs.slice(1) }, n)).toBeNull();
+    expect(parseSide({ ...wire(), station: [0] }, n)).toBeNull();
+    expect(parseSide({ ...wire(), jobs: [{ ...wire().jobs[0], h: n }] }, n)).toBeNull();
+    expect(parseSide({ ...wire(), jobs: [{ ...wire().jobs[0], dueAt: "soon" }] }, n)).toBeNull();
+    expect(parseSide({ ...wire(), events: "no" }, n)).toBeNull();
+    expect(parseSide({ ...wire(), tours: null }, n)).toBeNull();
+    const bent = wire();
+    bent.legs[0][0].t1 = null;
+    expect(parseSide(bent, n)).toBeNull();
   });
 });

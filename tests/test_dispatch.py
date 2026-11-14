@@ -310,3 +310,98 @@ def test_the_fallback_puts_a_stair_carry_first(monkeypatch):
     monkeypatch.setattr(dispatch, "_ask_model", lambda rows: (_ for _ in ()).throw(RuntimeError("down")))
     dispatch.open_request("p2"), dispatch.open_request("p4")
     assert (dispatch.request("p4").rank, dispatch.request("p2").rank) == (1, 2)
+
+
+# ---- the central planner pairs crews and requests (hearth/routing.py) ----
+def order(monkeypatch, *ids):
+    """The model answers with this order, for whichever of these requests it is shown."""
+    monkeypatch.setattr(dispatch, "_ask_model", lambda rows: answer([i for i in ids if i in {r["patient_id"] for r in rows}]))
+
+
+def test_every_waiting_request_is_placed_in_one_pass_each_with_its_own_crew(monkeypatch):
+    order(monkeypatch, "p4", "p2")
+    dispatch.open_request("p4"), dispatch.open_request("p2")  # nobody on duty yet: both wait
+    crew("A", on_duty=False), crew("B", on_duty=False)
+    crew("A"), crew("B")
+    got = {r.patient_id: r.job.org_id for r in dispatch.requests()}
+    assert set(got) == {"p4", "p2"} and set(got.values()) == {"A", "B"}
+    assert all(r.state == "offered" for r in dispatch.requests())
+
+
+def test_one_crew_goes_to_the_models_first_request_when_both_are_as_near(monkeypatch):
+    order(monkeypatch, "p2", "p4")
+    dispatch.open_request("p4"), dispatch.open_request("p2")  # both live in B-SAMPLE
+    crew("A")
+    assert dispatch.request("p2").job.org_id == "A" and dispatch.request("p4").state == "waiting"
+
+
+def test_the_models_first_request_gets_the_only_crew_even_when_another_is_closer(monkeypatch):
+    order(monkeypatch, "demo-2", "p4")  # demo-2 is 12 km from the crew; p4 is in the building the crew stands in
+    dispatch.open_request("demo-2"), dispatch.open_request("p4")
+    crew("A", base="B-SAMPLE")
+    assert dispatch.request("demo-2").job.org_id == "A"
+    assert (dispatch.request("p4").state, dispatch.request("p4").blocked) == ("waiting", "")
+
+
+def test_crews_are_chosen_for_all_requests_together_not_one_request_at_a_time(monkeypatch):
+    order(monkeypatch, "demo-2", "p4")
+    with monkeypatch.context() as hold:  # both requests and both crews are in place before anything is dispatched
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("demo-2"), dispatch.open_request("p4")
+        crew("Here", base="B-SAMPLE"), crew("Near")  # Here stands in p4's building; both are about 12.5 km from demo-2
+    dispatch.run()
+    # one at a time, demo-2 (first) would take Here, the nearer by 140 m, and p4 would wait for Near to drive over
+    assert {r.patient_id: r.job.org_id for r in dispatch.requests()} == {"demo-2": "Near", "p4": "Here"}
+
+
+def test_a_request_still_waiting_for_a_crew_takes_no_refuge_place_from_one_a_crew_can_reach(monkeypatch):
+    monkeypatch.setattr(dispatch, "capacity", lambda rec: 1)
+    order(monkeypatch, "p4", "p3", "demo-2")
+    crew("Amb", vehicle="ambulance", equipment=["stretcher"])
+    assert dispatch.open_request("p4").job.org_id == "Amb"  # p4 holds H-STEPS
+    crew("Car")
+    waiting = dispatch.open_request("p3")  # bedbound: only the ambulance fits, and it is out
+    assert (waiting.state, waiting.blocked, waiting.refuge) == ("waiting", "", None)
+    got = dispatch.open_request("demo-2")  # a wheelchair passes only at H-LEVEL, where p3 would also go, but p3 has no crew
+    assert (got.state, got.job.org_id, got.refuge.building_id, got.blocked) == ("offered", "Car", "H-LEVEL", "")
+
+
+def test_two_requests_for_the_last_place_the_first_in_line_gets_it(monkeypatch):
+    monkeypatch.setattr(dispatch, "capacity", lambda rec: 1)
+    order(monkeypatch, "p1", "demo-1", "p4")
+    with monkeypatch.context() as hold:
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("p1"), dispatch.open_request("demo-1")  # both power wheelchairs: only H-LEVEL passes
+        crew("L1", vehicle="wheelchair_van", equipment=["wheelchair_lift"]), crew("L2", vehicle="wheelchair_van", equipment=["wheelchair_lift"])
+    dispatch.run()
+    first, second = dispatch.request("p1"), dispatch.request("demo-1")
+    assert (first.state, first.refuge.building_id) == ("offered", "H-LEVEL")
+    assert second.state == "waiting" and second.job is None and second.blocked.startswith("no refuge within 15 km")
+
+
+def test_two_offers_in_one_pass_count_the_places_left_one_after_the_other(monkeypatch):
+    order(monkeypatch, "p4", "p2")
+    with monkeypatch.context() as hold:
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("p4"), dispatch.open_request("p2")
+        crew("A"), crew("B")
+    dispatch.run()
+    assert "2 of 2 places left" in dispatch.request("p4").refuge.reasons
+    assert "1 of 2 places left" in dispatch.request("p2").refuge.reasons
+
+
+def test_equal_crews_go_in_crew_id_order_whatever_order_they_came_on_duty(monkeypatch):
+    order(monkeypatch, "p4", "p2")
+    with monkeypatch.context() as hold:
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("p4"), dispatch.open_request("p2")
+        crew("B"), crew("A")  # the same base, the same car
+    dispatch.run()
+    assert {r.patient_id: r.job.org_id for r in dispatch.requests()} == {"p4": "A", "p2": "B"}
+
+
+def test_a_crew_many_hours_away_is_still_offered_the_job_when_it_is_the_only_one(monkeypatch):
+    from hearth import planner
+    monkeypatch.setattr(planner, "travel_h", lambda *a, **k: 12.0)
+    crew("A")
+    assert dispatch.open_request("p4").job.org_id == "A"

@@ -84,6 +84,8 @@ Median risk-weighted patient-hours at risk, in millions, over 10 seeds. Lower is
 | Hearth without building data | 3.93 | 3.56 | 2.98 | 2.04 | 0.95 |
 | Hearth without moves | 4.10 | 3.95 | 3.94 | 3.96 | 3.96 |
 | Hearth with supplier mutual aid | 3.86 | 3.45 | 2.75 | 1.60 | 0.54 |
+| Hearth, best pairing (central planner) | 3.57 | 2.92 | 1.97 | 0.96 | 0.25 |
+| Hearth, pairing and route search (central planner) | 3.60 | 2.98 | 2.02 | 0.98 | 0.25 |
 
 How to read it, honestly:
 
@@ -95,6 +97,24 @@ How to read it, honestly:
   capacity limit in the model. How fast each building heats up changes the total by under 0.2%: in a Houston July
   every dark home is unsafe within hours.
 - **Mutual aid adds almost nothing** at these stock levels.
+- **Who goes where is the second-largest effect, after knowing who needs help.** The central planner keeps Hearth's
+  crews, rules and
+  decisions and changes only the dispatch: free crews and open needs are paired jointly, by risk-hours avoided per
+  crew-hour, instead of each need taking its nearest crew. Against Hearth as it was, that is 8% fewer risk-weighted
+  hours at 20 crews, 16% at 40, 30% at 80, 43% at 160 and 54% at 320, and the ranges across seeds do not overlap.
+  Against the phone tree it is 17% at 20 crews, 52% at 80 and 94% at 320. Crews also complete more rides (2,441
+  moves against 1,410 at 20 crews, seed 1), because they drive less between jobs. The drop from the phone tree to Hearth is still the
+  larger one at every crew count.
+- **The pairing gain is travel saved, and it is not universal.** The baseline it beats sends the most urgent need
+  its nearest free crew and ignores the drive when ranking. Where driving is not the bottleneck, urgency-first is
+  better: on the repository's small `sample` scenario (200 patients in two downtown ZIPs), over 12 seeds, pairing is 11% worse than greedy at 2 crews
+  (12 of 12 seeds) and 27% worse at 5 crews (10 of 12). The county result should not be read as "pairing always
+  wins".
+- **The ALNS route search adds nothing in this replay.** Planning several jobs ahead per crew came out 1 to 3%
+  behind the pairing alone at 20 to 160 crews and level at 320. Its plans are thrown away every half hour as new
+  needs appear, and its window score is a weaker guide than value per crew-hour. It does help on the simulation
+  page's day (rounds of up to four stops): weighted waiting 453 against 556 for nearest-first routes, on the
+  stand-in households.
 - **The phone tree gets slightly worse past 80 crews** because stock never restocks in the model and
   first-come-first-served spends it sooner. That is an assumption, not a finding.
 
@@ -267,9 +287,11 @@ Field names and coverage are in `docs/toolkit-notes.md`.
 - **A model orders, code places.** One Claude Sonnet call per new request orders the waiting requests and gives each
   a one-line reason, shown to crews and dispatchers only. The answer counts only if it is exactly the ids sent;
   otherwise the planner's risk-per-hour order is used and the request says so. Code then picks the nearest refuge
-  that passes the access rule and has a place left, and offers the job to the nearest free crew that fits (a power
-  wheelchair needs a lift, a bedbound resident a stretcher, the device must fit the vehicle), preferring one that
-  carries what the device leans on.
+  that passes the access rule and has a place left. The model's order decides who is served: a request is passed
+  over only when no free crew can carry it (a power wheelchair needs a lift, a bedbound resident a stretcher, the
+  device must fit the vehicle). Which crew goes to whom is then one assignment over all of them, by the central
+  planner's solver: as many crews as possible carrying what the device leans on, then the least driving, each place
+  in the order counting twice the next. A refuge place is taken only by a request that gets a crew.
 - **The crew accepts.** An offer not answered in 90 seconds passes to the next crew and sets the first off duty
   until it says otherwise. A dispatcher can take over any open request, for example when a crew goes quiet.
   The resident's tracker is fixed lines chosen by state; the crew and arrival window appear only after Accept.
@@ -295,11 +317,19 @@ Field names and coverage are in `docs/toolkit-notes.md`.
 - **Decision** (`decision.py`), first match wins: unsafe home, then unsafe temperature (never "fine on own
   backup", however charged the device), then dialysis, then backup covers the outage plus 12 hours, then resupply,
   then move, then urgent. Switching between resupply and move needs two ticks.
-- **Planner**: greedy, highest risk per hour left first. Crews belong to suppliers and deliver only for their own
-  unless mutual aid is on.
-- **Policies**: `p0` phone tree; `p3` Hearth; switches `--no-buildings`, `--no-moves`, `--mutual-aid`.
-- **Speed**: a full-county run takes about 6 seconds and writes about 350 MB; the 250-run sweep takes about 4.5
-  minutes on 10 cores.
+- **Planner**: greedy by default (`planner.assign`): highest risk per hour left first, each need to its nearest free
+  crew. Crews belong to suppliers and deliver only for their own unless mutual aid is on.
+- **Central planner** (`hearth/routing.py`, `hearth/alns.py`; `--routing paired|alns`): one score for a plan, weighted
+  hours at risk waiting for a crew plus a light pull toward reaching everyone sooner. `paired` solves the
+  crew-to-need assignment that maximizes the drop in that score per crew-hour, jointly best among the candidates
+  (scipy in the replay, a plain-Python Hungarian solver in the API). `alns` adds an adaptive large neighbourhood
+  search over multi-job routes: a fixed number of iterations and a seeded random stream, so runs reproduce. The
+  replay calls `plan`; the simulation page's day (`hearth/sim/day.py`, `POST /api/sim/day`) calls `routes` and
+  commits whole rounds; the live help loop uses the same assignment solver with its own, rank-first objective.
+- **Policies**: `p0` phone tree; `p3` Hearth; switches `--no-buildings`, `--no-moves`, `--mutual-aid`, `--routing`.
+- **Speed**: a full-county run takes about 6 seconds and writes about 350 MB; a pairing run about the same and a route-search
+  run 40 seconds (20 crews) to 2.5 minutes (320); the 350-run sweep takes about 30 minutes on 10 cores (run it with
+  `HEARTH_DB=data/hearth.db`, the store the published rows came from).
 - **One documented-case replay**: a synthetic stand-in for the Spring, Texas case, labeled as simulated. It gives
   one patient all 20 crews, so it is optimistic.
 
@@ -311,6 +341,7 @@ Sources, corrections and the two oddities we investigated are in `docs/sim-notes
 |---|---|
 | `GET /api/runs`, `/api/runs/{id}/meta`, `/snapshots/{i}`, `/events` | The replay |
 | `GET /api/results` | The crews sweep |
+| `POST /api/sim/day` | The simulation page's Hearth side for the households and constants it sends, routed by the central planner |
 | `GET /api/buildings`, `/api/buildings/ranking`, `/api/buildings/{id}`, `/image` | Profiles, brief, layer effects |
 | `GET /api/buildings/{id}/survey` | The live agent trace, streamed |
 | `POST /api/patients/{id}/propose` | The refuge finder, streamed, ending at the approval pause |
@@ -358,8 +389,16 @@ List these beside the results, every time.
 - The indoor temperature model and the building time constants are simple heuristics.
 - Crews work around the clock; stock never restocks; crew counts, stock and phone-tree staffing are placeholders.
 - Every ZIP gets the same device mix, and the Medicare-only count misses children and younger adults.
+- The central planner's score is our stand-in for the published metric, and its seven settings (`planner.lookahead_h`,
+  `early_weight`, the three `alns_*`, `insert_nearest_crews`, and `planner.day`) are our own choices. The search
+  settings were set for run time before the lines were compared and not tuned afterwards.
 
 ## Change log
+
+**v8 (November 14, 2026).** A central planner decides who goes where: jointly best pairing of crews and needs, with
+an ALNS route search on top, called by the replay and the simulation page; the live help loop picks crews with the
+same assignment solver, in the model's order. Two new result lines;
+the 25 existing rows are unchanged.
 
 **v7 (November 14, 2026).** The phone becomes the resident's way in: registration, home details chosen from the
 CoStar record, help and "I'm safe" by phone, tracker texts, a simulated storm alert with check calls, a live elevator

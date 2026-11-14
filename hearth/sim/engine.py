@@ -5,10 +5,13 @@ The world is the same under every policy (outage, weather, buildings, crews). Po
       call their supplier when low, first come first served; nobody is moved.
   p3  Hearth: every dark patient with a verified phone is known at once and decided each tick (hearth.decision rules);
       the rest are UNREACHABLE until a crew checks; crews go to the highest risk weight per hour left.
+Flags.routing picks who goes where under p3: greedy (planner.assign, the published default), or the central planner
+(hearth.routing): paired, or alns for the pairing plus a route search.
 use_buildings=False keeps the world but gives the planner default time constants and no refuge buildings.
 """
 import hashlib
 import json
+import random
 import shutil
 from pathlib import Path
 
@@ -24,6 +27,7 @@ from hearth.metrics import at_risk, summarize
 from hearth.outage import dark_mask, fraction_out
 from hearth.planner import Crew, Flags, Need, assign
 from hearth.population import generate, km, load_population
+from hearth.routing import plan
 from hearth.scenario import load
 from hearth.sim.policies import MOVE, MOVED, NA, OWN, RES, RESTORED, STATES, UNR, URG, WHY, allot_deliveries, decide_vec, hysteresis_vec
 from hearth.temperature import step_indoor, unsafe_temp
@@ -32,7 +36,7 @@ from hearth.weather import hourly_weather
 
 def policy_label(policy: str, flags: Flags) -> str:
     return policy + ("__nobld" if not flags.use_buildings else "") + ("__nomove" if not flags.allow_moves else "") + \
-        ("__aid" if flags.mutual_aid else "")
+        ("__aid" if flags.mutual_aid else "") + ("" if flags.routing == "greedy" or policy == "p0" else f"__{flags.routing}")
 
 
 def _iso(t) -> str:
@@ -242,7 +246,9 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
                           float(backup[i] if want[i] == 0 else min(backup[i], hu[i]) if want[i] == 1 else a("decision.low_backup_h")),
                           lat[i], lon[i], service_h[i], float(since[i]) if policy == "p0" else now,
                           (float(dest_ll[dest_of[i], 0]), float(dest_ll[dest_of[i], 1])) if want[i] == 1 else None) for i in cand]
-            for job in assign(needs, fleet, stock, flags, now, fcfs=policy == "p0"):
+            jobs = assign(needs, fleet, stock, flags, now, fcfs=policy == "p0") if policy == "p0" or flags.routing == "greedy" else \
+                plan(needs, fleet, stock, flags, now, routing=flags.routing, rng=random.Random(f"{seed}:{k}"))
+            for job in jobs:
                 i = idx_of[job.patient_id]
                 has_job[i], delivering[i] = True, job.kind == "delivery"
                 if job.kind == "ride":

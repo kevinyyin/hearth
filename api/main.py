@@ -11,7 +11,7 @@ from fastapi import Body, FastAPI, HTTPException, Path as PathParam, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from api import live
 from hearth import dispatch, remote, staging, store
@@ -22,6 +22,7 @@ from hearth.buildings.brief import access_brief
 from hearth.buildings.profile import hours_to_unsafe, layer_effects
 from hearth.config import ROOT
 from hearth.contracts import BuildingProfile, Equipment, Home, Patient, TraceEvent, Vehicle
+from hearth.sim.day import run_day
 
 RESULTS = ROOT / "results"
 DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
@@ -156,6 +157,57 @@ def events(run_id: str, patient_id: str | None = None):
 @app.get("/api/results")
 def results():
     return _json_file(RESULTS / "sweep_beryl_2024.json")
+
+
+# ---- the simulation page's day, planned by the central planner ----
+class _DayHousehold(BaseModel):
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+    needsAt: float = Field(ge=0, le=100_000)  # a long backup is a need after the day ends, not an error
+    repeats: bool
+
+
+class _DayStation(BaseModel):
+    name: str = Field(max_length=40)
+    at: tuple[float, float]  # [lon, lat], as the page writes it
+
+    @field_validator("at")
+    @classmethod
+    def _on_earth(cls, at):
+        if not (-180 <= at[0] <= 180 and -90 <= at[1] <= 90):
+            raise ValueError("a station must be [lon, lat]")
+        return at
+
+
+class _DayConstants(BaseModel):  # each field is bounded, and so is the work: the page sends 15 vans and 96 steps
+    stations: list[_DayStation] = Field(min_length=1, max_length=10)
+    crewsPerStation: int = Field(ge=1, le=10)
+    cruise: float = Field(gt=0, le=10)
+    serviceH: float = Field(ge=0, le=4)
+    dt: float = Field(ge=0.05, le=1)
+    runHours: float = Field(ge=1, le=48)
+    refillH: float = Field(ge=0.5, le=48)
+    capacity: int = Field(ge=1, le=10)
+
+    @model_validator(mode="after")
+    def _bounded_work(self):
+        if len(self.stations) * self.crewsPerStation > 30:
+            raise ValueError("at most 30 vans in all")
+        if self.runHours / self.dt > 200:
+            raise ValueError("at most 200 steps: a longer day needs a larger dt")
+        return self
+
+
+class DayIn(BaseModel):
+    households: list[_DayHousehold] = Field(max_length=600)
+    constants: _DayConstants
+
+
+@app.post("/api/sim/day")
+def sim_day(body: DayIn):
+    """The Hearth side of the simulation page's day, in the shape the page draws (`SideSim` in web/lib/simulation.ts).
+    The page sends its own households and constants; the routes come from `hearth.routing`."""
+    return run_day([h.model_dump() for h in body.households], body.constants.model_dump())
 
 
 # ---- buildings ----

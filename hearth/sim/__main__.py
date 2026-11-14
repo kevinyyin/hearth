@@ -1,4 +1,4 @@
-"""python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20 [--no-buildings] [--no-moves] [--mutual-aid]
+"""python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20 [--no-buildings] [--no-moves] [--mutual-aid] [--routing greedy|paired|alns]
 python -m hearth.sim sweep --scenario beryl_2024 [--crews 20,40,80,160,320] [--seeds 10]   (defaults: sweep.* in assumptions.yaml)"""
 import argparse
 import json
@@ -20,6 +20,7 @@ def main(argv=None):
     r.add_argument("--no-buildings", action="store_true")
     r.add_argument("--no-moves", action="store_true")
     r.add_argument("--mutual-aid", action="store_true")
+    r.add_argument("--routing", choices=["greedy", "paired", "alns"], default="greedy")
     s = sub.add_parser("sweep", help="all policies x crew counts x seeds; writes results/sweep_<scenario>.json")
     s.add_argument("--scenario", default="beryl_2024")
     s.add_argument("--crews", default=",".join(map(str, a("sweep.crews"))))
@@ -28,7 +29,7 @@ def main(argv=None):
     if args.cmd == "sweep":
         print(json.dumps(sweep(args.scenario, [int(c) for c in args.crews.split(",")], args.seeds), indent=1))
         return
-    flags = Flags(use_buildings=not args.no_buildings, allow_moves=not args.no_moves, mutual_aid=args.mutual_aid)
+    flags = Flags(use_buildings=not args.no_buildings, allow_moves=not args.no_moves, mutual_aid=args.mutual_aid, routing=args.routing)
     print(json.dumps(run(args.scenario, args.policy, args.seed, args.crews, flags), indent=1))
 
 
