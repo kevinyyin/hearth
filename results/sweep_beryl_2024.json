@@ -2,201 +2,201 @@
  {
   "policy": "p0",
   "crews": 5,
-  "median": 3674706.25,
-  "p5": 3639203.575,
-  "p95": 3702250.45,
-  "unweighted_median": 1462163.25
+  "median": 4365362.5,
+  "p5": 4319608.35,
+  "p95": 4396186.825,
+  "unweighted_median": 1423399.25
  },
  {
   "policy": "p0",
   "crews": 10,
-  "median": 3664340.5,
-  "p5": 3629493.6,
-  "p95": 3692185.825,
-  "unweighted_median": 1458024.25
+  "median": 4355118.0,
+  "p5": 4308252.875,
+  "p95": 4385415.125,
+  "unweighted_median": 1419967.5
  },
  {
   "policy": "p0",
   "crews": 20,
-  "median": 3636595.5,
-  "p5": 3601958.85,
-  "p95": 3663309.6,
-  "unweighted_median": 1446841.5
+  "median": 4319040.75,
+  "p5": 4273626.25,
+  "p95": 4349313.4,
+  "unweighted_median": 1408584.5
  },
  {
   "policy": "p0",
   "crews": 40,
-  "median": 3557733.75,
-  "p5": 3522852.6,
-  "p95": 3580008.125,
-  "unweighted_median": 1414600.25
+  "median": 4221603.5,
+  "p5": 4176235.125,
+  "p95": 4250843.725,
+  "unweighted_median": 1377967.0
  },
  {
   "policy": "p0",
   "crews": 80,
-  "median": 3455516.5,
-  "p5": 3418956.175,
-  "p95": 3478157.6,
-  "unweighted_median": 1373710.25
+  "median": 4083990.25,
+  "p5": 4033747.475,
+  "p95": 4113776.875,
+  "unweighted_median": 1334209.25
  },
  {
   "policy": "p3",
   "crews": 5,
-  "median": 3510096.0,
-  "p5": 3476600.45,
-  "p95": 3543250.45,
-  "unweighted_median": 1428423.75
+  "median": 4219906.0,
+  "p5": 4172059.475,
+  "p95": 4249101.775,
+  "unweighted_median": 1391528.25
  },
  {
   "policy": "p3",
   "crews": 10,
-  "median": 3385153.75,
-  "p5": 3353972.65,
-  "p95": 3418498.825,
-  "unweighted_median": 1402471.0
+  "median": 4099994.5,
+  "p5": 4056044.725,
+  "p95": 4132044.325,
+  "unweighted_median": 1363901.25
  },
  {
   "policy": "p3",
   "crews": 20,
-  "median": 3174111.25,
-  "p5": 3140802.95,
-  "p95": 3207604.2,
-  "unweighted_median": 1355704.5
+  "median": 3881297.5,
+  "p5": 3836887.875,
+  "p95": 3910702.975,
+  "unweighted_median": 1305829.75
  },
  {
   "policy": "p3",
   "crews": 40,
-  "median": 2819506.5,
-  "p5": 2788416.65,
-  "p95": 2850359.4,
-  "unweighted_median": 1268358.75
+  "median": 3495143.5,
+  "p5": 3455924.5,
+  "p95": 3528179.5,
+  "unweighted_median": 1190649.5
  },
  {
   "policy": "p3",
   "crews": 80,
-  "median": 2259383.75,
-  "p5": 2240853.65,
-  "p95": 2284104.825,
-  "unweighted_median": 1101947.5
+  "median": 2824664.25,
+  "p5": 2778534.45,
+  "p95": 2856606.45,
+  "unweighted_median": 979504.5
  },
  {
   "policy": "p3__nobld",
   "crews": 5,
-  "median": 3510096.0,
-  "p5": 3476600.45,
-  "p95": 3543250.45,
-  "unweighted_median": 1428423.75
+  "median": 4233524.75,
+  "p5": 4186153.0,
+  "p95": 4261097.95,
+  "unweighted_median": 1395029.25
  },
  {
   "policy": "p3__nobld",
   "crews": 10,
-  "median": 3385153.75,
-  "p5": 3353972.65,
-  "p95": 3418498.825,
-  "unweighted_median": 1402471.0
+  "median": 4126947.75,
+  "p5": 4083041.4,
+  "p95": 4155119.0,
+  "unweighted_median": 1370427.75
  },
  {
   "policy": "p3__nobld",
   "crews": 20,
-  "median": 3174111.25,
-  "p5": 3140802.95,
-  "p95": 3207604.2,
-  "unweighted_median": 1355704.5
+  "median": 3932773.5,
+  "p5": 3899228.4,
+  "p95": 3960875.6,
+  "unweighted_median": 1320164.5
  },
  {
   "policy": "p3__nobld",
   "crews": 40,
-  "median": 2819506.5,
-  "p5": 2788416.65,
-  "p95": 2850359.4,
-  "unweighted_median": 1268358.75
+  "median": 3580598.5,
+  "p5": 3542483.1,
+  "p95": 3604434.675,
+  "unweighted_median": 1215962.0
  },
  {
   "policy": "p3__nobld",
   "crews": 80,
-  "median": 2259383.75,
-  "p5": 2240853.65,
-  "p95": 2284104.825,
-  "unweighted_median": 1101947.5
+  "median": 3002815.25,
+  "p5": 2968590.975,
+  "p95": 3022172.6,
+  "unweighted_median": 1037925.5
  },
  {
   "policy": "p3__nomove",
   "crews": 5,
-  "median": 3574659.0,
-  "p5": 3541418.375,
-  "p95": 3602003.85,
-  "unweighted_median": 1442190.0
+  "median": 4284495.75,
+  "p5": 4240768.95,
+  "p95": 4313228.0,
+  "unweighted_median": 1406454.25
  },
  {
   "policy": "p3__nomove",
   "crews": 10,
-  "median": 3500952.0,
-  "p5": 3466642.7,
-  "p95": 3526831.175,
-  "unweighted_median": 1425914.0
+  "median": 4216523.25,
+  "p5": 4172509.975,
+  "p95": 4245295.975,
+  "unweighted_median": 1391094.75
  },
  {
   "policy": "p3__nomove",
   "crews": 20,
-  "median": 3365617.75,
-  "p5": 3334829.075,
-  "p95": 3390864.775,
-  "unweighted_median": 1396021.25
+  "median": 4099868.25,
+  "p5": 4056075.6,
+  "p95": 4132568.625,
+  "unweighted_median": 1363692.0
  },
  {
   "policy": "p3__nomove",
   "crews": 40,
-  "median": 3201334.75,
-  "p5": 3164088.3,
-  "p95": 3225603.675,
-  "unweighted_median": 1362537.5
+  "median": 3948978.75,
+  "p5": 3901401.15,
+  "p95": 3978606.725,
+  "unweighted_median": 1324090.75
  },
  {
   "policy": "p3__nomove",
   "crews": 80,
-  "median": 3192637.25,
-  "p5": 3159868.25,
-  "p95": 3219007.775,
-  "unweighted_median": 1355917.25
+  "median": 3941224.0,
+  "p5": 3897013.325,
+  "p95": 3972281.6,
+  "unweighted_median": 1314612.25
  },
  {
   "policy": "p3__aid",
   "crews": 5,
-  "median": 3505906.5,
-  "p5": 3475705.05,
-  "p95": 3537188.9,
-  "unweighted_median": 1428086.25
+  "median": 4216149.0,
+  "p5": 4169806.95,
+  "p95": 4246580.775,
+  "unweighted_median": 1390783.75
  },
  {
   "policy": "p3__aid",
   "crews": 10,
-  "median": 3377909.25,
-  "p5": 3346540.9,
-  "p95": 3404237.625,
-  "unweighted_median": 1401009.5
+  "median": 4089973.25,
+  "p5": 4047775.25,
+  "p95": 4122355.75,
+  "unweighted_median": 1361656.0
  },
  {
   "policy": "p3__aid",
   "crews": 20,
-  "median": 3152605.25,
-  "p5": 3124994.05,
-  "p95": 3187812.475,
-  "unweighted_median": 1351118.75
+  "median": 3853826.5,
+  "p5": 3810180.225,
+  "p95": 3880745.1,
+  "unweighted_median": 1297172.75
  },
  {
   "policy": "p3__aid",
   "crews": 40,
-  "median": 2783382.5,
-  "p5": 2757818.0,
-  "p95": 2808399.125,
-  "unweighted_median": 1257548.5
+  "median": 3455007.75,
+  "p5": 3414683.025,
+  "p95": 3484122.0,
+  "unweighted_median": 1177801.75
  },
  {
   "policy": "p3__aid",
   "crews": 80,
-  "median": 2219107.5,
-  "p5": 2188894.925,
-  "p95": 2245468.1,
-  "unweighted_median": 1087824.5
+  "median": 2786810.0,
+  "p5": 2744374.65,
+  "p95": 2824736.425,
+  "unweighted_median": 963155.0
  }
 ]

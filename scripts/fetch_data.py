@@ -24,6 +24,9 @@ from hearth.scenario import PROCESSED, RAW, load  # noqa: E402
 EMPOWER = "https://empowerprogram.hhs.gov/2024_HHSemPOWERMapHistoricalDataset.xlsx"
 FIGSHARE = "https://api.figshare.com/v2/articles/24237376"  # EAGLE-I recorded outages 2014-2025 (ORNL)
 IEM = "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py"
+CMS_DME = "https://data.cms.gov/data-api/v1/dataset/27c150fd-8578-43b1-bba5-6388987e32af/data"  # DME by Geography and Service, 2024
+CMS_DFR = "https://data.cms.gov/data-api/v1/dataset/f8610e87-ba25-43a3-a49e-927dbc8701ae/data"  # Medicare Dialysis Facilities FY2026
+DEVICE_HCPCS = {"oxygen": ["E1390"], "ventilator": ["E0465", "E0466", "E0467"], "feeding_pump": ["B9002"]}
 ZCTA = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/7/query"  # Census 2020 ZCTAs
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 http = httpx.Client(timeout=120, follow_redirects=True, headers={"User-Agent": "hearth-sim-fetch"})
@@ -150,10 +153,36 @@ def zcta(sc: dict, zips: list[str]) -> None:
     print(f"proc zcta_{sc['name']}.geojson  {len(gj['features'])} polygons; ZIPs without a ZCTA: {missing}")
 
 
+# ---- device mix: CMS Medicare DME beneficiaries by HCPCS, and home dialysis from the dialysis facility reports ----
+def device_counts(state_name: str = "Texas", state: str = "TX") -> dict:
+    out, rows_kept = {}, []
+    for device, codes in DEVICE_HCPCS.items():
+        for code in codes:
+            rows = http.get(CMS_DME, params={"filter[Rfrg_Prvdr_Geo_Desc]": state_name, "filter[HCPCS_Cd]": code}).raise_for_status().json()
+            rows_kept += rows
+            out[device] = out.get(device, 0) + sum(int(r["Tot_Suplr_Benes"]) for r in rows)  # rental and purchase rows
+    fac = {}
+    for m in ("ncmy4_f", "modhhdy4_f", "modccpdy4_f"):  # Medicare patients alive 12/31/2024; % home HD; % cycler PD
+        rows = http.get(CMS_DFR, params={"filter[state]": state, "filter[Measure_ID]": m, "size": 5000}).raise_for_status().json()
+        rows_kept += rows
+        for r in rows:
+            fac.setdefault(r["CCN"], {})[m] = float(r["Measure_Score"]) if r["Measure_Score"] not in ("", None) else None
+    ok = [x for x in fac.values() if None not in (x.get("ncmy4_f"), x.get("modhhdy4_f"), x.get("modccpdy4_f"))]
+    out["home_dialysis"] = round(sum(x["ncmy4_f"] * (x["modhhdy4_f"] + x["modccpdy4_f"]) / 100 for x in ok))
+    save(f"cms_device_counts_{state}.json", json.dumps(rows_kept).encode())
+    print(f"device counts {state} 2024: {out} ({len(ok)} dialysis facilities)")
+    return out
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--scenario", default="beryl_2024")
-    sc = load(p.parse_args().scenario)
+    p.add_argument("--device-counts", action="store_true", help="only print the CMS device counts for population.device_counts")
+    args = p.parse_args()
+    if args.device_counts:
+        device_counts()
+        sys.exit()
+    sc = load(args.scenario)
     zips = empower(sc)
     zcta(sc, zips)
     eaglei(sc)

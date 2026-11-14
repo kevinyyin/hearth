@@ -25,7 +25,7 @@ from hearth.outage import dark_mask, fraction_out
 from hearth.planner import Crew, Flags, Need, assign
 from hearth.population import generate, km, load_population
 from hearth.scenario import load
-from hearth.sim.policies import MOVE, MOVED, NA, OWN, RES, RESTORED, STATES, UNR, WHY, decide_vec, hysteresis_vec
+from hearth.sim.policies import MOVE, MOVED, NA, OWN, RES, RESTORED, STATES, UNR, URG, WHY, decide_vec, hysteresis_vec
 from hearth.temperature import step_indoor, unsafe_temp
 from hearth.weather import hourly_weather
 
@@ -72,8 +72,11 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
 
     # world
     f = fraction_out(scenario)
-    r = np.array(sc["r"], float) if "r" in sc else rng.random(n)
-    dark_all = dark_mask(r, f.reindex(ticks).interpolate(limit_direction="both"))
+    f_ticks = f.reindex(ticks).interpolate(limit_direction="both")
+    profiles = {d["building_id"]: BuildingProfile.model_validate(d) for d in (store.all("profile") if sc.get("use_profiles") else [])}
+    r_b = dict(zip(sorted(profiles), np.random.default_rng([seed, 2]).random(len(profiles))))  # one power state per building
+    r = np.array(sc["r"], float) if "r" in sc else np.array([r_b.get(p.building_id, x) for p, x in zip(ps, rng.random(n))])
+    dark_all = dark_mask(r, f_ticks)
     w = hourly_weather(scenario)
     wx = (w.index - ticks[0]) / pd.Timedelta("1h")
     temp_out, rh_out = np.interp(hours, wx, w.temp_c), np.interp(hours, wx, w.rh)
@@ -81,7 +84,6 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
     lat, lon, use_rate, weight, backup = col("lat"), col("lon"), col("use_rate"), col("risk_weight"), col("backup_hours_on_hand")
     device, sens, supplier = np.array([p.device.value for p in ps]), col("temp_sensitive"), col("supplier_id")
     verified = col("phone_status") == "verified"
-    profiles = {d["building_id"]: BuildingProfile.model_validate(d) for d in (store.all("profile") if sc.get("use_profiles") else [])}
     prof = [profiles.get(p.building_id) for p in ps]
     d_heat, d_cold = float(a("temperature.default_heat_tc_h")), float(a("temperature.default_cold_tc_h"))
     heat = np.array([q.heat_time_constant_h if q else d_heat for q in prof])
@@ -89,11 +91,17 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
     service_h = np.array([service_minutes(q, p.floor, False) if q else a("building.service_base_min") for q, p in zip(prof, ps)]) / 60
     # what the planner knows
     heat_b, cold_b = (heat, cold) if flags.use_buildings else (np.full(n, d_heat), np.full(n, d_cold))
-    dests = [(la, lo) for la, lo, _ in a("planner.destinations")]
-    if flags.use_buildings:  # surveyed hotels and senior housing can take a patient
-        dests += [(q.lat, q.lon) for q in profiles.values() if any(k in str(q.property_type.value).lower() for k in ("hotel", "senior"))]
-    dests = np.array(dests)
-    dest = dests[np.argmin(km(lat[:, None], lon[:, None], dests[None, :, 0], dests[None, :, 1]), axis=1)]
+    # rides end at the nearest hospital or shelter (always open) or, with buildings, a surveyed hotel or senior housing
+    # building whose own power is on at that tick (it shares the outage like any building)
+    fixed = [(la, lo) for la, lo, _ in a("planner.destinations")]
+    refuges = [b for b in sorted(profiles) if flags.use_buildings and profiles[b].property_type.value in ("hotel", "senior_housing")]
+    dest_ll = np.array(fixed + [(profiles[b].lat, profiles[b].lon) for b in refuges])
+    dest_dark = np.hstack([np.zeros((len(ticks), len(fixed)), bool), dark_mask(np.array([r_b[b] for b in refuges]), f_ticks)])
+
+    def dest_for(i, k):
+        ok = np.flatnonzero(~dest_dark[k])
+        j = ok[np.argmin(km(lat[i], lon[i], dest_ll[ok, 0], dest_ll[ok, 1]))]
+        return float(dest_ll[j, 0]), float(dest_ll[j, 1])
 
     orgs = [f"s{i + 1}" for i in range(len(a("population.supplier_shares")))]
     depots = a("planner.depots")
@@ -154,6 +162,7 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
         ever_dark |= dark
 
         # clocks
+        # shortcut: a home dialysis deadline is not reset if power returns and fails again; Beryl restores each home once
         backup = drain(backup, use_rate, dark, moved, dt)
         indoor = step_indoor(indoor, temp_out[k], dark, heat, cold, dt)
         indoor_b = step_indoor(indoor_b, temp_out[k], dark, heat_b, cold_b, dt)
@@ -178,7 +187,8 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
             known[batch[~unreachable[batch]]] = True
             new[live & ~known] = UNR
             kn = live & known
-            new[kn] = np.where(backup[kn] < a("decision.low_backup_h"), RES, OWN)
+            low = backup[kn] < a("decision.low_backup_h")  # home dialysis cannot be resupplied: escalated, not delivered
+            new[kn] = np.where(low, np.where(device[kn] == "home_dialysis", URG, RES), OWN)
             want = np.where((new == RES) | (called & ~known), np.where(new == RES, 0, 2), -1)  # 0 delivery, 2 welfare check
             want[has_job] = -1
             since[(want >= 0) & np.isnan(since)] = now
@@ -216,13 +226,14 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
             needs = [Need(ps[i].patient_id, kinds[want[i]], supplier[i], weight[i],
                           float(backup[i] if want[i] == 0 else min(backup[i], hu[i]) if want[i] == 1 else a("decision.low_backup_h")),
                           lat[i], lon[i], service_h[i], float(since[i]) if policy == "p0" else now,
-                          tuple(dest[i]) if want[i] == 1 else None) for i in cand]
+                          dest_for(i, k) if want[i] == 1 else None) for i in cand]
             for job in assign(needs, fleet, stock, flags, now, fcfs=policy == "p0"):
                 i = idx_of[job.patient_id]
                 has_job[i] = True
                 active_jobs.append((job.data["done_h"], job, i))
                 eta = ticks[0] + pd.Timedelta(hours=job.data["done_h"])
-                ev(t, "job_created", i, job_id=job.job_id, kind=job.kind, org_id=job.org_id, crew_id=job.data["crew_id"], eta=_iso(eta))
+                ev(t, "job_created", i, job_id=job.job_id, kind=job.kind, org_id=job.org_id, crew_id=job.data["crew_id"], eta=_iso(eta),
+                   **({"dest": job.data["dest"]} if "dest" in job.data else {}))
         prev_dark = dark
 
         if out is not None and k % every == 0:
@@ -245,7 +256,7 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
         (out / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
         meta = {"run_id": rid, "scenario": scenario, "policy": policy_label(policy, flags), "crews": crews, "seed": seed,
                 "flags": vars(flags), "ticks": snaps, "center": sc["center"], "patients": n, "synthetic": True,
-                "label": sc.get("label"), "corrected_intervals": f.attrs["corrected"], "profiles_used": sorted(profiles),
+                "label": sc.get("label"), "corrected_intervals": f.attrs["corrected"], "profiles_used": sorted(profiles), "patients_in_buildings": int(sum(q is not None for q in prof)),
                 "note": "simulated run over synthetic patients; outcomes are model outputs, not a count of lives saved"}
         (out / "meta.json").write_text(json.dumps(meta, indent=1))
         (out / "summary.json").write_text(json.dumps(summary, indent=1))

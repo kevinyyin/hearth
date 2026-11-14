@@ -43,9 +43,10 @@ population:
   reachable_phone_rate: {value: 0.7, source: "hearth-spec v5 §3.2", confirmed: true}
   costar_building_share: {value: 0.35, source: "hearth-spec v5 §3.2", confirmed: true}
   supplier_shares: {value: [0.40, 0.35, 0.25], source: "hearth-spec v5 §3.2", confirmed: true}
-  non_oxygen_mix: {value: {ventilator: 0.25, home_dialysis: 0.25, feeding_pump: 0.5}, source: "our call; device type by ZIP is not public", confirmed: false}
+  device_counts: {value: {oxygen: 51695, ventilator: 5551, home_dialysis: 5366, feeding_pump: 1248}, source: "Texas, calendar 2024, Medicare. CMS DME by Geography and Service (beneficiaries, rental + purchase): oxygen E1390; ventilator E0465+E0466+E0467; feeding pump B9002. Home dialysis is not DME: CMS Medicare Dialysis Facilities FY2026, Texas, sum over facilities of Medicare patients alive 12/31/2024 x (% home hemodialysis + % cycler PD). Patients are split by these shares; see docs/sim-notes.md", confirmed: false}
   # lane S additions
-  backup_h: {value: {oxygen: [4, 48], ventilator: [8, 24], home_dialysis: [24, 48], feeding_pump: [8, 24]}, source: "our call: uniform range of hours the device runs on what is at home (cylinders, batteries); for home dialysis, hours a session can be put off. Placeholder", confirmed: false}
+  backup_h: {value: {oxygen: [4, 48], ventilator: [8, 24], feeding_pump: [8, 24]}, source: "our call: uniform range of hours the device runs on what is at home (cylinders, batteries). Placeholder", confirmed: false}
+  dialysis_due_within_days: {value: 2, source: "our call: the next home dialysis session is due uniformly within this many days of the outage; at risk once it passes in a dark home without reaching care", confirmed: false}
   mobility_mix: {value: {walks: 0.35, walks_with_help: 0.25, wheelchair_manual: 0.15, wheelchair_power: 0.15, bedbound: 0.10}, source: "our call; placeholder", confirmed: false}
   temp_sensitive_mix: {value: {heat: 0.45, cold: 0.05, both: 0.20, none: 0.30}, source: "our call: most are older Medicare beneficiaries; placeholder", confirmed: false}
   feeding_jejunal_share: {value: 0.2, source: "our call; placeholder", confirmed: false}

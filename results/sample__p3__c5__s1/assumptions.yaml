@@ -43,9 +43,10 @@ population:
   reachable_phone_rate: {value: 0.7, source: "hearth-spec v5 §3.2", confirmed: true}
   costar_building_share: {value: 0.35, source: "hearth-spec v5 §3.2", confirmed: true}
   supplier_shares: {value: [0.40, 0.35, 0.25], source: "hearth-spec v5 §3.2", confirmed: true}
-  non_oxygen_mix: {value: {ventilator: 0.25, home_dialysis: 0.25, feeding_pump: 0.5}, source: "our call; device type by ZIP is not public", confirmed: false}
+  device_counts: {value: {oxygen: 51695, ventilator: 5551, home_dialysis: 5366, feeding_pump: 1248}, source: "Texas, calendar 2024, Medicare. CMS DME by Geography and Service (beneficiaries, rental + purchase): oxygen E1390; ventilator E0465+E0466+E0467; feeding pump B9002. Home dialysis is not DME: CMS Medicare Dialysis Facilities FY2026, Texas, sum over facilities of Medicare patients alive 12/31/2024 x (% home hemodialysis + % cycler PD). Patients are split by these shares; see docs/sim-notes.md", confirmed: false}
   # lane S additions
-  backup_h: {value: {oxygen: [4, 48], ventilator: [8, 24], home_dialysis: [24, 48], feeding_pump: [8, 24]}, source: "our call: uniform range of hours the device runs on what is at home (cylinders, batteries); for home dialysis, hours a session can be put off. Placeholder", confirmed: false}
+  backup_h: {value: {oxygen: [4, 48], ventilator: [8, 24], feeding_pump: [8, 24]}, source: "our call: uniform range of hours the device runs on what is at home (cylinders, batteries). Placeholder", confirmed: false}
+  dialysis_due_within_days: {value: 2, source: "our call: the next home dialysis session is due uniformly within this many days of the outage; at risk once it passes in a dark home without reaching care", confirmed: false}
   mobility_mix: {value: {walks: 0.35, walks_with_help: 0.25, wheelchair_manual: 0.15, wheelchair_power: 0.15, bedbound: 0.10}, source: "our call; placeholder", confirmed: false}
   temp_sensitive_mix: {value: {heat: 0.45, cold: 0.05, both: 0.20, none: 0.30}, source: "our call: most are older Medicare beneficiaries; placeholder", confirmed: false}
   feeding_jejunal_share: {value: 0.2, source: "our call; placeholder", confirmed: false}
@@ -76,6 +77,12 @@ refuge:
   search_radius_km: {value: 15, source: "our call: a short ride across Houston", confirmed: false}
   max_candidates: {value: 3, source: "our call: each uncached candidate costs a 30-60 s survey", confirmed: false}
 
+voice:
+  county: {value: Harris County, source: "design: synthetic Harris County patients", confirmed: true}
+  min_confidence: {value: 0.7, source: "plan Task V2: an interpreted turn below 0.7 goes to a person", confirmed: false}
+  silences_to_escalate: {value: 3, source: "plan Task V2: three empty turns in a row end the call", confirmed: false}
+  turn_timeout_s: {value: 7, source: "ElevenLabs default turn_timeout; seconds of caller silence before a turn counts as empty", confirmed: false}
+
 # ---- lane S (simulation) ----
 outage:
   dip_ratio: {value: 0.75, source: "our call: a reading below 75% of both sides' recent max is a data glitch (EAGLE-I near-zero runs and the Jul 8 false dip); plan's 10% rule missed multi-interval runs", confirmed: false}
@@ -88,3 +95,9 @@ planner:
   delivery_backup_h: {value: 24, source: "our call: hours of backup one delivery adds; placeholder", confirmed: false}
   destinations: {value: [[29.7069, -95.3972, "Texas Medical Center"], [29.7520, -95.3580, "George R. Brown Convention Center"], [29.6847, -95.4107, "NRG Center"]], source: "our call: approximate locations of a hospital campus and two large shelters; rides end at the nearest", confirmed: false}
   candidates_per_free_crew: {value: 50, source: "our call (speed): only the top needs per free crew are offered each tick", confirmed: false}
+
+# records-only building profiles (hearth/buildings/bulk.py); Vexcel gives roof material, not color
+building_records:
+  roof_tone_by_material: {value: {membrane: light, metal: light, shingle: medium, tile: medium, gravel: dark, built-up: dark, asphalt: dark}, source: "our call: typical colors; most Houston flat membrane roofs are white TPO", confirmed: false}
+  costar_confidence: {value: 0.8, source: "our call: CoStar research fields, not verified on site", confirmed: false}
+  roof_tone_confidence: {value: 0.4, source: "our call: color inferred from material class, no image read", confirmed: false}

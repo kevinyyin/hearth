@@ -116,3 +116,27 @@ def test_reasons_shown_to_the_dispatcher_are_true(tmp_path):
     assert not [w for w in whys if "queued" in w]  # under p0 nobody is queued until a call fails
     meta = json.loads((d / "meta.json").read_text())
     assert meta["profiles_used"] == [] and json.loads((d / "summary.json").read_text())["profiles_used"] == 0
+
+
+def test_p0_never_sends_a_delivery_to_home_dialysis(tmp_path):
+    run("sample", "p0", 1, 20, out_root=tmp_path); d = next(tmp_path.iterdir())
+    dialysis = {p.patient_id for p in load_population("sample", 1) if p.device == "home_dialysis"}
+    deliveries = [json.loads(l) for l in (d / "events.jsonl").read_text().splitlines() if '"kind": "delivery"' in l]
+    assert dialysis and deliveries and not [e for e in deliveries if e["patient_id"] in dialysis]
+
+
+def test_nobody_is_moved_into_their_own_dark_building(tmp_path, monkeypatch):
+    from hearth import store
+    from hearth.buildings.profile import default_profile
+    from hearth.contracts import Sourced
+    from hearth.scenario import load
+    sc = {**load("sample"), "use_profiles": True}
+    monkeypatch.setattr("hearth.population.load", lambda name: sc)
+    monkeypatch.setattr("hearth.sim.engine.load", lambda name: sc)
+    for bid, kind, lat in [("2001", "senior_housing", 29.752), ("2002", "multifamily", 29.745), ("3001", "hotel", 29.758)]:
+        prof = default_profile(bid, "test", lat, -95.362)
+        store.put("profile", bid, prof.model_copy(update={"property_type": Sourced(value=kind, source="costar", confidence=0.9)}))
+    run("sample", "p3", 1, 20, out_root=tmp_path); d = next(tmp_path.iterdir())
+    home = {p.patient_id: (p.lat, p.lon) for p in load_population("sample", 1) if p.building_id}
+    rides = [json.loads(l) for l in (d / "events.jsonl").read_text().splitlines() if '"kind": "ride"' in l and "job_created" in l]
+    assert home and rides and not [r for r in rides if r["patient_id"] in home and tuple(r["data"]["dest"]) == home[r["patient_id"]]]
