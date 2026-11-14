@@ -140,3 +140,19 @@ this one patient all 20 crews, so it is optimistic; the county run shows the con
 
 Regenerate the map's county run (about 8 s, about 350 MB, git-ignored) and the patients file the API reads, against
 the main store: `HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20`.
+
+## Two oddities in the 20-320 crew sweep (Nov 13, investigated)
+
+- **Mutual aid looked worse than plain Hearth at 320 crews (0.668M vs 0.538M).** A modeling bug, now fixed. "Delivery
+  feasible" meant "the supplier has at least one unit left", so while a few units remained, thousands of patients were
+  all told to wait for a delivery instead of being moved (seed 1, 320 crews, with aid: 397,793 resupply decisions vs
+  37,087 moves while any stock was left). Pooling stock under mutual aid kept that true for everyone for longer. Now a
+  delivery is feasible only for the patients a unit is left for, highest risk per hour left first
+  (`hearth.sim.policies.allot_deliveries`); the rest are decided as if no delivery were possible. Seed 1, 320 crews:
+  p3 0.521M -> 0.511M, p3__aid 0.654M -> 0.503M. The bug affected every p3 run, not only mutual aid.
+- **The phone tree got slightly worse past 80 crews (4.084M -> 4.115M).** Not a code bug: an assumption. Stock is a
+  fixed 6,000 deliveries that never restock during a 10-day outage (`planner.stock_per_supplier`). With more crews the
+  first-come-first-served phone tree spends it sooner (stock gone at hour 93.5 instead of 143.5 at 80 crews; median
+  delivery at hour 52 instead of 67), so patients still dark late in the outage get nothing. Same deliveries and welfare
+  checks either way. Fixing it needs a restock rate from a real source; until then the top of the crew range is
+  stock-bound for every policy.

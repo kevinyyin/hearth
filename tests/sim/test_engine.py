@@ -140,3 +140,16 @@ def test_nobody_is_moved_into_their_own_dark_building(tmp_path, monkeypatch):
     home = {p.patient_id: (p.lat, p.lon) for p in load_population("sample", 1) if p.building_id}
     rides = [json.loads(l) for l in (d / "events.jsonl").read_text().splitlines() if '"kind": "ride"' in l and "job_created" in l]
     assert home and rides and not [r for r in rides if r["patient_id"] in home and tuple(r["data"]["dest"]) == home[r["patient_id"]]]
+
+
+def test_delivery_is_feasible_only_for_patients_a_unit_is_left_for():
+    from hearth.sim.policies import allot_deliveries
+    wants = np.array([True] * 5 + [False])
+    priority = np.array([1.0, 5.0, 3.0, 4.0, 2.0, 9.0])
+    supplier = np.array(["s1", "s1", "s1", "s2", "s2", "s1"])
+    holding = np.array([True, False, False, False, False, False])          # patient 0's delivery is already on the way
+    got = allot_deliveries(wants, priority, supplier, {"s1": 1, "s2": 1}, pooled=False, holding=holding)
+    assert got.tolist() == [True, True, False, True, False, False]        # s1's one unit to the higher priority; s2's likewise
+    pooled = allot_deliveries(wants, priority, supplier, {"s1": 1, "s2": 1}, pooled=True, holding=holding)
+    assert pooled.tolist() == [True, True, False, True, False, False]     # two pooled units, top two priorities
+    assert not allot_deliveries(wants, priority, supplier, {"s1": 0, "s2": 0}, pooled=True, holding=holding)[1:].any()

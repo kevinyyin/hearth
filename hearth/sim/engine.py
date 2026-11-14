@@ -25,7 +25,7 @@ from hearth.outage import dark_mask, fraction_out
 from hearth.planner import Crew, Flags, Need, assign
 from hearth.population import generate, km, load_population
 from hearth.scenario import load
-from hearth.sim.policies import MOVE, MOVED, NA, OWN, RES, RESTORED, STATES, UNR, URG, WHY, decide_vec, hysteresis_vec
+from hearth.sim.policies import MOVE, MOVED, NA, OWN, RES, RESTORED, STATES, UNR, URG, WHY, allot_deliveries, decide_vec, hysteresis_vec
 from hearth.temperature import step_indoor, unsafe_temp
 from hearth.weather import hourly_weather
 
@@ -199,11 +199,15 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
                 ahead = slice(k + 1, k + 1 + int(horizon / dt))
                 hu[ix] = hours_to_unsafe(indoor_b[ix], temp_out[ahead], rh_out[ahead], heat_b[ix], cold_b[ix], sens[ix], dt) \
                     if temp_out[ahead].size else np.inf
-                org_ok = {o: stock[o] > 0 and (o in crew_orgs) for o in orgs}
-                any_ok = any(stock[o] > 0 for o in set(crew_orgs))
-                deliver = (device[ix] != "home_dialysis") & (np.array([org_ok[s] for s in supplier[ix]]) | (flags.mutual_aid and any_ok))
-                prop = decide_vec(device[ix], sens[ix], backup[ix], float(horizon), hu[ix] == 0, hu[ix] <= horizon,
-                                  deliver, np.ones(ix.size, bool), flags.allow_moves)
+                served = {o: stock[o] if o in crew_orgs else 0 for o in orgs}  # units a crew can still deliver
+                can = (device[ix] != "home_dialysis") & (np.array([served[s] > 0 for s in supplier[ix]]) | (flags.mutual_aid and sum(served.values()) > 0))
+                args = (device[ix], sens[ix], backup[ix], float(horizon), hu[ix] == 0, hu[ix] <= horizon)
+                # a delivery is feasible only for the patients a unit is left for (highest risk per hour left first);
+                # the rest are decided as if no delivery were possible, so they can be moved instead of waiting
+                wants = decide_vec(*args, can, np.ones(ix.size, bool), flags.allow_moves) == RES
+                deliver = allot_deliveries(wants, weight[ix] / np.maximum(backup[ix], 0.1), supplier[ix], served,
+                                           flags.mutual_aid, has_job[ix])
+                prop = decide_vec(*args, deliver, np.ones(ix.size, bool), flags.allow_moves)
                 new[ix], streak[ix] = hysteresis_vec(state[ix], prop, streak[ix])
             want = np.select([new == RES, new == MOVE, new == UNR], [0, 1, 2], -1)
             want[has_job] = -1

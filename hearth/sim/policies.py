@@ -28,3 +28,14 @@ def hysteresis_vec(prev, proposed, streak):
     pair = ((prev == RES) & (proposed == MOVE)) | ((prev == MOVE) & (proposed == RES))
     hold = pair & (streak + 1 < a("decision.hysteresis_ticks"))
     return np.where(hold, prev, proposed).astype(np.int8), np.where(hold, streak + 1, 0)
+
+
+def allot_deliveries(wants, priority, supplier, stock: dict, pooled: bool, holding) -> np.ndarray:
+    """A delivery is feasible for a patient only if a unit is left for them. Units go to the highest priority first,
+    per supplier (pooled across suppliers with mutual aid). A patient whose delivery is already on the way keeps it."""
+    out = wants & holding
+    groups = [(np.ones(len(wants), bool), sum(stock.values()))] if pooled else [(supplier == o, u) for o, u in stock.items()]
+    for member, units in groups:
+        idx = np.flatnonzero(wants & ~holding & member)
+        out[idx[np.argsort(-priority[idx], kind="stable")[: max(int(units), 0)]]] = True
+    return out
