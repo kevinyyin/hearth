@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ValidationError
 
 from api import live
-from hearth import dispatch, remote, store
+from hearth import dispatch, remote, staging, store
 from hearth.buildings import refuge, status, tools
 from hearth.messaging import registry
 from hearth.buildings.agent import survey
@@ -356,7 +356,7 @@ def _crew_view(crew_id: str) -> dict:
         here = dispatch.locate(patient, home)
         job = {"request": req, "patient": patient, "home": home, "address": here.address, "building_id": here.building_id,
                "km": round(tools._km((crew.lat, crew.lon), (here.lat, here.lon)), 1)}
-    return {"crew": crew, "job": job}
+    return {"crew": crew, "job": job, "staging": staging.chosen()}
 
 
 @app.get("/api/crews/{crew_id}/job")
@@ -440,6 +440,53 @@ class CallIn(BaseModel):
     patient_id: str | None = None
     kind: Literal["impact", "move_consent", "register"]
     phone: str | None = None  # register only: the browser phone stands in for this listed demo number (it has no caller ID)
+
+
+# ---- staging lots: a real parking lot for crews to gather at, proposed from CoStar and picked by the dispatcher ----
+def _staging_view() -> dict:
+    return {"chosen": staging.chosen(), "options": staging.options()}
+
+
+@app.get("/api/staging")
+def staging_board():
+    return _staging_view()
+
+
+class StagingChoice(BaseModel):
+    building_id: str | None  # None clears the choice
+
+
+@app.post("/api/staging")
+def choose_staging(body: StagingChoice):
+    if body.building_id is None:
+        staging.clear()
+    else:
+        try:
+            staging.choose(body.building_id)
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+    return {"chosen": staging.chosen()}
+
+
+@app.get("/api/buildings/{building_id}/lot-image")
+def lot_image(building_id: str):
+    rec = _building(building_id)
+    img = tools.vexcel_image(building_id, rec["lat"], rec["lon"], 150, "lot")
+    if img is None:
+        raise HTTPException(404, "no aerial image")
+    return FileResponse(img, media_type="image/png")
+
+
+@app.get("/api/buildings/{building_id}/lot-reading")
+def lot_reading(building_id: str):
+    rec = _building(building_id)
+    try:
+        note = tools.lot_reading(building_id, rec["lat"], rec["lon"])
+    except Exception:  # the reading is optional: a vision or Vexcel failure is "no reading", not a broken card
+        note = None
+    if note is None:
+        raise HTTPException(404, "no lot reading")
+    return note
 
 
 @app.post("/api/calls")

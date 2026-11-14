@@ -268,14 +268,14 @@ def vexcel_attributes(lat: float, lon: float) -> dict | None:
     return None
 
 
-def vexcel_image(building_id: str, lat: float, lon: float) -> Path | None:
-    """Top-down tile, 80 m across, saved once to data/buildings/<id>/vexcel.png."""
+def vexcel_image(building_id: str, lat: float, lon: float, buffer_m: int = 40, name: str = "vexcel") -> Path | None:
+    """Top-down tile, twice `buffer_m` across (80 m for a building, 300 m for its lot), saved once to data/buildings/<id>/<name>.png."""
     if _fixtures_on():
-        path = FIXTURES / _safe(building_id) / "vexcel.png"
+        path = FIXTURES / _safe(building_id) / f"{name}.png"
         return path if path.exists() else None
-    path = CACHE_ROOT / _safe(building_id) / "vexcel.png"
+    path = CACHE_ROOT / _safe(building_id) / f"{name}.png"
     if not path.exists():
-        r = _vexcel("POST", "/ortho/extract", json={"wkt": f"POINT({lon} {lat})", "srid": 4326, "layer": VEXCEL_LAYERS, "buffer-meter": 40,
+        r = _vexcel("POST", "/ortho/extract", json={"wkt": f"POINT({lon} {lat})", "srid": 4326, "layer": VEXCEL_LAYERS, "buffer-meter": buffer_m,
                                                     "crop": "bounding_box", "image-format": "png", "destination-dimensions": "800,800"})
         if r.status_code == 404:
             return None
@@ -313,6 +313,22 @@ def aerial_entrance(building_id: str, lat: float, lon: float) -> dict | None:
         img = vexcel_image(building_id, lat, lon)
         return parse_entrance(look(img, ENTRANCE_QUESTION)) if img else None
     return cached(building_id, "entrance", read)[0]
+
+
+LOT_QUESTION = (
+    "This top-down aerial image is 300 m across with north up, centred on one commercial building. Where is its open "
+    "surface parking, relative to the building, and from which side or street does a van drive in?")
+
+
+def lot_reading(building_id: str, lat: float, lon: float) -> dict | None:
+    """A vision model's line on where a staging lot's open parking is and how a van gets in, saved once."""
+    if _fixtures_on():
+        return None
+
+    def read():
+        img = vexcel_image(building_id, lat, lon, 150, "lot")
+        return {"note": look(img, LOT_QUESTION).strip()} if img else None
+    return cached(building_id, "lot", read)[0]
 
 
 # ---- Matterport: Model API (GraphQL, HTTP Basic token id:secret); model ids come from CoStar ----

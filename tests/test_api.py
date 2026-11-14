@@ -251,3 +251,24 @@ def test_calling_an_unlisted_building_is_refused(monkeypatch):
     r = client.post("/api/buildings/H-LEVEL/call")
     assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "building_check" and r.json()["conversation_id"] is None
     assert client.get("/api/buildings/H-LEVEL").json()["can_call"] is True
+
+
+def test_staging_options_choice_and_clear(monkeypatch):
+    from hearth import staging
+    opt = {"building_id": "B-SAMPLE", "name": "Lot", "address": "1 Lot St", "zip": "77027", "property_type": "retail",
+           "surface_spaces": 300, "lot_acres": 4.0, "km": 1.1}
+    monkeypatch.setattr(staging, "options", lambda: [opt])
+    monkeypatch.setattr(staging, "scene", lambda: None)
+    assert client.get("/api/staging").json() == {"chosen": None, "options": [opt]}
+    assert client.post("/api/staging", json={"building_id": "NOPE"}).status_code == 409
+    assert client.post("/api/staging", json={"building_id": "B-SAMPLE"}).json()["chosen"]["building_id"] == "B-SAMPLE"
+    assert client.get("/api/staging").json()["chosen"]["stale"] is False
+    assert client.get("/api/crews/c1/job").json()["staging"]["building_id"] == "B-SAMPLE"
+    assert client.post("/api/staging", json={"building_id": None}).json() == {"chosen": None}
+    assert client.get("/api/staging").json()["chosen"] is None
+
+
+def test_a_lot_without_a_tile_or_reading_is_404_not_an_error():
+    assert client.get("/api/buildings/B-SAMPLE/lot-image").status_code == 404  # fixtures hold no lot tile
+    assert client.get("/api/buildings/B-SAMPLE/lot-reading").status_code == 404  # fixtures ask no vision model
+    assert client.get("/api/buildings/NOPE/lot-image").status_code == 404
