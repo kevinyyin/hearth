@@ -48,6 +48,11 @@ function JobCard({ row }: { row: HomeRow }) {
         {home.backup_plan && <li>Backup plan: {home.backup_plan}</li>}
         {home.note && <li>Resident&apos;s note: {home.note}</li>}
       </ul>
+      {/* who is already there comes before how to get in */}
+      <Part title="At home with the resident">
+        {home.helpers.length > 0 ? <PeopleList people={home.helpers} />
+          : <p className="text-xs" style={{ color: "var(--text-muted)" }}>The resident listed no one at home.</p>}
+      </Part>
       <Part title="Outside">
         <AerialPins imagePath={`/api/buildings/${home.building_id}/image`} pins={home.outside} />
       </Part>

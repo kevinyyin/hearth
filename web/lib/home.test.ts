@@ -17,7 +17,7 @@ afterEach(() => {
 
 const home: Home = { patient_id: "demo-2", building_id: "23453", ok_without_h: 6, backup_plan: "", size: "microwave", size_cm: null,
   scan_id: "m1", note: "", outside: [{ kind: "park", x: 0.2, y: 0.2 }],
-  inside: [{ kind: "machine", position: { x: 1, y: 1, z: 1 }, normal: { x: 0, y: 1, z: 0 } }], contacts: [] };
+  inside: [{ kind: "machine", position: { x: 1, y: 1, z: 1 }, normal: { x: 0, y: 1, z: 0 } }], contacts: [], helpers: [] };
 
 it("turns a tap into a fraction of the image, clamped", () => {
   const rect = { left: 100, top: 50, width: 200, height: 120 };

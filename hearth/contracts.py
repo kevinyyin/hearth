@@ -198,6 +198,7 @@ class Home(BaseModel):
     outside: list[OutsidePin] = Field(default_factory=list, max_length=50)
     inside: list[InsidePin] = Field(default_factory=list, max_length=50)
     contacts: list[Person] = Field(default_factory=list, max_length=5)  # family or trusted people to reach as well; shown, never messaged
+    helpers: list[Person] = Field(default_factory=list, max_length=5)  # people who live there and can help before a crew arrives
 
     @model_validator(mode="after")
     def _consistent(self):
