@@ -273,3 +273,29 @@ the builder compares `p3`, `p3__paired` and `p3__alns` on seeds 1 to 3 at 20, 80
 - Names and file layout inside `hearth/planner.py` (split into a second module if it grows past easy reading).
 - Event wording returned by `/api/sim/day`, matching the page's existing lines.
 - Chart colours and the one-sentence copy for the new lines.
+
+## What changed while building (14 Nov)
+
+The design above is as approved. These are the places the build departed from it, and why.
+
+- **The route search does not help the county replay.** On seeds 1 to 3 the pairing alone cut risk-weighted hours by
+  8% at 20 crews, 30% at 80 and 53% at 320 against greedy. Pairing plus the route search was 0.5 to 2 points behind the
+  pairing alone in every cell, and a probe showed the gap grows with search effort. The window score (`J`) is a weaker
+  guide to the published metric than the pairing's value per crew-hour, so the further the search moves a crew from the
+  pairing's first job, the worse the result. Both lines are published as measured.
+- **So the pairing line leads.** The results page draws `p3__paired` by default and in the comparison card. `p3__alns`
+  is a toggle labelled "Hearth, pairing and route search", not "Hearth, optimized routes".
+- **The route search does help the simulation page's day**, which is the kind of problem it suits: 15 vans, rounds of up
+  to four stops, a few hundred visits. On the stand-in households the weighted wait is 453 against 556 for the page's
+  own greedy routes and 730 for one-stop pairing.
+- **Seven settings, not five.** `planner.alns_needs_per_free_crew` caps what the search sees in the replay (speed), and
+  `planner.day` gives the simulation page's small day a much larger search than the county replay can afford.
+- **Speed-tuned search in the replay**: 15 iterations, 3 nearest crews, 4 needs per free crew. These were set to fit
+  the time budget before the lines were compared, and were not changed afterwards.
+- **Cheaper search steps**: the first fill is one pass in urgency order rather than the globally best insertion each
+  time, and regret-2 orders the removed needs once. Both for speed.
+- **Stock**: when a supplier is paired with more deliveries than it has units, its least valuable crews deliver nothing
+  that step (all their delivery pairs are dropped before the second solve, not only the surplus pairs).
+- **`/api/sim/day` accepts any backup length** for `needsAt`: real patients have more than 48 hours, and a need after
+  the day ends is simply never dispatched.
+- **Modules**: `hearth/routing.py` (score, pairing, `routes`, `plan`) and `hearth/alns.py` (the search).
