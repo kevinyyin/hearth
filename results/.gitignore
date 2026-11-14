@@ -1,0 +1,3 @@
+# full-county runs are ~350 MB each; regenerate with: uv run python -m hearth.sim run --scenario beryl_2024 ...
+beryl_2024__*/
+case_*__*/

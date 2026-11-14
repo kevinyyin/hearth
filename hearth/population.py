@@ -51,14 +51,17 @@ def _homes(rng, rings: list[np.ndarray], n: int) -> np.ndarray:
 
 def _zip_table(sc: dict, rng) -> tuple[list[str], np.ndarray, np.ndarray, dict]:
     """(zips, patients per ZIP, oxygen per ZIP, ZIP -> polygon rings)."""
+    feats = json.loads(processed(f"zcta_{sc.get('zcta_from', sc['name'])}.geojson").read_text())["features"]
+    shapes = {f["properties"]["zip"]: _rings(f["geometry"]) for f in feats}
+    if "zips" in sc:  # synthetic scenarios list their ZIP counts
+        return [z["zip"] for z in sc["zips"]], np.array([z["total"] for z in sc["zips"]]), np.array([z["o2"] for z in sc["zips"]]), shapes
     month = sc["empower_month"]
     d = pd.read_csv(processed(f"empower_{sc['name']}.csv"), dtype=str)
     total = d[f"{month}_Power_Dependent_Devices_DME"].astype(int).to_numpy()
     o2 = d[f"{month}_O2_Services_Any_DME"].astype(int).to_numpy()
     total = np.where(total == MASKED, rng.integers(1, MASKED + 1, len(total)), total)
     o2 = np.minimum(np.where(o2 == MASKED, rng.integers(1, MASKED + 1, len(o2)), o2), total)
-    feats = json.loads(processed(f"zcta_{sc['name']}.geojson").read_text())["features"]
-    return d.Zip_Code.tolist(), total, o2, {f["properties"]["zip"]: _rings(f["geometry"]) for f in feats}
+    return d.Zip_Code.tolist(), total, o2, shapes
 
 
 def generate(scenario: str, seed: int) -> list[Patient]:
