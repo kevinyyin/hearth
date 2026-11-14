@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import CrewsChart from "@/components/CrewsChart";
-import { getJson } from "@/lib/api";
+import { API, getJson } from "@/lib/api";
 import type { SweepRow } from "@/lib/types";
 
 const ASSUMPTIONS = [
@@ -78,9 +78,11 @@ export default function ResultsPage() {
         </ul>
       </section>
 
-      <p className="mt-6 text-sm" style={{ color: "var(--text-muted)" }}>
-        A policy result on simulated patients. Every number traces to a command in the README.
-      </p>
+      {API && (
+        <p className="mt-6 text-sm" style={{ color: "var(--text-muted)" }}>
+          A policy result on simulated patients. Every number traces to a command in the README.
+        </p>
+      )}
     </div>
   );
 }
