@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CallTranscript from "@/components/sim/CallTranscript";
-import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
 import BuildingViews from "@/components/sim/BuildingViews";
 import RouteSim from "@/components/sim/RouteSim";
@@ -272,7 +271,7 @@ export default function SimulationPage() {
 
         {/* ---------- intro ---------- */}
         {stage === "intro" && (
-          <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
+          <div className="space-y-4">
             <section
               className="rounded-xl border p-8"
               style={{ background: "var(--surface-1)", borderColor: "var(--border)" }}
@@ -415,23 +414,20 @@ export default function SimulationPage() {
               </div>
             </section>
 
-            <div className="space-y-4">
-              <CoverageMap hour={0} />
-              <p
-                className="rounded-xl border px-4 py-3 text-xs leading-relaxed"
-                style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
-              >
-                Every call, transcript and record in this simulation is a fixed placeholder written
-                into the page. The real enrollment call, its wording and the resident record belong to
-                the registration lane, and this screen is built to have them dropped in.
-              </p>
-            </div>
+            <p
+              className="rounded-xl border px-4 py-3 text-xs leading-relaxed"
+              style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+            >
+              Every call, transcript and record in this simulation is a fixed placeholder written
+              into the page. The real enrollment call, its wording and the resident record belong to
+              the registration lane, and this screen is built to have them dropped in.
+            </p>
           </div>
         )}
 
         {/* ---------- stage 1 ---------- */}
         {(stage === "enrol" || stage === "enrolled") && (
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+          <div className={`grid gap-6 ${showTranscript ? "lg:grid-cols-[1.1fr_1fr]" : ""}`}>
             <Section side="Stage 1 · before the event" title="Enrolling the household">
               <div
                 className="mb-5 rounded-xl border p-5"
@@ -608,7 +604,7 @@ export default function SimulationPage() {
               )}
             </Section>
 
-            {showTranscript ? (
+            {showTranscript && (
               /* a fixed height, so the log scrolls inside itself instead of growing the page */
               <div className="h-[560px]">
                 <CallTranscript
@@ -619,8 +615,6 @@ export default function SimulationPage() {
                   onHide={() => setShowTranscript(false)}
                 />
               </div>
-            ) : (
-              <CoverageMap hour={0} />
             )}
           </div>
         )}
