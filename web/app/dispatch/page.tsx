@@ -11,6 +11,8 @@ const words = (s: string) => s.replace(/_/g, " ");
 const card = "space-y-2 rounded-lg border p-4";
 const cardStyle = { borderColor: "var(--border)", background: "var(--surface-1)" };
 const muted = { color: "var(--text-muted)" };
+const LIVE = ["waiting", "offered", "accepted", "at_door", "riding"];
+const HAS_CREW = ["offered", "accepted", "at_door", "riding", "dropped_off"];
 
 /** Help requests as a dispatcher sees them. Nothing here needs a click unless code could not place a request. */
 export default function DispatchPage() {
@@ -70,15 +72,23 @@ export default function DispatchPage() {
         <ol className="space-y-3">
           {queue.map(({ request: r, device, mobility }) => (
             <li key={r.patient_id} className="text-sm">
-              <p className="font-medium">
-                {r.patient_id} · {words(device)} · {words(mobility)} · <span style={{ color: "var(--text-secondary)" }}>{words(r.state)}</span>
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-medium">
+                  {r.patient_id} · {words(device)} · {words(mobility)} · <span style={{ color: "var(--text-secondary)" }}>{words(r.state)}</span>
+                </p>
+                {LIVE.includes(r.state) && (
+                  <button type="button" onClick={() => handled(r.patient_id)} className="shrink-0 text-xs underline underline-offset-2"
+                    style={{ color: "var(--text-secondary)" }}>
+                    Take over
+                  </button>
+                )}
+              </div>
               {r.ranked_by && (
                 <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
                   {r.ranked_by === "model" ? `Model: ${r.reason}` : "Ordered by the risk-per-hour rule (the model did not answer)"}
                 </p>
               )}
-              {r.job && r.refuge && <p className="text-xs" style={muted}>{r.job.org_id} → {r.refuge.name} (not booked, power not verified)</p>}
+              {r.job && r.refuge && HAS_CREW.includes(r.state) && <p className="text-xs" style={muted}>{r.job.org_id} → {r.refuge.name} (not booked, power not verified)</p>}
             </li>
           ))}
         </ol>

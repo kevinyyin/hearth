@@ -247,7 +247,8 @@ Field names and coverage are in `docs/toolkit-notes.md`.
   that passes the access rule and has a place left, and offers the job to the nearest free crew that fits (a power
   wheelchair needs a lift, a bedbound resident a stretcher, the device must fit the vehicle), preferring one that
   carries what the device leans on.
-- **The crew accepts.** An offer not answered in 90 seconds passes to the next crew and sets the first off duty.
+- **The crew accepts.** An offer not answered in 90 seconds passes to the next crew and sets the first off duty
+  until it says otherwise. A dispatcher can take over any open request, for example when a crew goes quiet.
   The resident's tracker is fixed lines chosen by state; the crew and arrival window appear only after Accept.
 - **A person only by exception.** No refuge passes, or no crew on duty can carry the resident: the request is
   listed under "needs a person". A request waiting for a busy crew is just queued.

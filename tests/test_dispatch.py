@@ -115,8 +115,6 @@ def test_refuge_capacity_and_access(monkeypatch):
     assert dispatch.board()[0].patient_id == "demo-2"  # what needs a person is listed first
     assert dispatch.mark_handled("demo-2").state == "handled"
     assert dispatch.board()[-1].patient_id == "demo-2"  # once a person has it, it drops below the live requests
-    with pytest.raises(ValueError):
-        dispatch.mark_handled("p4")
 
 
 def test_decline_goes_to_the_next_crew_then_to_a_person():
@@ -137,7 +135,9 @@ def test_an_unanswered_offer_times_out_and_sets_the_crew_off_duty(monkeypatch):
     monkeypatch.setattr(dispatch, "_now", lambda: real() + timedelta(seconds=91))
     dispatch.expire()
     got = dispatch.request("p4")
-    assert (got.state, got.declined_by, got.blocked) == ("waiting", ["A"], NO_CREW) and not dispatch.crew("A").on_duty
+    assert (got.state, got.declined_by, got.blocked) == ("waiting", [], NO_CREW) and not dispatch.crew("A").on_duty
+    crew("A")  # back on duty: missing one offer does not bar the crew from that resident
+    assert dispatch.request("p4").job.org_id == "A"
 
 
 def test_the_model_sets_the_order(monkeypatch):
@@ -249,3 +249,41 @@ def test_the_tracker_gives_no_crew_or_time_before_accept():
     assert [s["text"] for s in riding["steps"]][2:5] == ["Zulu accepted your ride.", "At your door", "On the way to Stoop Hotel (fixture)"]
     assert riding["window"] is None
     assert dispatch.tracker(dispatch.crew_action("Zulu", "dropped_off"))["steps"][5]["text"] == "Dropped off at Stoop Hotel (fixture)"
+
+
+def test_a_crew_action_must_name_the_resident_it_was_shown():
+    crew("A")
+    dispatch.open_request("p4")
+    with pytest.raises(ValueError):
+        dispatch.crew_action("A", "accept", "p2")  # a stale card: the crew was looking at someone else
+    assert dispatch.request("p4").state == "offered"
+    assert dispatch.crew_action("A", "accept", "p4").state == "accepted"
+
+
+def test_a_dispatcher_can_take_over_any_live_request():
+    crew("A")
+    dispatch.open_request("p4")
+    dispatch.crew_action("A", "accept")
+    dispatch.open_request("p2")
+    taken = dispatch.mark_handled("p4")  # the crew accepted and then went quiet
+    assert (taken.state, taken.job.status) == ("handled", "failed")
+    assert dispatch.request("p2").job.org_id == "A"  # the crew is free again
+    for ended in ("p4", "nobody"):
+        with pytest.raises(ValueError):
+            dispatch.mark_handled(ended)
+    dispatch.mark_safe("p3")
+    with pytest.raises(ValueError):
+        dispatch.mark_handled("p3")
+
+
+def test_the_model_is_asked_outside_the_lock(monkeypatch):
+    held = []
+    monkeypatch.setattr(dispatch, "_ask_model", lambda rows: held.append(dispatch._lock._is_owned()) or answer([r["patient_id"] for r in rows]))
+    crew("A")
+    assert dispatch.open_request("p4").state == "offered" and held == [False]  # a slow model call must not freeze every poll
+
+
+def test_a_bad_stored_profile_cannot_stop_dispatch():
+    store.put("profile", "junk", {"address": "no id"})
+    crew("A")
+    assert dispatch.open_request("p4").state == "offered"

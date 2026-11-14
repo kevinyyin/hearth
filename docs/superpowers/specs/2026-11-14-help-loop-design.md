@@ -116,8 +116,10 @@ its setup or going on duty. Under a lock in the process. For each waiting reques
    position to the resident's building; the window is ETA to ETA + `dispatch.eta_window_min`, recomputed at
    Accept.
 
-An offer not answered within `dispatch.offer_timeout_s` counts as a decline and sets that crew off duty; this is
-checked whenever the tracker, the crew's job or the dispatch page is read.
+An offer not answered within `dispatch.offer_timeout_s` goes back in the queue and sets that crew off duty; this is
+checked whenever the tracker, the crew's job or the dispatch page is read. Unlike a decline, a missed offer does not
+bar the crew from that resident once it is back on duty (changed after review: one missed offer in a background tab
+left a single-crew demo stuck).
 
 ### API
 
@@ -128,9 +130,9 @@ checked whenever the tracker, the crew's job or the dispatch page is read.
 | `POST /api/patients/{id}/safe` | Record safe: closes a `waiting`, `offered`, `accepted` or `at_door` request and frees its crew; with no request, or one already `safe` or `handled`, stores a `safe` record. 409 from `riding` on, so a drop-off record (which holds the refuge place) is never overwritten by it |
 | `GET`, `PUT /api/crews/{crew}` | Crew setup |
 | `GET /api/crews/{crew}/job` | The crew's current offer or job: request, patient, home markup (may be none), address, refuge |
-| `POST /api/crews/{crew}/job` | `accept`, `decline`, `arrived`, `picked_up`, `dropped_off`; refused out of order |
+| `POST /api/crews/{crew}/job` | `accept`, `decline`, `arrived`, `picked_up`, `dropped_off`, naming the resident on the card; refused out of order or for another resident |
 | `GET /api/dispatch` | Every request in order with reasons, and every crew |
-| `POST /api/dispatch/{id}/handled` | A dispatcher closes a blocked request as taken over by a person |
+| `POST /api/dispatch/{id}/handled` | A dispatcher takes over any live request: a blocked one, or one whose crew went quiet (widened after review; an accepted job otherwise had no exit) |
 
 The tracker's lines live in one Python module and are chosen by state. The accepted line is the existing
 `move_confirmed_ride` template, used only when `templates.allowed` says so for an accepted job.

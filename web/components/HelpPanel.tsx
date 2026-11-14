@@ -13,14 +13,17 @@ export default function HelpPanel({ patientId }: { patientId: string }) {
   const path = `/api/patients/${patientId}/help`;
   const { data, error, refresh } = usePoll<Tracker>(path);
   const [failed, setFailed] = useState<string | null>(null);
+  const [sending, setSending] = useState(false); // ordering the queue takes a few seconds: no second press meanwhile
 
   async function send(what: "help" | "safe") {
+    setSending(true);
     try {
       await sendJson<Tracker>("POST", `/api/patients/${patientId}/${what}`);
       setFailed(null);
     } catch (e) {
       setFailed(e instanceof Error ? e.message : String(e));
     }
+    setSending(false);
     refresh();
   }
 
@@ -32,12 +35,13 @@ export default function HelpPanel({ patientId }: { patientId: string }) {
     <section className="space-y-3 rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
       <div className="flex flex-wrap items-center gap-2">
         {!live && (
-          <button type="button" onClick={() => send("help")} className="rounded px-4 py-2 text-sm font-semibold text-white" style={{ background: "#d03b3b" }}>
-            I need help
+          <button type="button" disabled={sending} onClick={() => send("help")} className="rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            style={{ background: "#d03b3b" }}>
+            {sending ? "Sending…" : "I need help"}
           </button>
         )}
         {!withCrew && (
-          <button type="button" onClick={() => send("safe")} className="rounded border px-4 py-2 text-sm font-medium"
+          <button type="button" disabled={sending} onClick={() => send("safe")} className="rounded border px-4 py-2 text-sm font-medium disabled:opacity-60"
             style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}>
             {live ? "I'm safe, cancel" : "I'm safe"}
           </button>

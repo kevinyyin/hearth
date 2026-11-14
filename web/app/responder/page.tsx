@@ -16,8 +16,8 @@ import { usePoll } from "@/lib/usePoll";
 const words = (s: string) => s.replace(/_/g, " ");
 const card = "space-y-4 rounded-lg border p-4";
 const cardStyle = { borderColor: "var(--border)", background: "var(--surface-1)" };
-const green = "rounded px-4 py-2 text-sm font-medium text-white";
-const plain = "rounded border px-4 py-2 text-sm font-medium";
+const green = "rounded px-4 py-2 text-sm font-medium text-white disabled:opacity-60";
+const plain = "rounded border px-4 py-2 text-sm font-medium disabled:opacity-60";
 
 function Part({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -102,6 +102,7 @@ export default function ResponderPage() {
   const [crewId, setCrewId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const persona = getPersona();
@@ -115,18 +116,21 @@ export default function ResponderPage() {
   if (!API) return <p className="mx-auto max-w-md px-6 py-10 text-sm">This page needs the Hearth API.</p>;
 
   async function send(method: "PUT" | "POST", path: string, body: unknown) {
+    setSending(true);
     try {
       await sendJson(method, path, body);
       setFailed(null);
     } catch (e) {
       setFailed(e instanceof Error ? e.message : String(e));
     }
+    setSending(false);
     refresh();
   }
 
   const crew = data?.crew ?? null;
   const job = data?.job ?? null;
-  const act = (action: string) => send("POST", `${base}/job`, { action });
+  // the press names the resident on the card, so a press on a card that has gone stale is refused, not applied to the next job
+  const act = (action: string) => send("POST", `${base}/job`, { action, patient_id: job?.request.patient_id });
   const next = job ? NEXT_ACTION[job.request.state] : undefined;
 
   return (
@@ -180,8 +184,8 @@ export default function ResponderPage() {
           </ul>
           {job.request.refuge && <Refuge refuge={job.request.refuge} />}
           <div className="flex gap-2">
-            <button type="button" className={green} style={{ background: "#1b7f4d" }} onClick={() => act("accept")}>Accept</button>
-            <button type="button" className={plain} style={{ borderColor: "var(--border)" }} onClick={() => act("decline")}>Decline</button>
+            <button type="button" disabled={sending} className={green} style={{ background: "#1b7f4d" }} onClick={() => act("accept")}>Accept</button>
+            <button type="button" disabled={sending} className={plain} style={{ borderColor: "var(--border)" }} onClick={() => act("decline")}>Decline</button>
           </div>
         </article>
       )}
@@ -190,7 +194,7 @@ export default function ResponderPage() {
         <>
           <section className={card} style={cardStyle}>
             {job.request.refuge && <Refuge refuge={job.request.refuge} />}
-            {next && <button type="button" className={green} style={{ background: "#1b7f4d" }} onClick={() => act(next.action)}>{next.label}</button>}
+            {next && <button type="button" disabled={sending} className={green} style={{ background: "#1b7f4d" }} onClick={() => act(next.action)}>{next.label}</button>}
           </section>
           <JobCard key={job.patient.patient_id} patient={job.patient} home={job.home} address={job.address} buildingId={job.building_id} />
         </>

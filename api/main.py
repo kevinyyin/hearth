@@ -259,7 +259,8 @@ def _tracker(patient_id: str) -> dict:
 
 @app.get("/api/patients/{patient_id}/help")
 def help_status(patient_id: str):
-    _patient(patient_id)
+    if dispatch.person(patient_id) is None:  # polled every few seconds: look the record up (and store it) only once
+        _patient(patient_id)
     dispatch.expire()
     return _tracker(patient_id)
 
@@ -318,12 +319,13 @@ def crew_job(crew_id: str = CrewName):
 
 class JobAction(BaseModel):
     action: dispatch.Action
+    patient_id: str  # the resident on the card the crew pressed the button on
 
 
 @app.post("/api/crews/{crew_id}/job")
 def crew_action(body: JobAction, crew_id: str = CrewName):
     try:
-        dispatch.crew_action(crew_id, body.action)
+        dispatch.crew_action(crew_id, body.action, body.patient_id)
     except ValueError as e:
         raise HTTPException(409, str(e))
     return _crew_view(crew_id)

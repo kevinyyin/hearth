@@ -141,17 +141,17 @@ def _ask_model(rows: list[dict]) -> str:
     return next(b.text for b in r.content if b.type == "text")  # 5.5 models may open with a thinking block
 
 
-def _order(waiting: list[HelpRequest]) -> None:
-    """Rank the waiting requests 1..n. The model's order counts only if it is exactly the ids it was sent; anything
-    else falls back to the planner's own key, risk weight over hours left."""
-    by_id, rows, rule = {}, [], {}
+def _rank(waiting: list[HelpRequest]) -> list[tuple[str, str, str]]:
+    """The waiting requests in the order to serve them, as (patient id, reason, "model" or "rule"). The model's order
+    counts only if it is exactly the ids it was sent; anything else falls back to the planner's own key, risk weight
+    over hours left. Takes no lock: the model call can be slow."""
+    rows, rule = [], {}
     for r in waiting:
         if (who := person(r.patient_id)) is None:
             continue
         patient, home = who
         hours = home.ok_without_h if home else patient.backup_hours_on_hand
         since = r.times.get("waiting", _now())
-        by_id[r.patient_id] = r
         rule[r.patient_id] = (-patient.risk_weight / max(hours, 0.1), since, r.patient_id)
         rows.append({"patient_id": r.patient_id, "device": patient.device, "device_detail": patient.device_detail,
                      "mobility": patient.mobility, "temp_sensitive": patient.temp_sensitive, "backup_hours_on_record": patient.backup_hours_on_hand,
@@ -159,19 +159,15 @@ def _order(waiting: list[HelpRequest]) -> None:
                      "backup_plan": home.backup_plan if home else "", "note": home.note if home else "",
                      "minutes_waiting": int((_now() - since).total_seconds() // 60)})
     if not rows:
-        return
+        return []
     try:
         answer = json.loads(_ask_model(rows))["order"]
-        if sorted(o["patient_id"] for o in answer) != sorted(by_id):
+        if sorted(o["patient_id"] for o in answer) != sorted(rule):
             raise ValueError("the order is not the ids that were sent")
-        ranked = [(o["patient_id"], str(o["reason"])[:140], "model") for o in answer]
+        return [(o["patient_id"], str(o["reason"])[:140], "model") for o in answer]
     except Exception as e:  # timeout, API error, bad JSON, a missing or invented id: all end the same way
         log.warning("dispatch ordering fell back to the rule: %r", e)
-        ranked = [(pid, "", "rule") for pid in sorted(rule, key=rule.get)]
-    for rank, (pid, reason, by) in enumerate(ranked, 1):
-        r = by_id[pid]
-        r.rank, r.reason, r.ranked_by = rank, reason, by
-        _save(r)
+        return [(pid, "", "rule") for pid in sorted(rule, key=rule.get)]
 
 
 # ---- placement: code ----
@@ -221,9 +217,11 @@ def _enter(r: HelpRequest, state: str) -> None:
     r.times[state] = _now()
 
 
-def _release(r: HelpRequest, crew_id: str) -> None:
-    """The crew declined or did not answer: the request goes back in the queue, and that crew is not asked again."""
-    r.declined_by.append(crew_id)
+def _release(r: HelpRequest, crew_id: str, declined: bool = True) -> None:
+    """The offer is over and the request goes back in the queue. A crew that declined is not asked again; one that
+    only missed the offer (and was set off duty for it) may be, once it is back on duty."""
+    if declined:
+        r.declined_by.append(crew_id)
     r.state, r.job, r.refuge = "waiting", None, None
     r.times.pop("offered", None)
 
@@ -240,7 +238,7 @@ def run() -> None:
         taken = Counter(r.refuge.building_id for r in reqs if r.state in HOLDS_PLACE and r.refuge)
         busy = {r.job.org_id for r in reqs if r.state in WITH_CREW and r.job}
         on_duty = {c.crew_id: c for c in crews() if c.on_duty}
-        profiles = {p["building_id"]: p for p in store.all("profile")}
+        profiles = {p["building_id"]: p for p in store.all("profile") if "building_id" in p}
         for r in waiting:
             if r.patient_id not in people:
                 continue
@@ -277,7 +275,13 @@ def open_request(patient_id: str) -> HelpRequest:
         r = HelpRequest(patient_id=patient_id)
         _enter(r, "waiting")
         _save(r)
-        _order([x for x in requests() if x.state == "waiting"])
+        waiting = [x for x in requests() if x.state == "waiting"]
+    ranked = _rank(waiting)  # outside the lock: a slow model answer must not hold up every crew and tracker
+    with _lock:
+        for rank, (pid, reason, by) in enumerate(ranked, 1):
+            if (r := request(pid)) and r.state == "waiting":
+                r.rank, r.reason, r.ranked_by = rank, reason, by
+                _save(r)
         run()
         return request(patient_id)
 
@@ -298,11 +302,12 @@ def mark_safe(patient_id: str) -> HelpRequest:
         return r
 
 
-def crew_action(crew_id: str, action: Action) -> HelpRequest:
+def crew_action(crew_id: str, action: Action, patient_id: str | None = None) -> HelpRequest:
+    """`patient_id` is the resident on the card the crew pressed the button on; a press on a stale card is refused."""
     with _lock:
         r, (needs, then) = crew_job(crew_id), STEP[action]
-        if r is None or r.state != needs:
-            raise ValueError(f"this crew has no job to {action.replace('_', ' ')}")
+        if r is None or r.state != needs or patient_id not in (None, r.patient_id):
+            raise ValueError(f"this crew has no such job to {action.replace('_', ' ')}")
         c = crew(crew_id)
         if action == "decline":
             _release(r, crew_id)
@@ -328,19 +333,23 @@ def expire() -> None:
         for r in stale:
             if c := crew(r.job.org_id):
                 store.put("crew", c.crew_id, c.model_copy(update={"on_duty": False}))
-            _release(r, r.job.org_id)
+            _release(r, r.job.org_id, declined=False)
             _save(r)
         if stale:
             run()
 
 
 def mark_handled(patient_id: str) -> HelpRequest:
+    """A dispatcher takes a live request over: one code could not place, or one whose crew went quiet."""
     with _lock:
         r = request(patient_id)
-        if r is None or r.state != "waiting" or not r.blocked:
-            raise ValueError("only a request that needs a person can be marked handled")
+        if r is None or r.state not in LIVE:
+            raise ValueError("there is no open request to take over")
+        if r.job:
+            r.job = r.job.model_copy(update={"status": "failed"})
         _enter(r, "handled")
         _save(r)
+        run()  # its crew, if it had one, is free again
         return r
 
 
