@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CallTranscript from "@/components/sim/CallTranscript";
 import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
+import BuildingViews from "@/components/sim/BuildingViews";
 import FloorPlan from "@/components/sim/FloorPlan";
 import FullRun from "@/components/sim/FullRun";
 import { useResidentFeed } from "@/lib/simSource";
@@ -812,11 +813,11 @@ export default function SimulationPage() {
                     className="mt-5 rounded-xl border p-5"
                     style={{ borderColor: "var(--border)", background: "var(--surface-0)" }}
                   >
-                    <h3 className="mb-1 text-sm font-semibold">Recommended path</h3>
-                    <p className="mb-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                      Planned across the floor layout, around what the resident reported.
-                    </p>
-                    <FloorPlan showEntrance showMachine showBlocked showPath />
+                    <BuildingViews
+                      buildingId={residentFeed.buildingId ?? "B-SAMPLE"}
+                      outside={residentFeed.outside}
+                      inside={residentFeed.inside}
+                    />
 
                     <ul className="mt-4 space-y-2.5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
                       {resident.pins.map((pin) => (

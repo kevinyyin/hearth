@@ -133,11 +133,16 @@ export type ResidentFeed = {
   resident: SimResident;
   source: SourceKind;
   detail: string;
+  /** For the real building views: the id, and the resident's own markup as saved. */
+  buildingId: string | null;
+  outside: import("@/lib/types").OutsidePin[];
+  inside: import("@/lib/types").InsidePin[];
 };
 
 type DemoPatient = { patient_id: string; device?: string; building_id?: string | null };
 type HomeDoc = {
-  outside?: { kind: "park" | "entrance" | "blocked" | "route"; note?: string }[];
+  outside?: import("@/lib/types").OutsidePin[];
+  inside?: import("@/lib/types").InsidePin[];
 };
 type BuildingRec = {
   numStoriesAboveGrade?: number;
@@ -148,6 +153,9 @@ const FIXTURE_RESIDENT: ResidentFeed = {
   resident: RESIDENT,
   source: "fixture",
   detail: "Placeholder record — no API configured",
+  buildingId: null,
+  outside: [],
+  inside: [],
 };
 
 /**
@@ -179,9 +187,9 @@ export async function loadResident(signal: AbortSignal): Promise<ResidentFeed> {
     }
   }
 
-  const pins = (home?.outside ?? [])
-    .filter((o) => o.note)
-    .map((o) => ({ kind: o.kind, note: o.note as string }));
+  // the crew-facing notes are the placeholder's; the pins themselves are the
+  // resident's own, and go straight onto the aerial tile
+  const pins = RESIDENT.pins;
 
   return {
     resident: {
@@ -195,6 +203,9 @@ export async function loadResident(signal: AbortSignal): Promise<ResidentFeed> {
     },
     source: "api",
     detail: `Patient ${p.patient_id}${p.building_id ? `, building ${p.building_id}` : ""}`,
+    buildingId: p.building_id ?? null,
+    outside: home?.outside ?? [],
+    inside: home?.inside ?? [],
   };
 }
 
@@ -259,7 +270,17 @@ function useFeed<T>(path: string | null, describe: (d: T) => string): Feed<T> {
 
 export type ReplayRun = { run_id: string; scenario?: string; policy?: string; crews?: number };
 export type ReplayMeta = { ticks: string[]; center: [number, number] };
-export type BuildingBrief = { building_id: string; name: string | null };
+export type BuildingBrief = {
+  building_id: string;
+  name: string | null;
+  address?: string;
+  /** Vexcel's top-down tile, served by the API behind the password. */
+  image_url?: string;
+  /** Matterport models CoStar lists for this building. Empty with fixtures. */
+  scan_ids?: string[];
+  scan_sdk_key?: string | null;
+  embed_url?: string | null;
+};
 
 /** The replays the API, or the dev fixtures, can serve. */
 export function useRunsFeed(): Feed<ReplayRun[]> {
