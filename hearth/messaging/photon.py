@@ -7,6 +7,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import re
 import sys
@@ -22,6 +23,7 @@ from hearth.messaging.templates import allowed, render
 from hearth.messaging.voice import confirmed_facts, phone_of
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 API = "https://api.photon.codes/v1/projects/"
 
 
@@ -43,6 +45,34 @@ def send_text(patient_id: str, key: str, **vars) -> str:
     finally:
         store.put("message", msg_id, doc)
     return msg_id
+
+
+def text_tracker(patient_id: str) -> list[str]:
+    """Each tracker line this request has not yet texted, once, in order, as "Hearth: <line>". The lines are the help
+    loop's fixed ones, so nothing names a crew or a time before the crew has accepted. Returns the ids of texts sent; a
+    failed send is stored as failed and tried again at the next change, and never raises."""
+    from hearth import dispatch  # late: dispatch calls this after each change of help state
+
+    r, phone = dispatch.request(patient_id), phone_of(patient_id)
+    if r is None or not phone:
+        return []
+    request_at = min(r.times.values()).isoformat() if r.times else ""
+    sent = {m["body"] for m in store.all("message")
+            if m.get("key") == "tracker" and m.get("patient_id") == patient_id and m.get("request_at") == request_at and m.get("status") == "sent"}
+    ids = []
+    for line in dispatch.tracker_lines(r):
+        if (body := f"Hearth: {line}") in sent:
+            continue
+        msg_id = f"M-{uuid.uuid4().hex[:8]}"
+        doc = {"message_id": msg_id, "patient_id": patient_id, "key": "tracker", "request_at": request_at, "body": body, "status": "failed", "t": time.time()}
+        try:
+            doc["photon_id"], doc["status"] = _send(phone, body), "sent"
+            ids.append(msg_id)
+        except Exception as e:  # a text is a courtesy: the help loop goes on without it
+            doc["error"] = f"{type(e).__name__}: {e}"
+            log.warning("tracker text for %s failed: %s", patient_id, doc["error"])
+        store.put("message", msg_id, doc)
+    return ids
 
 
 def after_call(call_id: str) -> str | None:

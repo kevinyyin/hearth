@@ -268,6 +268,17 @@ def run() -> None:
             _save(r)
 
 
+def _notify() -> None:
+    """Texts each phone resident the tracker lines they have not had yet. Outside the lock: a text is a network call."""
+    from hearth.messaging.photon import text_tracker  # late: photon -> voice -> scripts -> register -> dispatch
+
+    for r in requests():
+        try:
+            text_tracker(r.patient_id)
+        except Exception:  # a text never blocks the help loop
+            log.exception("tracker texts for %s failed", r.patient_id)
+
+
 # ---- what residents, crews and dispatchers do ----
 def open_request(patient_id: str) -> HelpRequest:
     with _lock:
@@ -284,7 +295,9 @@ def open_request(patient_id: str) -> HelpRequest:
                 r.rank, r.reason, r.ranked_by = rank, reason, by
                 _save(r)
         run()
-        return request(patient_id)
+        out = request(patient_id)
+    _notify()
+    return out
 
 
 def mark_safe(patient_id: str) -> HelpRequest:
@@ -300,7 +313,8 @@ def mark_safe(patient_id: str) -> HelpRequest:
         _enter(r, "safe")
         _save(r)
         run()  # the crew, if there was one, is free again
-        return r
+    _notify()
+    return r
 
 
 def crew_action(crew_id: str, action: Action, patient_id: str | None = None) -> HelpRequest:
@@ -323,7 +337,9 @@ def crew_action(crew_id: str, action: Action, patient_id: str | None = None) -> 
         _save(r)
         if action in ("decline", "dropped_off"):
             run()
-        return request(r.patient_id)
+        out = request(r.patient_id)
+    _notify()
+    return out
 
 
 def expire() -> None:
@@ -338,6 +354,8 @@ def expire() -> None:
             _save(r)
         if stale:
             run()
+    if stale:
+        _notify()
 
 
 def mark_handled(patient_id: str) -> HelpRequest:
@@ -351,7 +369,8 @@ def mark_handled(patient_id: str) -> HelpRequest:
         _enter(r, "handled")
         _save(r)
         run()  # its crew, if it had one, is free again
-        return r
+    _notify()
+    return r
 
 
 def save_crew(crew_id: str, base_building_id: str, vehicle: str, equipment: list[str], on_duty: bool) -> Responder:
@@ -365,7 +384,8 @@ def save_crew(crew_id: str, base_building_id: str, vehicle: str, equipment: list
         c = Responder(crew_id=crew_id, base_building_id=base_building_id, lat=lat, lon=lon, vehicle=vehicle, equipment=equipment, on_duty=on_duty)
         store.put("crew", crew_id, c)
         run()
-        return c
+    _notify()
+    return c
 
 
 # ---- the resident's tracker: fixed lines chosen by state ----

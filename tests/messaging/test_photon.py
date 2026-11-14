@@ -83,3 +83,53 @@ def test_the_follow_up_lists_a_confirmed_address_and_floor():
     from hearth.messaging.photon import _facts_text
     said = _facts_text({"backup_hours": 4.0, "address": "1200 Fixture St, Houston, TX 77002", "floor": 3}, {})
     assert said == "4 hours of backup, your address 1200 Fixture St, Houston, TX 77002 and floor 3"
+
+
+def help_world(monkeypatch):
+    """The help loop's fixture world (tests/test_dispatch.py), with p4 reachable by text."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parents[1] / "buildings"))
+    from bhelpers import profile
+    from hearth import dispatch
+    from hearth.config import ROOT
+    from hearth.contracts import Patient
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    for r in json.loads((ROOT / "data/demo/patients.json").read_text()):
+        store.put("patient", r["patient_id"], Patient(**r))
+    store.put("profile", "H-STEPS", profile("H-STEPS", floors=3))
+    monkeypatch.setattr(dispatch, "_ask_model", lambda rows: json.dumps({"order": [{"patient_id": r["patient_id"], "reason": "x"} for r in rows]}))
+    store.put("contact", "p4", {"patient_id": "p4", "phone": "+15550100004"})
+    dispatch.save_crew("A", "B-NOSCAN", "car", [], True)
+    return dispatch
+
+
+def test_each_tracker_line_is_texted_once(sent, monkeypatch):
+    dispatch = help_world(monkeypatch)
+    dispatch.open_request("p4")
+    assert [t for p, t in sent if p == "+15550100004"] == ["Hearth: Request received", "Hearth: A crew has been asked"]
+    dispatch.expire()
+    dispatch.save_crew("A", "B-NOSCAN", "car", [], True)  # a change elsewhere: nothing new for p4
+    assert len([1 for p, _ in sent if p == "+15550100004"]) == 2
+    dispatch.crew_action("A", "accept")
+    new = [t for p, t in sent if p == "+15550100004"][2:]
+    assert len(new) == 1 and "has accepted your ride" in new[0] and " between " in new[0]
+
+
+def test_no_crew_or_time_is_texted_before_accept(sent, monkeypatch):
+    dispatch = help_world(monkeypatch)
+    dispatch.open_request("p4")
+    assert not any("accepted" in t or "arrive" in t for _, t in sent)
+
+
+def test_no_phone_sends_nothing(sent, monkeypatch):
+    dispatch = help_world(monkeypatch)
+    assert dispatch.open_request("p2").state in ("waiting", "offered") and sent == []
+
+
+def test_a_failed_text_does_not_stop_the_help_loop(sent, monkeypatch):
+    dispatch = help_world(monkeypatch)
+    monkeypatch.setattr(photon, "_send", lambda phone, text: (_ for _ in ()).throw(LookupError("no iMessage assignment")))
+    dispatch.open_request("p4")
+    assert dispatch.crew_action("A", "accept").state == "accepted"
+    assert {m["status"] for m in store.all("message") if m["key"] == "tracker"} == {"failed"}
