@@ -95,7 +95,8 @@ def _building(building_id: str) -> dict:
 
 
 def _patient(patient_id: str) -> Patient:
-    """Demo patients first, then lane S's patients file. Stored as a "patient" doc so the voice lane can read it."""
+    """Demo patients first, then lane S's patients file, then the store (phone registrants live only there). Stored as a
+    "patient" doc so the voice lane can read it."""
     found = None
     if DEMO_PATIENTS.exists():
         found = next((Patient(**r) for r in json.loads(DEMO_PATIENTS.read_text()) if r["patient_id"] == patient_id), None)
@@ -108,6 +109,8 @@ def _patient(patient_id: str) -> Patient:
             found = Patient(**json.loads(hit.iloc[[0]].to_json(orient="records"))[0])
     elif found is None and (copy := remote.fetch(PATIENTS_JSON)):  # hosted: a JSON copy
         found = next((Patient(**r) for r in json.loads(copy.read_text()) if r["patient_id"] == patient_id), None)
+    if found is None and (stored := dispatch._valid(Patient, store.get("patient", patient_id))):
+        return stored  # a phone registrant: already stored by the registration call
     if found is None:
         raise HTTPException(404, "no such patient")
     store.put("patient", patient_id, found)
@@ -248,6 +251,14 @@ def homes():
         except HTTPException:  # the patient or building is gone: not a job a responder can take
             continue
     return out
+
+
+@app.get("/api/registrations")
+def registrations():
+    """Phone registrations, newest first, and registration calls that ended before anyone was registered."""
+    from hearth.messaging import registry
+
+    return registry.registrations()
 
 
 # ---- help loop: a resident asks, a model orders, code offers the job to a crew with a refuge as the drop-off ----
@@ -391,12 +402,21 @@ def decision(proposal_id: str, body: Decision):
 
 
 class CallIn(BaseModel):
-    patient_id: str
-    kind: Literal["impact", "move_consent"]
+    patient_id: str | None = None
+    kind: Literal["impact", "move_consent", "register"]
+    phone: str | None = None  # register only: the browser phone stands in for this listed demo number (it has no caller ID)
 
 
 @app.post("/api/calls")
 def calls(body: CallIn):
+    if body.kind == "register":
+        from hearth.messaging import registry
+
+        if body.phone not in registry.demo_callers():  # strangers' details never reach the store
+            raise HTTPException(403, "only a number on the demo caller list can register")
+        return {"call_id": live.start_call(None, "register", phone=body.phone)}
+    if not body.patient_id:
+        raise HTTPException(422, "a patient id is needed")
     proposal_id = None
     if body.kind == "move_consent":
         approved = [p for p in store.all("proposal") if p["patient_id"] == body.patient_id and p["status"] == "approved"]

@@ -208,6 +208,12 @@ export type Person = { name: string; relation: string; phone: string; note: stri
 
 export type HomeRow = { home: Home; patient: Patient; address: string };
 
+/** Phone registrations, newest first, and registration calls that ended before anyone was registered. */
+export type Registrations = {
+  registered: { patient: Patient; home: Home; address: string | null; call_id: string | null; call_status: string | null }[];
+  needs_person: { call_id: string; phone: string | null; facts: Record<string, unknown>; status: string; started_at: number | null }[];
+};
+
 export type Vehicle = "car" | "van" | "wheelchair_van" | "ambulance";
 export type Equipment = "oxygen" | "power" | "wheelchair_lift" | "stretcher";
 export type HelpState = "waiting" | "offered" | "accepted" | "at_door" | "riding" | "dropped_off" | "safe" | "handled";
