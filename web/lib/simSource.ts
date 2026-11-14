@@ -137,12 +137,18 @@ export type ResidentFeed = {
   detail: string;
   /** For the real building views: the id, and the resident's own markup as saved. */
   buildingId: string | null;
+  /** The scan the resident picked, which is the one to open. */
+  scanId: string | null;
   outside: import("@/lib/types").OutsidePin[];
   inside: import("@/lib/types").InsidePin[];
 };
 
 type DemoPatient = { patient_id: string; device?: string; building_id?: string | null };
 type HomeDoc = {
+  /** The building the resident actually chose. demo-patients often has none. */
+  building_id?: string | null;
+  /** The scan the resident said is laid out like their home. */
+  scan_id?: string | null;
   outside?: import("@/lib/types").OutsidePin[];
   inside?: import("@/lib/types").InsidePin[];
 };
@@ -155,7 +161,9 @@ const FIXTURE_RESIDENT: ResidentFeed = {
   resident: RESIDENT,
   source: "fixture",
   detail: "Placeholder record — no API configured",
-  buildingId: null,
+  // the dev fixture under public/dev/api/buildings, so the panels draw something
+  buildingId: "B-SAMPLE",
+  scanId: null,
   outside: [],
   inside: [],
 };
@@ -180,12 +188,17 @@ export async function loadResident(signal: AbortSignal): Promise<ResidentFeed> {
   let elevator = RESIDENT.elevator;
   let buildingLabel = RESIDENT.buildingLabel;
 
-  if (p.building_id) {
-    const b = await get<BuildingRec>(`/api/buildings/${p.building_id}`, signal).catch(() => null);
+  // The home doc is the authority: demo-patients usually carries no building,
+  // because the resident picks one on their own screen. This is how /resident
+  // finds a scan, and reading it anywhere else was why these panels came up empty.
+  const buildingId = home?.building_id ?? p.building_id ?? null;
+
+  if (buildingId) {
+    const b = await get<BuildingRec>(`/api/buildings/${buildingId}`, signal).catch(() => null);
     if (b) {
       floor = b.numStoriesAboveGrade ?? floor;
       elevator = b.propertyApartment?.isWalkup === true ? false : elevator;
-      buildingLabel = `CoStar ${p.building_id}`;
+      buildingLabel = `CoStar ${buildingId}`;
     }
   }
 
@@ -205,7 +218,8 @@ export async function loadResident(signal: AbortSignal): Promise<ResidentFeed> {
     },
     source: "api",
     detail: `Patient ${p.patient_id}${p.building_id ? `, building ${p.building_id}` : ""}`,
-    buildingId: p.building_id ?? null,
+    buildingId,
+    scanId: home?.scan_id ?? null,
     outside: home?.outside ?? [],
     inside: home?.inside ?? [],
   };
