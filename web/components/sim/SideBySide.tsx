@@ -1,7 +1,7 @@
 "use client";
 
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import HouseholdMap from "@/components/sim/HouseholdMap";
 import { SpeedControl, useRunClock } from "@/components/sim/RunClock";
 import SourceBadge from "@/components/sim/SourceBadge";
@@ -15,9 +15,17 @@ import {
   type CountySim,
   type HouseholdState,
   type SideKey,
+  type SimEvent,
 } from "@/lib/simulation";
 
 const STEP_MS = 1100;
+
+const DOT: Record<SimEvent["kind"], string> = {
+  call: "#2a78d6",
+  dispatch: "#a8441a",
+  arrive: "#0e7a54",
+  restock: "#2a6fd6",
+};
 
 const SWATCH: Record<HouseholdState, { fill: string; ring: boolean }> = {
   reached: { fill: "#0e7a54", ring: false },
@@ -93,6 +101,131 @@ function Tally({
         </dd>
       </div>
     </dl>
+  );
+}
+
+/** A log that sits under its map and folds away to a single bar. */
+function LogPanel({
+  title,
+  note,
+  events,
+  badge,
+  badgeTone,
+  open,
+  onToggle,
+}: {
+  title: string;
+  note: string;
+  events: SimEvent[];
+  badge?: string;
+  badgeTone?: "warn" | "ok";
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [events.length, open]);
+
+  return (
+    <div
+      className="flex min-w-0 flex-col overflow-hidden rounded-xl border"
+      style={{ background: "var(--surface-0)", borderColor: "var(--border)" }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
+        style={{ minHeight: 40 }}
+      >
+        <span className="text-xs font-semibold">{title}</span>
+        <span className="flex-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
+          {note}
+        </span>
+        {badge && (
+          <span
+            className="tnum rounded-full px-2 py-0.5 text-[11px] font-semibold"
+            style={
+              badgeTone === "warn"
+                ? { background: "#f6e0d6", color: "#7a2e12" }
+                : { background: "#def0e6", color: "#0b5c3e" }
+            }
+          >
+            {badge}
+          </span>
+        )}
+        <span aria-hidden="true" className="text-xs" style={{ color: "var(--text-muted)" }}>
+          {open ? "▾" : "▸"}
+        </span>
+      </button>
+
+      {open && (
+        <div
+          ref={listRef}
+          className="max-h-40 overflow-y-auto overscroll-contain border-t px-3 py-2"
+          style={{ borderColor: "var(--border)" }}
+        >
+          {events.length === 0 ? (
+            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+              Nothing yet.
+            </p>
+          ) : (
+            <ul className="m-0 list-none space-y-1 p-0">
+              {events.map((e, i) => (
+                <li key={`${e.t}-${i}`} className="flex items-start gap-2 text-[11px] leading-snug">
+                  <span
+                    aria-hidden="true"
+                    className="mt-1 inline-block size-1.5 shrink-0 rounded-full"
+                    style={{ background: DOT[e.kind] }}
+                  />
+                  <span className="tnum shrink-0" style={{ color: "var(--text-muted)" }}>
+                    {e.t.toFixed(1)}h
+                  </span>
+                  <span style={{ color: "var(--text-secondary)" }}>{e.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** What was heard and what was sent, under each map: the logs are where the two sides part. */
+function Logs({ county, which, time }: { county: CountySim; which: SideKey; time: number }) {
+  const hearth = which === "hearthAt";
+  const [callsOpen, setCallsOpen] = useState(true);
+  const [dispatchOpen, setDispatchOpen] = useState(true);
+
+  const onHold = county.queueAt(time, which);
+  const backlog = county.backlogAt(time, which);
+  const chained = Math.round(county.chainedShare(which) * 100);
+
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-3">
+      <LogPanel
+        title={hearth ? "Agent calls" : "Operator calls"}
+        note={hearth ? "in parallel" : "in order"}
+        events={county.logAt(time, which, 20, ["call"])}
+        badge={`${count.format(onHold)} on hold`}
+        badgeTone={onHold > 0 ? "warn" : "ok"}
+        open={callsOpen}
+        onToggle={() => setCallsOpen((v) => !v)}
+      />
+      <LogPanel
+        title="Dispatch"
+        note={`${chained}% chained`}
+        events={county.logAt(time, which, 20, ["dispatch", "arrive", "restock"])}
+        badge={`${count.format(backlog)} open`}
+        badgeTone={backlog > 0 ? "warn" : "ok"}
+        open={dispatchOpen}
+        onToggle={() => setDispatchOpen((v) => !v)}
+      />
+    </div>
   );
 }
 
@@ -199,6 +332,7 @@ export default function SideBySide() {
             ariaLabel={`With Hearth at hour ${hour}: ${county.tallyAt(hour, "hearthAt").reached} of ${total} households reached.`}
           />
           <Tally county={county} which="hearthAt" hour={hour} time={time} />
+          <Logs county={county} which="hearthAt" time={time} />
         </figure>
 
         <figure className="m-0">
@@ -216,6 +350,7 @@ export default function SideBySide() {
             ariaLabel={`Today at hour ${hour}: ${county.tallyAt(hour, "todayAt").reached} of ${total} households reached.`}
           />
           <Tally county={county} which="todayAt" hour={hour} time={time} />
+          <Logs county={county} which="todayAt" time={time} />
         </figure>
       </div>
 
