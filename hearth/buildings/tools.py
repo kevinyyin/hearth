@@ -8,13 +8,19 @@ import json
 import math
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any, Callable
+
+import httpx
 
 from hearth.config import ROOT, a, anthropic_headers
 
 CACHE_ROOT = ROOT / "data" / "buildings"
 FIXTURES = ROOT / "data" / "buildings" / "_fixtures"
+COSTAR_FILE = ROOT / "data/raw/costar/costar-hackathon-kit/data/commercial-property.jsonl"
+VEXCEL_API = "https://api.vexcelgroup.com/v2"
+VEXCEL_LAYERS = "urban,urban-r,wide-area,urban-g"  # the API picks the best available
 
 
 def _fixtures_on() -> bool:
@@ -55,23 +61,147 @@ def _real(name: str):
     raise NotImplementedError(f"real {name} client not written yet (Task 2 step 6); set HEARTH_FIXTURES=1")
 
 
+# ---- CoStar: a local data extract (commercial-property.jsonl), not an API ----
+_TYPES = {5: "office", 2: "industrial", 6: "retail", 7: "flex", 3: "land", 10: "specialty", 13: "healthcare"}
+_SENIOR_SUBTYPES = {26, 27, 28, 31, 142}  # assisted living, congregate senior, CCRC, skilled nursing, independent living
+_MATERIAL = {1: "masonry", 2: "metal", 3: "concrete", 4: "steel", 5: "wood", 6: "masonry", 7: "masonry"}
+_MATTERPORT_REF = {36, 234}
+
+
+def _matterport_ids(node, out: list) -> list:
+    if isinstance(node, dict):
+        if node.get("videoExternalReferenceType") in _MATTERPORT_REF and node.get("videoKey") and node["videoKey"] not in out:
+            out.append(node["videoKey"])
+        for v in node.values():
+            _matterport_ids(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _matterport_ids(v, out)
+    return out
+
+
+def _elevators(r: dict) -> tuple[int | None, str]:
+    apt = r.get("propertyApartment") or {}
+    entries = list(apt.get("elevators") or [])
+    for block in ("propertyOffice", "propertyRetail", "propertyIndustrial", "propertyFlex"):
+        entries += ((r.get(block) or {}).get("structural") or {}).get("elevators") or []
+    passenger = [e for e in entries if e.get("elevatorType") == 1]
+    yes = [e for e in passenger if e.get("elevatorState") == 1]
+    if yes:
+        counts = [e["numElevators"] for e in yes if e.get("numElevators")]
+        return (sum(counts), "passenger elevators listed") if counts else (1, "at least one passenger elevator; count not listed")
+    if passenger:
+        return 0, "listed as no passenger elevator"
+    if apt.get("isWalkup") is True:
+        return 0, "listed as a walk-up"
+    return None, "no elevator information"
+
+
+def normalize_costar(r: dict) -> dict:
+    """One CoStar commercial-property record -> the flat fields the agent reads. Missing stays None."""
+    pa = r.get("primaryAddress") or {}
+    apt = r.get("propertyApartment") or {}
+    ptype = r.get("propertyType")
+    if ptype == 1:
+        kind = "hotel"
+    elif ptype == 11:
+        kind = "senior_housing" if apt.get("apartmentLifestyleType") == 2 else "multifamily"
+    elif ptype == 13 and r.get("propertySubtype") in _SENIOR_SUBTYPES:
+        kind = "senior_housing"
+    else:
+        kind = _TYPES.get(ptype, "other")
+    street = " ".join(str(pa[k]) for k in ("streetNumber", "streetDirection", "streetName", "streetType", "streetSuffix") if pa.get(k))
+    elevator_count, elevator_note = _elevators(r)
+    return {
+        "building_id": str(r["id"]), "address": f"{street}, {pa.get('city')}, {pa.get('state')} {str(pa.get('postcode') or '')[:5]}",
+        "lat": pa.get("latitude"), "lon": pa.get("longitude"), "property_type": kind,
+        "floors": r.get("numStoriesAboveGrade"),
+        "units": apt.get("totalNumUnits") or (r.get("propertyHospitality") or {}).get("numUnits"),
+        "year_built": next((e.get("year") for e in r.get("constructionEvents") or [] if e.get("eventType") == 2), None),
+        "construction": _MATERIAL.get(r.get("buildingConstructionMaterial")),
+        "elevator_count": elevator_count, "elevator_note": elevator_note,
+        "existing": r.get("constructionStatus") == 1,
+        # building-level tours first, then model-unit tours
+        "matterport_model_ids": _matterport_ids(r, _matterport_ids(r.get("attachments") or [], [])),
+    }
+
+
+_costar = None
+
+
+def _costar_index() -> dict[str, dict]:
+    """Houston records, normalized once and kept under data/buildings/_costar/ (git-ignored)."""
+    global _costar
+    if _costar is None:
+        path = CACHE_ROOT / "_costar" / "houston.json"
+        if not path.exists():
+            rows = {}
+            with COSTAR_FILE.open() as f:
+                for line in f:
+                    r = json.loads(line)
+                    if (r.get("primaryAddress") or {}).get("researchMarketId") == 14:  # Houston research market
+                        n = normalize_costar(r)
+                        rows[n["building_id"]] = n
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(rows))
+        _costar = json.loads(path.read_text())
+    return _costar
+
+
 def costar_record(building_id: str) -> dict | None:
     if _fixtures_on():
         return _fixture(building_id, "costar")
-    return _real("costar")
+    return _costar_index().get(_safe(building_id))
 
 
 def costar_search(property_types: list[str], center: tuple[float, float], radius_km: float, limit: int = 20) -> list[dict]:
-    if not _fixtures_on():
-        return _real("costar")
-    rows = [json.loads(p.read_text()) for p in sorted(FIXTURES.glob("*/costar.json"))]
+    if _fixtures_on():
+        rows = [json.loads(p.read_text()) for p in sorted(FIXTURES.glob("*/costar.json"))]
+    else:
+        rows = [r for r in _costar_index().values() if r["existing"]]
     rows = [r for r in rows if r["property_type"] in property_types and _km(center, (r["lat"], r["lon"])) <= radius_km]
     return sorted(rows, key=lambda r: _km(center, (r["lat"], r["lon"])))[:limit]
 
 
+# ---- Vexcel: REST API, header X-API-KEY ----
+def _vexcel(method: str, path: str, **kw) -> httpx.Response:
+    headers = {"X-API-KEY": os.environ["VEXCEL_API_KEY"]}
+    for wait in (1, 2, 4, 0):  # the docs ask for exponential backoff on 429
+        r = httpx.request(method, VEXCEL_API + path, headers=headers, timeout=60, **kw)
+        if r.status_code != 429 or not wait:
+            return r
+        time.sleep(wait)
+    return r
+
+
+def normalize_vexcel(j: dict) -> dict | None:
+    """Latest capture of the parcel at the point -> roof and shade attributes."""
+    feats = [f["properties"] for f in j.get("features") or []]
+    if not feats:
+        return None
+    p = max(feats, key=lambda q: (bool(q.get("request-information.inside-parcel")), q.get("metadata.ortho-date-estimate") or ""))
+    structs = p.get("structures") or [{}]
+    s = next((x for x in structs if x.get("primary-structure")), structs[0])
+    pct = lambda v: None if v is None else round(v / 100, 4)
+    return {
+        "collection": p.get("metadata.collection"), "capture_date": p.get("metadata.ortho-date-estimate"),
+        "building_type": s.get("building-type.class"), "roof_material": s.get("roof-characteristics.material.class"),
+        "roof_condition_1_to_5": s.get("roof-characteristics.condition"), "roof_shape": s.get("roof-characteristics.shape.value"),
+        "tree_cover_fraction": pct(s.get("roof-characteristics.tree-cover.percent")),
+        "parcel_tree_cover_fraction": pct(p.get("parcel-tree-cover.percent")),
+        "footprint_area_m2": s.get("footprint.area"), "structure_count": p.get("structure.count"),
+        "solar_panels": s.get("roof-objects.solar-panel-photovoltaic.count"),
+    }
+
+
 def vexcel_attributes(lat: float, lon: float) -> dict | None:
     if not _fixtures_on():
-        return _real("vexcel")
+        r = _vexcel("GET", "/property/extract", params={"wkt": f"POINT({lon} {lat})", "srid": 4326, "layer": VEXCEL_LAYERS,
+                                                        "latest": "true", "include": "precomputed", "unit-system": "metric"})
+        if r.status_code == 404:  # no parcel at that point
+            return None
+        r.raise_for_status()
+        return normalize_vexcel(r.json())
     for p in sorted(FIXTURES.glob("*/costar.json")):  # fixture attributes belong to the building at that point
         r = json.loads(p.read_text())
         if _km((lat, lon), (r["lat"], r["lon"])) < 0.05:
@@ -80,10 +210,20 @@ def vexcel_attributes(lat: float, lon: float) -> dict | None:
 
 
 def vexcel_image(building_id: str, lat: float, lon: float) -> Path | None:
-    if not _fixtures_on():
-        return _real("vexcel")
-    path = FIXTURES / _safe(building_id) / "vexcel.png"
-    return path if path.exists() else None
+    """Top-down tile, 80 m across, saved once to data/buildings/<id>/vexcel.png."""
+    if _fixtures_on():
+        path = FIXTURES / _safe(building_id) / "vexcel.png"
+        return path if path.exists() else None
+    path = CACHE_ROOT / _safe(building_id) / "vexcel.png"
+    if not path.exists():
+        r = _vexcel("POST", "/ortho/extract", json={"wkt": f"POINT({lon} {lat})", "srid": 4326, "layer": VEXCEL_LAYERS, "buffer-meter": 40,
+                                                    "crop": "bounding_box", "image-format": "png", "destination-dimensions": "800,800"})
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(r.content)
+    return path
 
 
 def matterport_panoramas(building_id: str) -> list[dict]:
