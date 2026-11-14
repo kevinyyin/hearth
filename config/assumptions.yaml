@@ -107,6 +107,7 @@ planner:
   alns_iterations: {value: 40, source: "our call (central planner design, Nov 14)", confirmed: false}
   alns_remove_share: {value: 0.15, source: "our call (central planner design, Nov 14)", confirmed: false}
   insert_nearest_crews: {value: 4, source: "our call (central planner design, Nov 14)", confirmed: false}
+  alns_needs_per_free_crew: {value: 6, source: "our call (speed): the route search sees only the most urgent few needs per free crew", confirmed: false}
 
 # records-only building profiles (hearth/buildings/bulk.py); Vexcel gives roof material, not color
 building_records:

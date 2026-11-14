@@ -161,7 +161,17 @@ def routes(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_
         return start
     if routing != "alns":
         raise ValueError(f"routing must be paired or alns, not {routing!r}")
-    raise NotImplementedError("the route search arrives with hearth/alns.py")
+    free = sum(c.free_at_h <= now_h for c in crews)
+    if not free:
+        return {}
+    from hearth import alns  # here, not at the top: alns imports this module
+
+    # speed cut: the search sees the pairing's needs and the first few per free crew (callers pass needs most urgent first)
+    paired = {id(n) for r in start.values() for n in r}
+    pool = [n for i, n in enumerate(needs) if i < a("planner.alns_needs_per_free_crew") * free or id(n) in paired]
+    in_play = [c for c in crews if c.free_at_h < now_h + a("planner.lookahead_h")]
+    return alns.search(start, pool, in_play, lambda n, c: allowed(n, c, stock, flags, fits), now_h, travel=travel,
+                       rng=rng or random.Random(0))
 
 
 def plan(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_h: float, *, routing: str, fits: Fits = None,
