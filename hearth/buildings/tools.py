@@ -21,6 +21,7 @@ FIXTURES = ROOT / "data" / "buildings" / "_fixtures"
 COSTAR_FILE = ROOT / "data/raw/costar/costar-hackathon-kit/data/commercial-property.jsonl"
 VEXCEL_API = "https://api.vexcelgroup.com/v2"
 VEXCEL_LAYERS = "urban,urban-r,wide-area,urban-g"  # the API picks the best available
+MATTERPORT_GRAPH = "https://api.matterport.com/api/models/graph"
 
 
 def _fixtures_on() -> bool:
@@ -55,10 +56,6 @@ def cached(building_id: str, layer: str, fetch: Callable[[], Any]) -> tuple[Any,
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value))
     return value, False
-
-
-def _real(name: str):
-    raise NotImplementedError(f"real {name} client not written yet (Task 2 step 6); set HEARTH_FIXTURES=1")
 
 
 # ---- CoStar: a local data extract (commercial-property.jsonl), not an API ----
@@ -226,31 +223,82 @@ def vexcel_image(building_id: str, lat: float, lon: float) -> Path | None:
     return path
 
 
+# ---- Matterport: Model API (GraphQL, HTTP Basic token id:secret); model ids come from CoStar ----
+_MP_QUERY = """query($id: ID!) { model(id: $id) { name locations { id label floor { label } room { label tags }
+  panos { skybox(resolution: "high") { children } } } } }"""
+MP_MODELS_PER_BUILDING, MP_SWEEPS_PER_MODEL = 4, 6  # shortcut: first sweeps of the first models only; raise if entrances are missed
+
+
+def normalize_matterport(model_id: str, model: dict) -> list[dict]:
+    """Model API locations -> panoramas in sweep order. Skybox faces 1-4 are the horizontal views (0 ceiling, 5 floor)."""
+    def order(loc):
+        label = str(loc.get("label") or "")
+        return (0, int(label)) if label.isdigit() else (1, 0)
+
+    out = []
+    for loc in sorted(model.get("locations") or [], key=order):
+        faces = next((p["skybox"]["children"] for p in loc.get("panos") or [] if (p.get("skybox") or {}).get("children")), None)
+        if not faces:
+            continue
+        room = loc.get("room") or {}
+        place = room.get("label") or ", ".join(room.get("tags") or []) or "unlabeled room"
+        floor = (loc.get("floor") or {}).get("label") or "floor unknown"
+        out.append({"pano_id": f"{model_id}-{loc['id']}", "label": f"{model.get('name')}: {place}, {floor}, sweep {loc.get('label')}",
+                    "path": None, "faces": faces[1:5]})
+    return out
+
+
 def matterport_panoramas(building_id: str) -> list[dict]:
-    """[{pano_id, label, path}], [] when the building has no scan. Fixtures add a text `reading`."""
-    if not _fixtures_on():
-        return _real("matterport")
-    scan = _fixture(building_id, "matterport")
-    return scan["panoramas"] if scan else []
+    """[{pano_id, label, path}], [] when the building has no scan. Fixtures add a text `reading`; real ones add `faces`."""
+    if _fixtures_on():
+        scan = _fixture(building_id, "matterport")
+        return scan["panoramas"] if scan else []
+    rec = costar_record(building_id)
+    auth = (os.environ["MATTERPORT_API_KEY"], os.environ["MATTERPORT_API_TOKEN"])
+    panos = []
+    for mid in (rec or {}).get("matterport_model_ids", [])[:MP_MODELS_PER_BUILDING]:
+        r = httpx.post(MATTERPORT_GRAPH, json={"query": _MP_QUERY, "variables": {"id": mid}}, auth=auth, timeout=30)
+        r.raise_for_status()
+        model = (r.json().get("data") or {}).get("model")
+        if model:
+            panos += normalize_matterport(mid, model)[:MP_SWEEPS_PER_MODEL]
+    return panos
+
+
+def matterport_faces(building_id: str, pano: dict) -> list[Path]:
+    """Download a panorama's four horizontal faces once to data/buildings/<id>/panos/."""
+    paths = []
+    for i, url in enumerate(pano["faces"]):
+        path = CACHE_ROOT / _safe(building_id) / "panos" / f"{_safe(pano['pano_id'])}_{i}.jpg"
+        if not path.exists():
+            r = httpx.get(url, timeout=30)
+            r.raise_for_status()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(r.content)
+        paths.append(path)
+    return paths
 
 
 def matterport_embed_url(building_id: str) -> str | None:
-    if not _fixtures_on():
-        return _real("matterport")
-    scan = _fixture(building_id, "matterport")
-    return scan.get("embed_url") if scan else None
+    if _fixtures_on():
+        scan = _fixture(building_id, "matterport")
+        return scan.get("embed_url") if scan else None
+    ids = (costar_record(building_id) or {}).get("matterport_model_ids") or []
+    return f"https://my.matterport.com/show/?m={ids[0]}&play=1&qs=1" if ids else None
 
 
-def look(image: Path, question: str) -> str:
-    """One Claude vision call on an image file. Not unit-tested (network)."""
+def look(image: Path | list[Path], question: str) -> str:
+    """One Claude vision call on one image file, or several views of one place. Not unit-tested (network)."""
     import anthropic
 
-    media = "image/png" if image.suffix.lower() == ".png" else "image/jpeg"
+    images = image if isinstance(image, list) else [image]
+    media = lambda p: "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
     client = anthropic.Anthropic(default_headers=anthropic_headers())
     msg = client.messages.create(
         model=a("models.vision"), max_tokens=2000, output_config={"effort": a("models.vision_effort")},
         messages=[{"role": "user", "content": [
-            {"type": "image", "source": {"type": "base64", "media_type": media, "data": base64.b64encode(image.read_bytes()).decode()}},
+            *[{"type": "image", "source": {"type": "base64", "media_type": media(p), "data": base64.b64encode(p.read_bytes()).decode()}}
+              for p in images],
             {"type": "text", "text": question + " Answer in two sentences or fewer. Say 'cannot tell' if the image does not show it."},
         ]}],
     )

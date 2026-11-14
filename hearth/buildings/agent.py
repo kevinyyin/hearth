@@ -67,6 +67,8 @@ def scan_look(building_id: str, pano_id: str, question: str) -> str:
         return f"No panorama {pano_id}."
     if pano.get("reading"):  # fixtures carry a written reading instead of an image
         return pano["reading"]
+    if pano.get("faces"):  # four horizontal views of one sweep
+        return tools.look(tools.matterport_faces(building_id, pano), question + " The images are four directions from one spot.")
     return tools.look(Path(pano["path"]), question) if pano.get("path") else "No image for this panorama."
 
 

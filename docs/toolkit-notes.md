@@ -45,4 +45,20 @@ Field names and coverage only. No sponsor records are copied here; raw data stay
 
 ## Matterport
 
-- Model ids come from CoStar (above). API access and panorama reads: pending the developer docs.
+- Model ids come from CoStar (above). Model API: `POST https://api.matterport.com/api/models/graph`, HTTP Basic
+  (token id : token secret). Our token can read the CoStar-listed models (it lists 14,944 models).
+- Query: `model(id) { name locations { id label floor { label } room { label tags } panos { skybox(resolution: "high") { children } } } }`.
+  `children` are six signed JPEG face URLs, 1024 px at `high`; faces 0 and 5 are ceiling and floor, 1-4 the
+  horizontal views (checked by eye). We send faces 1-4 of one sweep to the vision model as one question.
+- Labels: sweep `label` is a number; room labels are mostly empty (some rooms carry `tags` like hallway, bedroom).
+  Model `name` is the useful label: apartment buildings list unit floor plans ("2BR, 2BA - ..."), hotels can list
+  "Lobby" and room types. So apartment scans rarely show the building entrance; hotel lobby scans do.
+- A listing call takes about 0.2 s per model. We read the first 4 models and their first 6 sweeps per building
+  (shortcut in `tools.py`). Faces are cached under `data/buildings/<id>/panos/` (git-ignored).
+- Showcase embed: `https://my.matterport.com/show/?m=<model id>&play=1&qs=1`; the SDK key is only needed for the
+  Embed SDK (`applicationKey`), not for a plain iframe.
+
+## Live survey timings (Nov 13)
+
+- Fixture building B-SAMPLE: 38 s. Real hotel (CoStar 1508702): 61 s, all three layers, two conflicts
+  (property type label, elevator seen in some lobby views and not others) with one follow-up round.

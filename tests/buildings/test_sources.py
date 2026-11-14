@@ -49,3 +49,17 @@ def test_vexcel_picks_latest_capture():
     v = normalize_vexcel({"features": [feat("2023-01-19T00:00:00", 0.0, "shingle"), feat("2025-09-03T00:00:00", 2.0, "membrane")]})
     assert v["roof_material"] == "membrane" and v["tree_cover_fraction"] == 0.02 and v["capture_date"].startswith("2025")
     assert v["parcel_tree_cover_fraction"] == 0.19 and normalize_vexcel({"features": []}) is None
+
+
+def test_matterport_locations_become_panoramas_with_horizontal_faces():
+    from hearth.buildings.tools import normalize_matterport
+    sky = lambda: {"children": [f"https://cdn/x_skybox{i}.jpg?t=1" for i in range(6)]}
+    model = {"name": "Lobby", "locations": [
+        {"id": "loc2", "label": "2", "floor": {"label": "Floor 1"}, "room": {"label": "", "tags": ["hallway"]}, "panos": [{"skybox": sky()}]},
+        {"id": "loc0", "label": "0", "floor": {"label": "Floor 1"}, "room": {"label": "Entry", "tags": []}, "panos": [{"skybox": sky()}]},
+        {"id": "loc9", "label": "9", "floor": None, "room": None, "panos": []},
+    ]}
+    panos = normalize_matterport("M1", model)
+    assert [p["pano_id"] for p in panos] == ["M1-loc0", "M1-loc2"]          # sweep order, no-image location dropped
+    assert panos[0]["label"] == "Lobby: Entry, Floor 1, sweep 0" and "hallway" in panos[1]["label"]
+    assert [f.split("?")[0][-5] for f in panos[0]["faces"]] == ["1", "2", "3", "4"]   # faces 0 and 5 are ceiling and floor
