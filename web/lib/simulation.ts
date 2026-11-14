@@ -288,15 +288,27 @@ const DT = 0.25;
 const REFILL_H = 9;
 
 // --- Different, and why -----------------------------------------------------
-const CAPACITY = { hearthAt: 4, todayAt: 2 } as const;
+const CAPACITY = { hearthAt: 4, todayAt: 3 } as const;
 /** How far a crew will go for the next stop on a round it is already out on. */
-const CHAIN_RADIUS = { hearthAt: Infinity, todayAt: 0.1 } as const;
+const CHAIN_RADIUS = { hearthAt: Infinity, todayAt: 0.18 } as const;
 /**
  * Households that become visible per hour. Hearth has the registry, so everyone
  * is visible the moment their power goes. Today a household is only visible once
  * its call has worked to the front of the queue. An assumption, not a measurement.
  */
-const DISCOVERY = { hearthAt: Infinity, todayAt: 1.5 } as const;
+const DISCOVERY = { hearthAt: Infinity, todayAt: 6 } as const;
+/**
+ * The share of households that ever reach the dispatcher on their own. Hearth has
+ * the registry, so all of them. Without it the people most likely never to call
+ * are the ones this is for: too unwell to hold, no phone charge, no idea the
+ * county would come. That gap, not idle crews, is where the difference lives —
+ * and it is an assumption, like the queue rate.
+ */
+const CALLS_IN = { hearthAt: 1, todayAt: 0.7 } as const;
+
+/** Stable per-household, so the same households are unreachable on every run. */
+const callsIn = (i: number, share: number): boolean =>
+  share >= 1 || ((Math.imul(i + 1, 2654435761) >>> 8) % 1000) / 1000 < share;
 
 export type Household = {
   lon: number;
@@ -428,6 +440,7 @@ function runSide(households: Household[], which: SideKey): SideSim {
     // who the dispatcher can see right now
     for (let i = 0; i < households.length; i++) {
       if (known[i]) continue;
+      if (!callsIn(i, CALLS_IN[which])) continue; // never gets through on their own
       if (!openJobAt(i, t)) continue;
       if (discoveredThisHour >= perHour) break;
       known[i] = true;
@@ -446,24 +459,31 @@ function runSide(households: Household[], which: SideKey): SideSim {
       if (freeAt[c] > t) continue;
       const base = STATIONS[station[c]].at;
 
-      // nearest-neighbour chain from the station: the round a crew would drive
+      // The round a crew would actually drive: nearest-neighbour from the station,
+      // but someone still waiting on a first delivery outranks someone whose
+      // resupply is due. A household that has had nothing yet is the worse
+      // problem, whichever side is dispatching.
       const route: Job[] = [];
       let at: [number, number] = base;
       while (route.length < capacity) {
-        let best: Job | null = null;
-        let bestD = Infinity;
-        for (const j of jobs) {
-          if (j.servedAt !== null || j.dueAt > t || !known[j.h] || route.includes(j)) continue;
-          const d = dist(at, [households[j.h].lon, households[j.h].lat]);
-          if (d < bestD) {
-            bestD = d;
-            best = j;
-          }
-        }
-        if (!best) break;
-        if (route.length > 0 && bestD > chainRadius) break;
-        route.push(best);
-        at = [households[best.h].lon, households[best.h].lat];
+        const open = jobs.filter(
+          (j) => j.servedAt === null && j.dueAt <= t && known[j.h] && !route.includes(j),
+        );
+        if (open.length === 0) break;
+
+        const withD = open.map((j) => ({
+          j,
+          d: dist(at, [households[j.h].lon, households[j.h].lat]),
+        }));
+        // a crew already out only chains to what is genuinely on its way
+        const reachable =
+          route.length === 0 ? withD : withD.filter((c) => c.d <= chainRadius);
+        if (reachable.length === 0) break;
+
+        reachable.sort((a, b) => Number(a.j.refill) - Number(b.j.refill) || a.d - b.d);
+        const next = reachable[0].j;
+        route.push(next);
+        at = [households[next.h].lon, households[next.h].lat];
       }
 
       if (route.length === 0) continue;
