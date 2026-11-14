@@ -104,6 +104,16 @@ def test_contact_validation(bad):
     assert put(HOME | {"contacts": bad}).status_code == 422
 
 
+def test_the_resident_names_their_device_and_says_whether_it_can_be_moved():
+    assert put(HOME | {"device_name": "Inogen One G5 concentrator", "movable": False}).status_code == 200
+    home = client.get("/api/patients/demo-1/home").json()["home"]
+    assert home["device_name"] == "Inogen One G5 concentrator" and home["movable"] is False
+    put(HOME)  # a home saved before these fields existed
+    home = client.get("/api/patients/demo-1/home").json()["home"]
+    assert home["device_name"] == "" and home["movable"] is None
+    assert put(HOME | {"device_name": "x" * 121}).status_code == 422
+
+
 HELPER = {"name": "Jo Rivera", "relation": "husband", "phone": "", "note": "can swap the oxygen tank"}
 
 

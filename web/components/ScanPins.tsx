@@ -151,7 +151,7 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange }: {
   return (
     <div className="space-y-2">
       <div className="relative w-full overflow-hidden rounded" style={{ aspectRatio: "16 / 10", background: "var(--grid)", display: sdkKey ? "block" : "none" }}>
-        <iframe ref={frame} title="3D scan of a sample unit" className="h-full w-full border-0" allow="xr-spatial-tracking; fullscreen" />
+        <iframe ref={frame} title="3D scan of the home" className="h-full w-full border-0" allow="xr-spatial-tracking; fullscreen" />
         {state === "opening" && (
           <p className="absolute inset-x-0 bottom-2 text-center text-xs" style={{ color: "var(--text-muted)" }}>Opening the 3D scan…</p>
         )}

@@ -10,7 +10,7 @@ import { PeopleList } from "@/components/PeopleFields";
 import ScanPins from "@/components/ScanPins";
 import { API, getJson, sendJson } from "@/lib/api";
 import { EQUIPMENT, NEXT_ACTION, VEHICLES } from "@/lib/help";
-import { getPersona, SIZES } from "@/lib/home";
+import { currentOutside, getPersona, SIZES } from "@/lib/home";
 import type { BuildingDetail, CrewJob, Home, Patient, RefugeOption } from "@/lib/types";
 import { usePoll } from "@/lib/usePoll";
 
@@ -60,9 +60,10 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>{address ?? "No building on record"}</p>
       </header>
       <ul className="space-y-0.5 text-sm">
-        <li>{words(patient.device)} · {words(patient.mobility)}</li>
+        <li>{home?.device_name || words(patient.device)} · {words(patient.mobility)}</li>
         {home ? (
           <>
+            {home.movable !== null && <li>{home.movable ? "The device can be moved with the person" : "The device cannot be moved"}</li>}
             <li>OK without it for {home.ok_without_h} hours</li>
             <li>Size: {size}</li>
             {home.backup_plan && <li>Backup plan: {home.backup_plan}</li>}
@@ -81,7 +82,7 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
       )}
       {buildingId && (
         <Part title="Outside">
-          <AerialPins imagePath={`/api/buildings/${buildingId}/image`} pins={home?.outside ?? []} />
+          <AerialPins imagePath={`/api/buildings/${buildingId}/image`} pins={currentOutside(home?.outside ?? [])} />
         </Part>
       )}
       {home && (
@@ -91,11 +92,11 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
               {/* the key arrives with the building detail. Without it the scan cannot open, and the pins are still listed */}
               {detail !== undefined && <ScanPins scanId={home.scan_id} sdkKey={detail?.scan_sdk_key ?? null} pins={home.inside} />}
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Sample unit from this building. The resident says their home is laid out like it.
+                Simulated: this resident&apos;s home is this scanned unit.
               </p>
             </>
           ) : (
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>The resident did not match a scan to their home.</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>No 3D scan of this home.</p>
           )}
         </Part>
       )}

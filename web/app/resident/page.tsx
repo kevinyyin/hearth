@@ -9,14 +9,12 @@ import HelpPanel from "@/components/HelpPanel";
 import { API, getJson, putJson } from "@/lib/api";
 import PeopleFields from "@/components/PeopleFields";
 import ScanPins from "@/components/ScanPins";
-import { emptyHome, getPersona, PIN_COLOR, PIN_LABEL, SIZES, withBuilding, withScan } from "@/lib/home";
+import { currentOutside, emptyHome, getPersona, OUTSIDE_KINDS, PIN_COLOR, PIN_LABEL, SIZES, withBuilding, withDefaultScan } from "@/lib/home";
 import type { BuildingDetail, Home, InsideKind, OutsideKind, Patient, SizeId } from "@/lib/types";
 
 type BuildingRow = { building_id: string; name: string | null; address: string };
 
-const OUTSIDE_KINDS: OutsideKind[] = ["park", "entrance", "blocked", "route"];
-const INSIDE_KINDS: InsideKind[] = ["machine", "blocked", "route"];
-const words = (s: string) => s.replace(/_/g, " ");
+const INSIDE_KINDS: InsideKind[] = ["machine", "blocked", "route"]; // machine first: it is what the page opens on
 const input = "mt-1 w-full rounded border px-3 py-2 text-sm";
 const inputStyle = { borderColor: "var(--border)", background: "var(--surface-0)", color: "var(--text-primary)" };
 
@@ -63,8 +61,10 @@ export default function ResidentPage() {
     if (!API) return;
     getJson<{ patient: Patient; home: Home | null }>(`/api/patients/${persona.id}/home`)
       .then((r) => {
+        const fresh = emptyHome(r.patient);
         setPatient(r.patient);
-        setHome(r.home ?? emptyHome(r.patient));
+        // a home saved before the device was asked for starts from the patient record; older outside pins are dropped
+        setHome(r.home ? { ...r.home, device_name: r.home.device_name || fresh.device_name, outside: currentOutside(r.home.outside) } : fresh);
       })
       .catch((e) => setStatus({ ok: false, text: e instanceof Error ? e.message : String(e) }));
     getJson<BuildingRow[]>("/api/buildings").then(setBuildings).catch(() => setBuildings([]));
@@ -75,6 +75,12 @@ export default function ResidentPage() {
     setDetail(null);
     if (buildingId) getJson<BuildingDetail>(`/api/buildings/${buildingId}`).then(setDetail).catch(() => setDetail(null));
   }, [buildingId]);
+
+  // the home's scan opens on its own: the saved one, else the building's first
+  const scanIds = detail?.scan_ids;
+  useEffect(() => {
+    if (scanIds) setHome((h) => (h ? withDefaultScan(h, scanIds) : h));
+  }, [scanIds]);
 
   if (!API) return <p className="mx-auto max-w-md px-6 py-10 text-sm">This page needs the Hearth API.</p>;
   if (!patient || !home) {
@@ -88,11 +94,6 @@ export default function ResidentPage() {
   const q = query.trim().toLowerCase();
   const matches = q.length < 2 ? [] : buildings.filter((b) => `${b.address} ${b.name ?? ""}`.toLowerCase().includes(q)).slice(0, 8);
   const cm = home.size_cm ?? [50, 40, 30];
-  const scans = (detail?.scan_ids ?? []).slice(0, 6);
-  const pickScan = (id: string | null) => {
-    setHome(withScan(home, id));
-    setStatus(null);
-  };
 
   async function save() {
     if (!home) return;
@@ -118,22 +119,28 @@ export default function ResidentPage() {
       <HelpPanel patientId={patient.patient_id} />
 
       <Section title="Your device">
-        <p className="text-sm">{words(patient.device)} ({words(patient.device_detail)})</p>
+        <label className="block text-xs" style={{ color: "var(--text-secondary)" }}>
+          The device you have
+          <input value={home.device_name} maxLength={120} className={input} style={inputStyle} onChange={(e) => set({ device_name: e.target.value })} />
+        </label>
+        <div>
+          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Can it be moved?</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <Choice on={home.movable === true} onClick={() => set({ movable: true })}>Yes, it can go with me</Choice>
+            <Choice on={home.movable === false} onClick={() => set({ movable: false })}>No, it stays here</Choice>
+          </div>
+        </div>
         <label className="block text-xs" style={{ color: "var(--text-secondary)" }}>
           Without it I&apos;m OK for … hours
           <NumberField min={0} max={720} step={0.5} value={home.ok_without_h} onChange={(n) => set({ ok_without_h: n })} />
         </label>
-        <label className="block text-xs" style={{ color: "var(--text-secondary)" }}>
-          Backup plan
-          <input value={home.backup_plan} maxLength={500} className={input} style={inputStyle} onChange={(e) => set({ backup_plan: e.target.value })} />
-        </label>
         <div>
-          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>About the size of</p>
+          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Its size: exact dimensions, or about the size of</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
+            <Choice on={home.size === "custom"} onClick={() => set({ size: "custom", size_cm: cm })}>Exact dimensions</Choice>
             {(Object.keys(SIZES) as Exclude<SizeId, "custom">[]).map((id) => (
               <Choice key={id} on={home.size === id} onClick={() => set({ size: id, size_cm: null })}>{SIZES[id].label}</Choice>
             ))}
-            <Choice on={home.size === "custom"} onClick={() => set({ size: "custom", size_cm: cm })}>Other</Choice>
           </div>
           {home.size === "custom" && (
             <div className="mt-2 grid grid-cols-3 gap-2">
@@ -194,22 +201,13 @@ export default function ResidentPage() {
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>Choose your building to see its scans.</p>
         ) : (
           <>
-            {scans.length === 0 ? (
+            {detail.scan_ids.length === 0 && (
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>No 3D scan for this building.</p>
-            ) : (
-              <div>
-                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Which of these is laid out like your home?</p>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {scans.map((id, i) => (
-                    <Choice key={id} on={home.scan_id === id} onClick={() => pickScan(id)}>Layout {i + 1}</Choice>
-                  ))}
-                  <Choice on={home.scan_id === null} onClick={() => pickScan(null)}>None of these</Choice>
-                </div>
-              </div>
             )}
-            {home.scan_id && scans.includes(home.scan_id) && (
+            {home.scan_id && detail.scan_ids.includes(home.scan_id) && (
               <>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Sample unit from this building, not your own home.</p>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Mark where your machine is.</p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Simulated: this resident&apos;s home is this scanned unit.</p>
                 <div className="flex flex-wrap gap-1.5">
                   {INSIDE_KINDS.map((k) => (
                     <Choice key={k} on={insideKind === k} color={PIN_COLOR[k]} onClick={() => setInsideKind(k)}>{PIN_LABEL[k]}</Choice>

@@ -33,8 +33,22 @@ export function tapToFraction(
 }
 
 export function emptyHome(patient: Patient): Home {
-  return { patient_id: patient.patient_id, building_id: patient.building_id ?? "", ok_without_h: 0, backup_plan: "", size: "microwave",
-    size_cm: null, scan_id: null, note: "", outside: [], inside: [], contacts: [], helpers: [] };
+  const device = `${patient.device} ${patient.device_detail ?? ""}`.replace(/_/g, " ").trim();
+  return { patient_id: patient.patient_id, building_id: patient.building_id ?? "", ok_without_h: 0, device_name: device, movable: null,
+    backup_plan: "", size: "microwave", size_cm: null, scan_id: null, note: "", outside: [], inside: [], contacts: [], helpers: [] };
+}
+
+/** What a resident marks from above. Blocked and route pins were dropped from the outside view. */
+export const OUTSIDE_KINDS: OutsideKind[] = ["park", "entrance"];
+
+/** Outside pins of the kinds still offered; homes saved earlier may hold blocked and route pins. */
+export function currentOutside<P extends { kind: string }>(pins: P[]): P[] {
+  return pins.filter((p) => (OUTSIDE_KINDS as string[]).includes(p.kind));
+}
+
+/** The home's scan opens without a question: a saved one that the building still has, else the building's first. */
+export function withDefaultScan(home: Home, scanIds: string[]): Home {
+  return home.scan_id && scanIds.includes(home.scan_id) ? home : withScan(home, scanIds[0] ?? null);
 }
 
 /** Pins belong to the building they were placed on, so a new building starts with none. */
