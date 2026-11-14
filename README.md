@@ -16,6 +16,10 @@ uv run pytest          # live tests are skipped; run them with -m live
 `HEARTH_FIXTURES=1` makes the building tools read `data/buildings/_fixtures/` instead of the sponsor APIs.
 Every default number is in `config/assumptions.yaml` with its source. Plan and design: `docs/superpowers/`.
 
+Only `main` deploys to Vercel (`git.deploymentEnabled` in `vercel.json` and `web/vercel.json`). Both projects share one
+account's deployment limit, so branches get no preview URL; check a branch locally. A branch cut before this landed
+still deploys on every push until it merges `main`.
+
 Run the API (the map reads it at `http://localhost:8000`):
 
 ```bash
