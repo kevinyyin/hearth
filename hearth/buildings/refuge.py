@@ -34,8 +34,12 @@ def outside_dark_area(zip: str | None, dark_zips: set[str]) -> bool:
     return bool(zip) and zip not in dark_zips
 
 
-def eligible(option_profile: BuildingProfile, patient: Patient) -> tuple[bool, list[str]]:
-    """Code, not model. Wheelchair and bedbound patients need a step-free entrance, and an elevator above one floor."""
+NEEDS_CALL = "needs a call"  # the first reason when the only open question is one a phone call to the refuge can settle
+
+
+def eligible(option_profile: BuildingProfile, patient: Patient, elevator_confirmed: bool = False) -> tuple[bool, list[str]]:
+    """Code, not model. Wheelchair and bedbound patients need a step-free entrance, and an elevator above one floor.
+    An elevator a scan shows but no record states counts only once the refuge has confirmed it (`elevator_confirmed`)."""
     p = option_profile
     if patient.mobility not in NEEDS_STEP_FREE:
         return True, [f"patient {patient.mobility.replace('_', ' ')}: no access constraint"]
@@ -48,11 +52,38 @@ def eligible(option_profile: BuildingProfile, patient: Patient) -> tuple[bool, l
     floors = p.floors.value
     if floors == 1:
         return True, reasons + ["single floor: no elevator needed"]
+    if p.elevator_count.source == "matterport":  # seen, or not seen, in a scan: a scan covers a lobby and a few rooms
+        if not p.elevator_count.value or p.elevator_count.value < 1:
+            return False, ["unverified access", f"no elevator seen in the scans for {floors or 'an unknown number of'} floors, which does not show there is none"]
+        seen = f"elevator seen in a scan ({src('elevator_count')})"
+        if not elevator_confirmed:
+            return False, [NEEDS_CALL, seen, "not confirmed running"]
+        return True, reasons + [seen, "the refuge confirmed by phone that it is running (simulated call)"]
     if p.elevator_count.value is None:
         return False, ["unverified access", f"elevator unknown for {floors or 'an unknown number of'} floors"]
     if p.elevator_count.value < 1:
         return False, [f"no elevator for {floors or 'unknown'} floors ({src('elevator_count')})"]
     return True, reasons + [f"{p.elevator_count.value} elevator(s) ({src('elevator_count')})"]
+
+
+def confirm_elevator(building_id: str, dark_zips: set[str]) -> bool:
+    """A simulated phone call to a refuge: is a passenger elevator running? Nobody is called. The answer is the
+    assumption `refuge.elevator_runs_outside_outage`, and the question is only put to a building outside the dark area."""
+    rec = tools.costar_record(building_id)
+    if rec is None or not outside_dark_area(rec.get("zip"), dark_zips):
+        return False
+    yes = bool(a("refuge.elevator_runs_outside_outage"))
+    store.put("refuge_call", building_id, {"building_id": building_id, "simulated": True, "question": "Is a passenger elevator running?",
+                                           "answer": "yes" if yes else "no", "t": time.time()})
+    return yes
+
+
+def access(prof: BuildingProfile, patient: Patient, dark_zips: set[str]) -> tuple[bool, list[str]]:
+    """`eligible`, plus the simulated call when the only thing missing is confirmation of an elevator a scan showed."""
+    ok, why = eligible(prof, patient)
+    if not ok and why[0] == NEEDS_CALL and confirm_elevator(prof.building_id, dark_zips):
+        return eligible(prof, patient, elevator_confirmed=True)
+    return ok, why
 
 
 def _profile_for(building_id: str) -> BuildingProfile | None:
@@ -81,12 +112,13 @@ def search_refuges(patient_id: str) -> str:
 
 @tool
 def check_access(patient_id: str, building_id: str) -> str:
-    """Survey a candidate (cached if surveyed before) and check, by code, whether this patient can get in."""
-    patient, _ = _ctx[patient_id]
+    """Survey a candidate (cached if surveyed before) and check, by code, whether this patient can get in. When a scan
+    shows an elevator no record states, this places a simulated call to the refuge to confirm it."""
+    patient, dark = _ctx[patient_id]
     prof = _profile_for(building_id)
     if prof is None:
         return f"{building_id}: not in CoStar."
-    ok, why = eligible(prof, patient)
+    ok, why = access(prof, patient, dark)
     return json.dumps({"building_id": building_id, "eligible": ok, "reasons": why, "floors": prof.floors.value,
                        "layers_missing": prof.layers_missing, "survey_error": prof.error, "cached": prof.cached})
 
@@ -99,7 +131,8 @@ def submit_proposal(patient_id: str, options_json: str) -> str:
 
 
 SYSTEM = """You find a temporary refuge with power for one simulated patient on a home medical device during a power
-outage. You book nothing and contact no one. Steps:
+outage. You book nothing and contact no patient. The only contact is one check_access may make: a simulated call to a
+refuge to confirm an elevator a scan showed. Steps:
 1. Write a short to-do plan with write_todos.
 2. Call search_refuges once.
 3. Call check_access for each candidate, nearest first. Skip any building the dispatcher's notes in your memory say to avoid.
@@ -163,7 +196,7 @@ def _options(patient: Patient, options_json: str) -> list[RefugeOption]:
         rec, prof = tools.costar_record(o["building_id"]), store.get("profile", o["building_id"])
         if rec is None or prof is None or rec["property_type"] not in ("hotel", "senior_housing"):
             continue
-        ok, why = eligible(BuildingProfile.model_validate(prof), patient)
+        ok, why = access(BuildingProfile.model_validate(prof), patient, dark)
         if not ok or not outside_dark_area(rec.get("zip"), dark):
             continue
         km = tools._km((patient.lat, patient.lon), (rec["lat"], rec["lon"]))
