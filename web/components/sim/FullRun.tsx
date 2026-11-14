@@ -355,7 +355,8 @@ export default function FullRun() {
         so every crew has a round to drive; on the right households queue to be heard, {OPERATORS} operators
         taking calls in the order they rang, and every free van goes to whoever reached the front. Over a full day that gap compounds, because a delivery runs
         down — {restocksH} restocks were made on the left against {restocksT} on the right, and a
-        blue dot is someone who was already helped once. The queue rate, the crew model and how long
+        blue dot is someone who was already helped once. By the end of the day both sides have
+        heard from the same households; the right has not got to all of them. The queue rate, the crew model and how long
         a delivery lasts are this panel&rsquo;s assumptions, not results from the repository.
       </p>
     </section>
