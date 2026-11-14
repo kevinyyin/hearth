@@ -76,8 +76,16 @@ export default function Map({
       style: STYLE_URL,
       center: [lon, lat],
       zoom: 11,
-      attributionControl: { compact: true },
+      // added by hand below, so it starts as the "i" and opens only when asked
+      attributionControl: false,
     });
+    m.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+    // MapLibre renders it open on first paint; collapse it back to the "i".
+    m.once("load", () =>
+      container.current
+        ?.querySelector(".maplibregl-ctrl-attrib")
+        ?.classList.remove("maplibregl-compact-show"),
+    );
     map.current = m;
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
