@@ -3,16 +3,13 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import HouseholdMap from "@/components/sim/HouseholdMap";
+import { useCountyFeed } from "@/lib/simSource";
 import {
   CREW_COUNT,
-  HOUSEHOLDS,
   RUN_HOURS,
   STATIONS,
   count,
-  outNow,
-  tallyAt,
-  toursBy,
-  vehiclesAt,
+  type CountySim,
   type HouseholdState,
   type SideKey,
 } from "@/lib/simulation";
@@ -31,8 +28,18 @@ const STATE_LABEL: Record<HouseholdState, string> = {
   unaffected: "Not yet affected",
 };
 
-function Tally({ which, hour, time }: { which: SideKey; hour: number; time: number }) {
-  const t = tallyAt(hour, which);
+function Tally({
+  county,
+  which,
+  hour,
+  time,
+}: {
+  county: CountySim;
+  which: SideKey;
+  hour: number;
+  time: number;
+}) {
+  const t = county.tallyAt(hour, which);
   return (
     <dl className="mt-3 grid grid-cols-4 gap-3">
       <div>
@@ -55,14 +62,16 @@ function Tally({ which, hour, time }: { which: SideKey; hour: number; time: numb
         <dt className="text-xs" style={{ color: "var(--text-muted)" }}>
           Deployments
         </dt>
-        <dd className="tnum m-0 text-2xl font-semibold">{count.format(toursBy(time, which))}</dd>
+        <dd className="tnum m-0 text-2xl font-semibold">
+          {count.format(county.toursBy(time, which))}
+        </dd>
       </div>
       <div>
         <dt className="text-xs" style={{ color: "var(--text-muted)" }}>
           Crews out
         </dt>
         <dd className="tnum m-0 text-2xl font-semibold">
-          {count.format(outNow(time, which))}
+          {count.format(county.outNow(time, which))}
           <span className="text-sm font-normal" style={{ color: "var(--text-muted)" }}>
             /{CREW_COUNT}
           </span>
@@ -73,6 +82,9 @@ function Tally({ which, hour, time }: { which: SideKey; hour: number; time: numb
 }
 
 export default function SideBySide() {
+  const feed = useCountyFeed();
+  const { county, center } = feed;
+
   const [hour, setHour] = useState(0);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -133,6 +145,13 @@ export default function SideBySide() {
     };
   }, [running]);
 
+  // a population arriving mid-run would be two different answers in one picture
+  useEffect(() => {
+    setHour(0);
+    setProgress(0);
+    setRunning(false);
+  }, [county]);
+
   const start = () => {
     setHour(0);
     setProgress(0);
@@ -140,23 +159,26 @@ export default function SideBySide() {
   };
 
   const time = hour + (running ? progress : 0);
-  const endHearth = tallyAt(RUN_HOURS, "hearthAt");
-  const endToday = tallyAt(RUN_HOURS, "todayAt");
-  const toursHearth = toursBy(RUN_HOURS + 1, "hearthAt");
-  const toursToday = toursBy(RUN_HOURS + 1, "todayAt");
+  const total = county.households.length;
+  const endHearth = county.tallyAt(RUN_HOURS, "hearthAt");
+  const endToday = county.tallyAt(RUN_HOURS, "todayAt");
+  const toursHearth = county.toursBy(RUN_HOURS + 1, "hearthAt");
+  const toursToday = county.toursBy(RUN_HOURS + 1, "todayAt");
+
+  const live = feed.source === "api";
 
   return (
     <section
       className="rounded-xl border p-5"
       style={{ background: "var(--surface-1)", borderColor: "var(--border)" }}
     >
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3">
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex-1">
           <h2 className="text-lg font-semibold">Side by side, over one outage</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Harris County, the ground Beryl crossed. One dot is one household; dark dots are crews
-            running a round from one of {STATIONS.length} stations and back. Both sides field the
-            same {CREW_COUNT} crews. The maps pan and zoom together.
+            One dot is one household; dark dots are crews running a round from one of{" "}
+            {STATIONS.length} stations and back. Both sides field the same {CREW_COUNT} crews. The
+            maps pan and zoom together.
           </p>
         </div>
 
@@ -173,6 +195,24 @@ export default function SideBySide() {
           {running ? "Running…" : hour > 0 ? "Run again" : "Run the side-by-side"}
         </button>
       </div>
+
+      {/* which data answered, said plainly rather than left to be guessed */}
+      <p
+        className="mb-4 inline-flex flex-wrap items-center gap-2 rounded-full border px-3 py-1.5 text-xs"
+        style={{
+          borderColor: live ? "#0e7a54" : "var(--border)",
+          color: live ? "#0b5c3e" : "var(--text-secondary)",
+          background: live ? "#def0e6" : "transparent",
+        }}
+      >
+        <span
+          aria-hidden="true"
+          className="inline-block size-2 rounded-full"
+          style={{ background: live ? "#0e7a54" : "var(--text-muted)" }}
+        />
+        {live ? "Live from the Hearth API" : "Fixture"} · {feed.detail}
+        {feed.error && <span style={{ color: "#7a2e12" }}>· API unreachable: {feed.error}</span>}
+      </p>
 
       <div
         className="mb-5 h-1 w-full overflow-hidden rounded-full"
@@ -192,13 +232,15 @@ export default function SideBySide() {
             Knows who needs help, so a crew plans a round
           </p>
           <HouseholdMap
+            county={county}
+            center={center}
             which="hearthAt"
             hour={hour}
-            vehicles={running ? vehiclesAt(time, "hearthAt") : []}
+            vehicles={running ? county.vehiclesAt(time, "hearthAt") : []}
             onMap={register("a")}
-            ariaLabel={`With Hearth at hour ${hour}: ${tallyAt(hour, "hearthAt").reached} of ${HOUSEHOLDS.length} households reached.`}
+            ariaLabel={`With Hearth at hour ${hour}: ${county.tallyAt(hour, "hearthAt").reached} of ${total} households reached.`}
           />
-          <Tally which="hearthAt" hour={hour} time={time} />
+          <Tally county={county} which="hearthAt" hour={hour} time={time} />
         </figure>
 
         <figure className="m-0">
@@ -207,13 +249,15 @@ export default function SideBySide() {
             Finds out when the call reaches the front of the queue
           </p>
           <HouseholdMap
+            county={county}
+            center={center}
             which="todayAt"
             hour={hour}
-            vehicles={running ? vehiclesAt(time, "todayAt") : []}
+            vehicles={running ? county.vehiclesAt(time, "todayAt") : []}
             onMap={register("b")}
-            ariaLabel={`Today at hour ${hour}: ${tallyAt(hour, "todayAt").reached} of ${HOUSEHOLDS.length} households reached.`}
+            ariaLabel={`Today at hour ${hour}: ${county.tallyAt(hour, "todayAt").reached} of ${total} households reached.`}
           />
-          <Tally which="todayAt" hour={hour} time={time} />
+          <Tally county={county} which="todayAt" hour={hour} time={time} />
         </figure>
       </div>
 
@@ -260,28 +304,17 @@ export default function SideBySide() {
         <p className="m-0">
           <strong style={{ color: "var(--text-primary)" }}>The lever, stated plainly:</strong> the
           right-hand side learns of about two households an hour, because a call has to reach the
-          front of a queue; the left-hand side knows all {HOUSEHOLDS.length} the moment their power
-          goes. That rate is an assumption, not a measurement, and almost the whole gap above rests
-          on it — argue with that number and you are arguing with the panel. It is also why the
-          right-hand crews are idle rather than slow: they are not being outrun, they are waiting to
-          be told where to go.
+          front of a queue; the left-hand side knows all {total} the moment their power goes. That
+          rate is an assumption, not a measurement, and almost the whole gap above rests on it —
+          argue with that number and you are arguing with the panel. It is also why the right-hand
+          crews are idle rather than slow: they are not being outrun, they are waiting to be told
+          where to go.
         </p>
         <p className="m-0">
-          <strong style={{ color: "var(--text-primary)" }}>
-            {endHearth.waiting === 0
-              ? "Clearing the county here is a result of these numbers, not a property of Hearth."
-              : "Hearth does not reach everyone either."}
-          </strong>{" "}
-          {endHearth.waiting === 0
-            ? `${CREW_COUNT} crews is enough for ${HOUSEHOLDS.length} households in twelve hours. Raise the demand, cut the crews or shorten the window and the right-hand picture is what both sides look like — nothing here says the fleet is always big enough.`
-            : `${endHearth.waiting} households are still waiting when the twelve hours close, because crews are finite.`}
-        </p>
-        <p className="m-0">
-          <strong style={{ color: "var(--text-primary)" }}>
-            The county is real; these {HOUSEHOLDS.length} households are drawn, not replayed.
-          </strong>{" "}
-          The simulation in this repository reports patient-hours at risk and has never modelled
-          crews, stations or a call queue, so no run produces these dots.
+          <strong style={{ color: "var(--text-primary)" }}>What is real here and what is not.</strong>{" "}
+          {live
+            ? `The households, their coordinates and the hour each one runs out of backup come from the replay the API served. The crews, stations, speed and the queue rate are this panel's own model: the simulation in this repository reports patient-hours at risk and has never modelled a fleet.`
+            : `No API answered, so the households are drawn rather than read. Point NEXT_PUBLIC_API at a running Hearth API and the dots become the replay's own patients. Either way the crews, stations, speed and queue rate are this panel's model, not a result from the repository.`}
         </p>
       </div>
     </section>

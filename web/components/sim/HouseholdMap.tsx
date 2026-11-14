@@ -4,10 +4,8 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibr
 import { useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
-  COUNTY_CENTER,
   COUNTY_ZOOM,
-  HOUSEHOLDS,
-  stateAt,
+  type CountySim,
   type HouseholdState,
   type SideKey,
 } from "@/lib/simulation";
@@ -57,14 +55,18 @@ const CREW_PAINT = {
   "circle-opacity": 0.9,
 } as const;
 
-function homes(which: SideKey, hour: number): GeoJSON.FeatureCollection<GeoJSON.Point> {
+function homes(
+  county: CountySim,
+  which: SideKey,
+  hour: number,
+): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: "FeatureCollection",
-    features: HOUSEHOLDS.map((h, i) => ({
+    features: county.households.map((h, i) => ({
       type: "Feature",
       id: i,
       geometry: { type: "Point", coordinates: [h.lon, h.lat] },
-      properties: { state: stateAt(i, hour, which) },
+      properties: { state: county.stateAt(i, hour, which) },
     })),
   };
 }
@@ -82,6 +84,8 @@ function crews(points: [number, number][]): GeoJSON.FeatureCollection<GeoJSON.Po
 }
 
 export default function HouseholdMap({
+  county,
+  center,
   which,
   hour,
   vehicles = [],
@@ -90,6 +94,9 @@ export default function HouseholdMap({
   onMap,
   ariaLabel,
 }: {
+  /** The population and its two runs; swapped when the API answers. */
+  county: CountySim;
+  center: [number, number];
   which: SideKey;
   hour: number;
   /** Crew positions this frame; empty when nothing is moving. */
@@ -113,7 +120,7 @@ export default function HouseholdMap({
     const m = new maplibregl.Map({
       container: container.current,
       style: STYLE_URL,
-      center: COUNTY_CENTER,
+      center,
       zoom: COUNTY_ZOOM,
       interactive,
       // added by hand below, so it starts as the "i" and opens only when asked
@@ -126,7 +133,7 @@ export default function HouseholdMap({
     }
 
     m.on("load", () => {
-      m.addSource(HOMES, { type: "geojson", data: homes(which, 0) });
+      m.addSource(HOMES, { type: "geojson", data: homes(county, which, 0) });
       m.addSource(CREWS, { type: "geojson", data: crews([]) });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       m.addLayer({ id: HOMES_LAYER, type: "circle", source: HOMES, paint: HOME_PAINT as any });
@@ -149,16 +156,25 @@ export default function HouseholdMap({
     };
   }, [which, interactive]);
 
-  // repaint the dots as the hour advances
+  // repaint the dots as the hour advances, or when a real population replaces the fixture
   useEffect(() => {
     const m = map.current;
     if (!m) return;
     const apply = () => {
-      (m.getSource(HOMES) as GeoJSONSource | undefined)?.setData(homes(which, hour));
+      (m.getSource(HOMES) as GeoJSONSource | undefined)?.setData(homes(county, which, hour));
     };
     if (ready.current) apply();
     else m.once("load", apply);
-  }, [which, hour]);
+  }, [county, which, hour]);
+
+  // the real replay recentres the map on the county the run actually covers
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready.current) return;
+    const c = m.getCenter();
+    if (Math.abs(c.lng - center[0]) < 1e-6 && Math.abs(c.lat - center[1]) < 1e-6) return;
+    m.jumpTo({ center });
+  }, [center]);
 
   // the vans; this runs every animation frame, so it only touches the one source
   useEffect(() => {

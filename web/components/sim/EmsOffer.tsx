@@ -10,9 +10,12 @@ import { HELP_REQUEST, RESIDENT } from "@/lib/simulation";
 export default function EmsOffer({
   onAccept,
   accepted,
+  buildingLabel = RESIDENT.buildingLabel,
 }: {
   onAccept: () => void;
   accepted: boolean;
+  /** Real CoStar id when the API answered, the placeholder label otherwise. */
+  buildingLabel?: string;
 }) {
   return (
     <div
@@ -31,7 +34,7 @@ export default function EmsOffer({
           </p>
           <h3 className="text-lg font-semibold">{HELP_REQUEST.summary}</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-            {RESIDENT.buildingLabel} · 2.4 km · about 11 min
+            {buildingLabel} · 2.4 km · about 11 min
           </p>
         </div>
         <span

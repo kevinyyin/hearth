@@ -240,10 +240,17 @@ export const COVERED_LABEL: Record<Covered, string> = {
 };
 
 // --- The side-by-side panel under the chart ---------------------------------
+//
+// The crew model below is a model: it takes a set of households and works out who
+// a fleet reaches, under two dispatch regimes. Where those households come from is
+// decided elsewhere, in lib/simSource.ts — the real replay when an API is reachable,
+// a drawn fixture when it is not. Nothing here knows which it got, which is the
+// point: the same model runs on the teammate's machine with the CoStar kit, on
+// Vercel with the keys, and on a laptop with neither.
 
 export const RUN_HOURS = 12;
 
-/** Where the replay is set: Harris County, the ground Beryl crossed in July 2024. */
+/** Fallback centre: Harris County, the ground Beryl crossed in July 2024. */
 export const COUNTY_CENTER: [number, number] = [-95.37, 29.76]; // lon, lat — Houston
 export const COUNTY_ZOOM = 8.6;
 
@@ -279,17 +286,23 @@ const CAPACITY = { hearthAt: 4, todayAt: 1 } as const;
  * Households that become visible per hour. Hearth has the registry, so everyone
  * is visible the moment their power goes. Today a household is only visible once
  * its call has worked to the front of the queue, which is what throttles how many
- * crews can be out at all.
+ * crews can be out at all. This rate is an assumption, not a measurement, and
+ * almost the whole gap between the two maps rests on it.
  */
 const DISCOVERY = { hearthAt: Infinity, todayAt: 1.5 } as const;
 
-export type Household = { lon: number; lat: number; needsAt: number };
+export type Household = {
+  lon: number;
+  lat: number;
+  /** Hour this household needs help. From real backup hours when the API is reachable. */
+  needsAt: number;
+};
 export type HouseholdState = "unaffected" | "waiting" | "reached";
 export type SideKey = "hearthAt" | "todayAt";
 
 /**
- * Deterministic, so the dots sit in the same places on every render and every
- * reload — a demo that reshuffles itself is impossible to talk over.
+ * Deterministic, so the drawn fixture sits in the same places on every render and
+ * every reload — a demo that reshuffles itself is impossible to talk over.
  */
 function mulberry32(seed: number): () => number {
   let a = seed;
@@ -302,7 +315,8 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function makeHouseholds(n: number, seed: number): Household[] {
+/** The stand-in population, used only when no API answered. */
+export function drawHouseholds(n = 140, seed = 20240708): Household[] {
   const rnd = mulberry32(seed);
   const out: Household[] = [];
   // radial rather than uniform, so the middle of the county is denser, the way a
@@ -322,8 +336,6 @@ function makeHouseholds(n: number, seed: number): Household[] {
   return out;
 }
 
-export const HOUSEHOLDS: Household[] = makeHouseholds(140, 20240708);
-
 /** One stretch of a crew's trip, in continuous hours. */
 export type Leg = {
   from: [number, number];
@@ -335,10 +347,9 @@ export type Leg = {
 };
 
 export type SideSim = {
-  /** Hour each household was reached, or null if the run ended first. */
   reachAt: (number | null)[];
-  legs: Leg[][]; // per crew, in order
-  station: number[]; // per crew
+  legs: Leg[][];
+  station: number[];
   tours: number;
   stops: number;
 };
@@ -350,21 +361,14 @@ const dist = (a: [number, number], b: [number, number]) =>
  * One pass over the twelve hours, at the same cruising speed and the same time at
  * the door on both sides. Everything that differs comes from one thing: whether
  * the dispatcher already knows who needs help.
- *
- * With the registry, every crew has somewhere useful to be, and can chain four
- * nearby stops into a round before restocking — short legs, many rounds. Without
- * it, work only appears as calls reach the front of the queue, so most crews have
- * nothing to go to, and the one that does drives out to a single address and comes
- * back. Same vans at the same speed; far fewer of them moving, and further per
- * person helped.
  */
-function runSide(which: SideKey): SideSim {
+function runSide(households: Household[], which: SideKey): SideSim {
   const capacity = CAPACITY[which];
   const perHour = DISCOVERY[which];
 
-  const reachAt: (number | null)[] = HOUSEHOLDS.map(() => null);
-  const taken = HOUSEHOLDS.map(() => false);
-  const known = HOUSEHOLDS.map(() => false);
+  const reachAt: (number | null)[] = households.map(() => null);
+  const taken = households.map(() => false);
+  const known = households.map(() => false);
   let discoveredThisHour = 0;
   let hourMark = 0;
 
@@ -386,9 +390,8 @@ function runSide(which: SideKey): SideSim {
       discoveredThisHour = 0;
     }
 
-    // what the dispatcher can see right now
-    for (let i = 0; i < HOUSEHOLDS.length; i++) {
-      if (known[i] || HOUSEHOLDS[i].needsAt > t) continue;
+    for (let i = 0; i < households.length; i++) {
+      if (known[i] || households[i].needsAt > t) continue;
       if (discoveredThisHour >= perHour) break;
       known[i] = true;
       if (perHour !== Infinity) discoveredThisHour += 1;
@@ -405,9 +408,9 @@ function runSide(which: SideKey): SideSim {
       while (route.length < capacity) {
         let best = -1;
         let bestD = Infinity;
-        for (let i = 0; i < HOUSEHOLDS.length; i++) {
+        for (let i = 0; i < households.length; i++) {
           if (taken[i] || !known[i] || route.includes(i)) continue;
-          const d = dist(at, [HOUSEHOLDS[i].lon, HOUSEHOLDS[i].lat]);
+          const d = dist(at, [households[i].lon, households[i].lat]);
           if (d < bestD) {
             bestD = d;
             best = i;
@@ -415,7 +418,7 @@ function runSide(which: SideKey): SideSim {
         }
         if (best === -1) break;
         route.push(best);
-        at = [HOUSEHOLDS[best].lon, HOUSEHOLDS[best].lat];
+        at = [households[best].lon, households[best].lat];
       }
 
       if (route.length === 0) continue;
@@ -424,7 +427,7 @@ function runSide(which: SideKey): SideSim {
       let from: [number, number] = base;
 
       route.forEach((i, k) => {
-        const to: [number, number] = [HOUSEHOLDS[i].lon, HOUSEHOLDS[i].lat];
+        const to: [number, number] = [households[i].lon, households[i].lat];
         const travel = dist(from, to) / CRUISE;
         legs[c].push({ from, to, t0: clock, t1: clock + travel, departure: k === 0 });
         clock += travel;
@@ -437,7 +440,6 @@ function runSide(which: SideKey): SideSim {
         from = to;
       });
 
-      // and back to restock
       const home = dist(from, base) / CRUISE;
       legs[c].push({ from, to: base, t0: clock, t1: clock + home, departure: false });
       clock += home;
@@ -450,56 +452,69 @@ function runSide(which: SideKey): SideSim {
   return { reachAt, legs, station, tours, stops };
 }
 
-export const SIDES: Record<SideKey, SideSim> = {
-  hearthAt: runSide("hearthAt"),
-  todayAt: runSide("todayAt"),
+/** A population plus the two runs over it, and the readings the panel needs. */
+export type CountySim = {
+  households: Household[];
+  sides: Record<SideKey, SideSim>;
+  stateAt(i: number, hour: number, which: SideKey): HouseholdState;
+  tallyAt(hour: number, which: SideKey): Record<HouseholdState, number>;
+  vehiclesAt(time: number, which: SideKey): [number, number][];
+  toursBy(time: number, which: SideKey): number;
+  outNow(time: number, which: SideKey): number;
 };
 
-/** What a household looks like at a given hour, under one approach. */
-export function stateAt(i: number, hour: number, which: SideKey): HouseholdState {
-  if (hour < HOUSEHOLDS[i].needsAt) return "unaffected";
-  const at = SIDES[which].reachAt[i];
-  return at != null && hour >= at ? "reached" : "waiting";
+export function buildCounty(households: Household[]): CountySim {
+  const sides: Record<SideKey, SideSim> = {
+    hearthAt: runSide(households, "hearthAt"),
+    todayAt: runSide(households, "todayAt"),
+  };
+
+  const stateAt = (i: number, hour: number, which: SideKey): HouseholdState => {
+    if (hour < households[i].needsAt) return "unaffected";
+    const at = sides[which].reachAt[i];
+    return at != null && hour >= at ? "reached" : "waiting";
+  };
+
+  const vehiclesAt = (time: number, which: SideKey): [number, number][] => {
+    const out: [number, number][] = [];
+    for (let c = 0; c < CREW_COUNT; c++) {
+      const leg = sides[which].legs[c].find((l) => time >= l.t0 && time <= l.t1);
+      if (!leg) continue;
+      const span = Math.max(leg.t1 - leg.t0, 1e-6);
+      const p = (time - leg.t0) / span;
+      out.push([
+        leg.from[0] + (leg.to[0] - leg.from[0]) * p,
+        leg.from[1] + (leg.to[1] - leg.from[1]) * p,
+      ]);
+    }
+    return out;
+  };
+
+  return {
+    households,
+    sides,
+    stateAt,
+    vehiclesAt,
+    tallyAt(hour, which) {
+      const t: Record<HouseholdState, number> = { unaffected: 0, waiting: 0, reached: 0 };
+      for (let i = 0; i < households.length; i++) t[stateAt(i, hour, which)] += 1;
+      return t;
+    },
+    toursBy(time, which) {
+      let n = 0;
+      for (let c = 0; c < CREW_COUNT; c++) {
+        n += sides[which].legs[c].filter((l) => l.departure && l.t0 <= time).length;
+      }
+      return n;
+    },
+    outNow(time, which) {
+      return vehiclesAt(time, which).length;
+    },
+  };
 }
 
-export function tallyAt(hour: number, which: SideKey): Record<HouseholdState, number> {
-  const t: Record<HouseholdState, number> = { unaffected: 0, waiting: 0, reached: 0 };
-  for (let i = 0; i < HOUSEHOLDS.length; i++) t[stateAt(i, hour, which)] += 1;
-  return t;
-}
-
-/** Every crew's position at a continuous time; a parked crew is not drawn. */
-export function vehiclesAt(time: number, which: SideKey): [number, number][] {
-  const sim = SIDES[which];
-  const out: [number, number][] = [];
-
-  for (let c = 0; c < CREW_COUNT; c++) {
-    const leg = sim.legs[c].find((l) => time >= l.t0 && time <= l.t1);
-    if (!leg) continue;
-    const span = Math.max(leg.t1 - leg.t0, 1e-6);
-    const p = (time - leg.t0) / span;
-    out.push([
-      leg.from[0] + (leg.to[0] - leg.from[0]) * p,
-      leg.from[1] + (leg.to[1] - leg.from[1]) * p,
-    ]);
-  }
-  return out;
-}
-
-/** Deployments begun so far, for the counter beside the map. */
-export function toursBy(time: number, which: SideKey): number {
-  const sim = SIDES[which];
-  let n = 0;
-  for (let c = 0; c < CREW_COUNT; c++) {
-    n += sim.legs[c].filter((l) => l.departure && l.t0 <= time).length;
-  }
-  return n;
-}
-
-/** Crews on the road right now, which is the thing the two maps differ most in. */
-export function outNow(time: number, which: SideKey): number {
-  return vehiclesAt(time, which).length;
-}
+/** What the panel shows before any fetch resolves, and if none ever does. */
+export const FIXTURE_COUNTY: CountySim = buildCounty(drawHouseholds());
 
 /** Formats a count the same way everywhere in the simulation. */
 export const count = new Intl.NumberFormat("en-US");

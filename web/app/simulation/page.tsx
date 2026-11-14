@@ -6,13 +6,13 @@ import CallTranscript from "@/components/sim/CallTranscript";
 import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
 import FloorPlan from "@/components/sim/FloorPlan";
+import { useResidentFeed } from "@/lib/simSource";
 import {
   ENROLMENT_CALL,
   ENROLMENT_FIELDS,
   EVENT_CALL,
   EVENT_PHASES,
   HELP_REQUEST,
-  RESIDENT,
   RUN_HOURS,
   type Actor,
   type EventPhase,
@@ -126,6 +126,12 @@ function StepButton({
 }
 
 export default function SimulationPage() {
+  // The record, the pins and the building facts come from the API when one is
+  // reachable; the call itself is always the placeholder, since the voice lane
+  // owns the real one.
+  const residentFeed = useResidentFeed();
+  const resident = residentFeed.resident;
+
   const [stage, setStage] = useState<Stage>("intro");
   const [showTranscript, setShowTranscript] = useState(true);
   const [phaseIdx, setPhaseIdx] = useState(0);
@@ -182,14 +188,14 @@ export default function SimulationPage() {
       return {
         lines: ENROLMENT_CALL,
         revealed: stage === "enrolled" ? ENROLMENT_CALL.length : enrol.n,
-        title: `Enrolment call · ${callMode === "real" ? realNumber || "no number yet" : RESIDENT.phone}`,
+        title: `Enrolment call · ${callMode === "real" ? realNumber || "no number yet" : resident.phone}`,
         live: stage === "enrol" && !callDone,
       };
     }
     return {
       lines: EVENT_CALL,
       revealed: event.n,
-      title: `Outage call · ${RESIDENT.phone}`,
+      title: `Outage call · ${resident.phone}`,
       live: callActive && event.n < EVENT_CALL.length,
     };
   }, [stage, enrol.n, event.n, callActive, callDone, callMode, realNumber]);
@@ -422,10 +428,10 @@ export default function SimulationPage() {
                   Calling
                 </p>
                 <p className="tnum display mt-1 text-3xl">
-                  {callMode === "real" && realNumber ? realNumber : RESIDENT.phone}
+                  {callMode === "real" && realNumber ? realNumber : resident.phone}
                 </p>
                 <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-                  {RESIDENT.name} · {RESIDENT.device} · simulated
+                  {resident.name} · {resident.device} · simulated
                 </p>
                 <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
                   {stage === "enrolled"
@@ -654,7 +660,7 @@ export default function SimulationPage() {
 
             <div className="grid gap-5 xl:grid-cols-3">
               {/* user side */}
-              <Section side="User side" title={`${RESIDENT.name} · simulated`}>
+              <Section side="User side" title={`${resident.name} · simulated`}>
                 {!phaseReached("warning") && (
                   <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                     Nothing on screen. The power is on.
@@ -751,7 +757,7 @@ export default function SimulationPage() {
                 )}
 
                 {phaseReached("offered") && (
-                  <EmsOffer accepted={phaseReached("accepted")} onAccept={advance} />
+                  <EmsOffer accepted={phaseReached("accepted")} onAccept={advance} buildingLabel={resident.buildingLabel} />
                 )}
 
                 {phaseReached("accepted") && (
@@ -766,7 +772,7 @@ export default function SimulationPage() {
                     <FloorPlan showEntrance showMachine showBlocked showPath />
 
                     <ul className="mt-4 space-y-2.5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-                      {RESIDENT.pins.map((pin) => (
+                      {resident.pins.map((pin) => (
                         <li key={pin.kind} className="flex gap-3 text-sm">
                           <span
                             className="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase"
