@@ -22,6 +22,12 @@ import {
   type SweepRow,
 } from "@/lib/types";
 
+/**
+ * Kept out of the main screen. The ablation is still in the sweep and still in the
+ * repo's own write-ups; it is one line too many for a two-minute demo.
+ */
+const HIDDEN: PolicyId[] = ["p3__nomove"];
+
 /** Colour follows the policy, never its rank, so a toggle never repaints the survivors. */
 function seriesColor(policy: string): string {
   const slot = POLICY_ORDER.indexOf(policy as PolicyId);
@@ -101,7 +107,8 @@ export default function CrewsChart({
   /** When set, the chart opens on Hearth against this one policy; the legend still toggles the rest. */
   comparison?: PolicyId;
 }) {
-  const [weighted, setWeighted] = useState(true);
+  // Always risk-weighted: the unweighted view was a toggle nobody used in a demo.
+  const weighted = true;
   const [shown, setShown] = useState<string[]>(
     comparison ? ["p3", comparison] : [...DEFAULT_POLICIES],
   );
@@ -113,7 +120,10 @@ export default function CrewsChart({
     if (comparison) setShown(["p3", comparison]);
   }, [comparison]);
 
-  const allSeries = useMemo(() => toSeries(rows, weighted), [rows, weighted]);
+  const allSeries = useMemo(
+    () => toSeries(rows, weighted).filter((s) => !HIDDEN.includes(s.policy as PolicyId)),
+    [rows, weighted],
+  );
   // the crew counts come from the sweep file (sweep.crews in assumptions.yaml), not from the page
   const crewTicks = useMemo(() => [...new Set(rows.map((r) => r.crews))].sort((a, b) => a - b), [rows]);
   const visible = useMemo(
@@ -134,33 +144,6 @@ export default function CrewsChart({
     >
       {/* Filters in one row above the chart. */}
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div
-          className="inline-flex rounded-lg border p-0.5 text-sm"
-          style={{ borderColor: "var(--border)" }}
-          role="group"
-          aria-label="Weighting"
-        >
-          {[
-            { on: true, label: "Risk-weighted" },
-            { on: false, label: "Unweighted" },
-          ].map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              onClick={() => setWeighted(opt.on)}
-              aria-pressed={weighted === opt.on}
-              className="rounded-md px-3 py-1.5 font-medium transition-colors"
-              style={
-                weighted === opt.on
-                  ? { background: "var(--surface-0)", color: "var(--text-primary)" }
-                  : { color: "var(--text-muted)" }
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
         <button
           type="button"
           onClick={() => setShowTable((v) => !v)}

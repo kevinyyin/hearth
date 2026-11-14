@@ -168,6 +168,13 @@ export const EVENT_PHASES: {
 ];
 
 /** Placeholder outage call. Real copy is the messaging lane's. */
+/**
+ * The line where the resident asks for help on the call. Once it has been said,
+ * the request exists and the button on their screen is no longer the way it gets
+ * made — most people ask the person they are already talking to.
+ */
+export const EVENT_CALL_ASK_LINE = 3;
+
 export const EVENT_CALL: TranscriptLine[] = [
   { at: 400, from: "hearth", text: "This is Hearth calling for Harris County. This is a simulated call. The power is out in your area and it is expected to stay out tonight. You told us your concentrator runs about four hours on battery." },
   { at: 5600, from: "resident", text: "It's been off maybe an hour already." },

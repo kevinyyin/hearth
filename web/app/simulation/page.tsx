@@ -11,6 +11,7 @@ import {
   ENROLMENT_CALL,
   ENROLMENT_FIELDS,
   EVENT_CALL,
+  EVENT_CALL_ASK_LINE,
   EVENT_PHASES,
   HELP_REQUEST,
   RUN_HOURS,
@@ -141,6 +142,7 @@ export default function SimulationPage() {
   const [realCallNote, setRealCallNote] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
+  const [askedOnCall, setAskedOnCall] = useState(false);
   const [fields, setFields] = useState(ENROLMENT_FIELDS.map((f) => ({ ...f })));
 
   const current = EVENT_PHASES[phaseIdx];
@@ -168,6 +170,15 @@ export default function SimulationPage() {
     return () => clearTimeout(t);
   }, [stage, step, advance]);
 
+  // Most people ask the person they are already talking to. Once that line is said
+  // the request exists, so the button gives way to a note and the run moves on.
+  useEffect(() => {
+    if (!callActive || event.n <= EVENT_CALL_ASK_LINE) return;
+    setAskedOnCall(true);
+    const t = setTimeout(advance, AUTO_MS);
+    return () => clearTimeout(t);
+  }, [callActive, event.n, advance]);
+
   const startEvent = () => {
     setPhaseIdx(0);
     setStage("event");
@@ -177,6 +188,7 @@ export default function SimulationPage() {
     setStage("intro");
     setPhaseIdx(0);
     setEditing(false);
+    setAskedOnCall(false);
     setRealCallNote(null);
     setFields(ENROLMENT_FIELDS.map((f) => ({ ...f })));
     enrol.reset();
@@ -739,7 +751,16 @@ export default function SimulationPage() {
                   </div>
                 )}
 
-                {stepBy("resident") && (
+                {askedOnCall && (
+                  <p
+                    className="mt-4 rounded-lg px-4 py-3 text-sm font-medium"
+                    style={{ background: "#fbeee6", color: "#7a2e12" }}
+                  >
+                    Caller requested help over the phone
+                  </p>
+                )}
+
+                {stepBy("resident") && !askedOnCall && (
                   <StepButton
                     label={stepBy("resident")!.label}
                     hint={stepBy("resident")!.hint}

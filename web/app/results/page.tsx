@@ -7,17 +7,8 @@ import SideBySide from "@/components/sim/SideBySide";
 import { API, getJson } from "@/lib/api";
 import { POLICY_LABELS, POLICY_ORDER, type PolicyId, type SweepRow } from "@/lib/types";
 
-const ASSUMPTIONS = [
-  "Simulated patients reply at configured rates.",
-  "Crews accept jobs instantly.",
-  "The indoor temperature model is a simple heuristic.",
-  "Hearth assumes per-home outage data from the utility.",
-  "Shelters, hospitals and refuge buildings take everyone (no capacity limit), which favors moving people; the gap from building data at high crew counts is an upper bound.",
-  "Crews work around the clock.",
-];
-
 /** Everything p3 is shown against in the card. */
-const COMPARISONS: PolicyId[] = ["p0", "p3__nobld", "p3__nomove", "p3__aid"];
+const COMPARISONS: PolicyId[] = ["p0", "p3__nobld", "p3__aid"];
 
 const fmt = new Intl.NumberFormat("en-US");
 
@@ -125,34 +116,41 @@ export default function ResultsPage() {
           >
             <h2 className="mb-4 text-xl font-semibold">Run a comparison</h2>
 
-            <p className="mb-2 text-sm font-medium" id="crews-label" style={{ color: "var(--text-muted)" }}>
-              Delivery crews
-            </p>
-            <div
-              role="group"
-              aria-labelledby="crews-label"
-              className="mb-6 inline-flex flex-wrap rounded-xl border p-1"
-              style={{ borderColor: "var(--border)", background: "var(--surface-0)" }}
-            >
-              {crewTicks.map((c) => {
-                const on = c === crews;
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setCrews(c)}
-                    className="tnum rounded-lg px-4 text-sm font-semibold transition-colors"
-                    style={{
-                      minHeight: 44,
-                      background: on ? "var(--text-primary)" : "transparent",
-                      color: on ? "var(--surface-0)" : "var(--text-secondary)",
-                    }}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
+            {/* label left, picker hard right, so the card opens with the numbers, not the controls */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <p
+                className="text-sm font-medium"
+                id="crews-label"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Delivery crews
+              </p>
+              <div
+                role="group"
+                aria-labelledby="crews-label"
+                className="inline-flex flex-wrap rounded-lg border p-0.5"
+                style={{ borderColor: "var(--border)", background: "var(--surface-0)" }}
+              >
+                {crewTicks.map((c) => {
+                  const on = c === crews;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setCrews(c)}
+                      className="tnum rounded-md px-2.5 text-sm font-semibold transition-colors"
+                      style={{
+                        minHeight: 32,
+                        background: on ? "var(--text-primary)" : "transparent",
+                        color: on ? "var(--surface-0)" : "var(--text-secondary)",
+                      }}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mb-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
@@ -251,31 +249,21 @@ export default function ResultsPage() {
                 <h3 className="mb-1.5 text-sm font-semibold">Across — delivery crews</h3>
                 <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   How many crews the county can field at once, from {crewTicks[0]} to{" "}
-                  {crewTicks[crewTicks.length - 1]}. The spacing is logarithmic, so each step is a
-                  doubling rather than a fixed number — doubling a small fleet matters far more than
-                  adding the same crews to a large one. The counts come from the sweep config, not
-                  from this page.
+                  {crewTicks[crewTicks.length - 1]}. Each step is a doubling.
                 </p>
               </div>
               <div>
                 <h3 className="mb-1.5 text-sm font-semibold">Up — patient-hours at risk</h3>
                 <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  Hours that simulated patients spend past the point where their device or their
-                  indoor temperature is no longer safe, added up across the county. Lower is better.
-                  The line is the median across random seeds and the tinted band is the 5th to 95th
-                  percentile, so a narrow band means the result barely moved between runs.
-                  Risk-weighted counts an hour for a frailer patient as more than an hour; the toggle
-                  turns that off.
+                  Hours spent past the point a device or a room is no longer safe, added up across
+                  the county. Lower is better.
                 </p>
               </div>
               <div>
-                <h3 className="mb-1.5 text-sm font-semibold">Where it flatters Hearth</h3>
+                <h3 className="mb-1.5 text-sm font-semibold">Why Hearth matters</h3>
                 <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  Refuges accept everyone with no capacity limit, crews accept instantly and work
-                  around the clock, and per-home outage data is assumed to exist. Each one removes a
-                  constraint that would bite Hearth harder than the phone tree, because Hearth is the
-                  policy that moves people and dispatches crews. Read the gap as an upper bound on
-                  what this approach buys, not a forecast.
+                  Every line falls as you add crews. Only the ones that know who needs help fall
+                  fast.
                 </p>
               </div>
             </div>
@@ -297,18 +285,6 @@ export default function ResultsPage() {
             <SideBySide />
           </div>
         )}
-
-        <section className="mt-10">
-          <h2 className="display mb-4 text-2xl">Assumptions that flatter Hearth</h2>
-          <ul
-            className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            {ASSUMPTIONS.map((a) => (
-              <li key={a}>{a}</li>
-            ))}
-          </ul>
-        </section>
 
         {API && (
           <p className="mt-7 text-sm" style={{ color: "var(--text-muted)" }}>
