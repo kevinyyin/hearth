@@ -147,7 +147,9 @@ def _costar_index() -> dict[str, dict]:
         if not path.exists() and not COSTAR_FILE.exists():  # a host without the kit reads the index from storage
             from hearth import remote
 
-            path = remote.fetch("costar/houston_v4.json") or path
+            # the previous index has no lot fields (so no staging lots) but keeps every building route answering
+            # on a host where the new file is not uploaded yet
+            path = remote.fetch("costar/houston_v4.json") or remote.fetch("costar/houston_v3.json") or path
         if not path.exists():
             rows = {}
             with COSTAR_FILE.open() as f:

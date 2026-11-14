@@ -277,7 +277,8 @@ export type StagingLot = {
   building_id: string; name: string; address: string; zip: string; property_type: string;
   surface_spaces: number; lot_acres: number | null; km: number; stale?: boolean;
 };
-export type StagingView = { chosen: StagingLot | null; options: StagingLot[] };
+/** `basis` is what an option's `km` is measured from; null when there is nothing to centre on. */
+export type StagingView = { chosen: StagingLot | null; options: StagingLot[]; basis: "open requests" | "registered homes" | null };
 
 export type DispatchView = {
   requests: { request: HelpRequest; device: string; mobility: string; address: string | null }[];

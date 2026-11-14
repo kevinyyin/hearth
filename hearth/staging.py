@@ -21,18 +21,23 @@ def _where(patient_ids) -> list[dispatch.Where]:
     return [dispatch.locate(*who) for i in patient_ids if (who := dispatch.person(i))]
 
 
-def scene() -> tuple[tuple[float, float], set[str]] | None:
-    """(centre, dark ZIPs): from the open help requests, else from registered homes with no ZIP dark; None with neither."""
+def scene() -> tuple[tuple[float, float], set[str], str] | None:
+    """(centre, dark ZIPs, what the centre is of): from the open help requests, else from registered homes with no ZIP
+    dark; None with neither."""
     asking = _where(r.patient_id for r in dispatch.requests() if r.state in dispatch.LIVE)
     at = asking or _where(h["patient_id"] for h in store.all("home") if "patient_id" in h)
     if not at:
         return None
-    return (sum(w.lat for w in at) / len(at), sum(w.lon for w in at) / len(at)), {w.zip for w in asking}
+    return ((sum(w.lat for w in at) / len(at), sum(w.lon for w in at) / len(at)), {w.zip for w in asking},
+            "open requests" if asking else "registered homes")
+
+
+def _options(now) -> list[dict]:
+    return candidates(tools.costar_all(), now[1], now[0]) if now else []
 
 
 def options() -> list[dict]:
-    now = scene()
-    return candidates(tools.costar_all(), now[1], now[0]) if now else []
+    return _options(scene())
 
 
 def choose(building_id: str) -> dict:
@@ -43,10 +48,23 @@ def choose(building_id: str) -> dict:
     return option
 
 
+def _chosen(scene_now) -> dict | None:
+    """The dispatcher's lot, `stale` once someone in its ZIP has asked for help. The scene costs several store reads and
+    crew pages poll this, so it is only worked out (by calling `scene_now`) when a lot is stored."""
+    if (doc := store.get("staging", "current")) is None:
+        return None
+    now = scene_now()
+    return doc | {"stale": bool(now) and doc.get("zip") in now[1]}
+
+
 def chosen() -> dict | None:
-    """The dispatcher's lot, `stale` once someone in its ZIP has asked for help."""
-    doc, now = store.get("staging", "current"), scene()
-    return doc and doc | {"stale": bool(now) and doc.get("zip") in now[1]}
+    return _chosen(scene)
+
+
+def view() -> dict:
+    """What the dispatch card shows, from one reading of the scene."""
+    now = scene()
+    return {"chosen": _chosen(lambda: now), "options": _options(now), "basis": now[2] if now else None}
 
 
 def clear() -> None:

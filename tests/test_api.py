@@ -257,9 +257,10 @@ def test_staging_options_choice_and_clear(monkeypatch):
     from hearth import staging
     opt = {"building_id": "B-SAMPLE", "name": "Lot", "address": "1 Lot St", "zip": "77027", "property_type": "retail",
            "surface_spaces": 300, "lot_acres": 4.0, "km": 1.1}
-    monkeypatch.setattr(staging, "options", lambda: [opt])
-    monkeypatch.setattr(staging, "scene", lambda: None)
-    assert client.get("/api/staging").json() == {"chosen": None, "options": [opt]}
+    from hearth.buildings import tools
+    monkeypatch.setattr(tools, "costar_all", lambda: [opt | {"lat": 29.77, "lon": -95.37}])
+    monkeypatch.setattr(staging, "scene", lambda: ((29.76, -95.37), set(), "open requests"))
+    assert client.get("/api/staging").json() == {"chosen": None, "options": [opt], "basis": "open requests"}
     assert client.post("/api/staging", json={"building_id": "NOPE"}).status_code == 409
     assert client.post("/api/staging", json={"building_id": "B-SAMPLE"}).json()["chosen"]["building_id"] == "B-SAMPLE"
     assert client.get("/api/staging").json()["chosen"]["stale"] is False

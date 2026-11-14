@@ -12,11 +12,11 @@ const button = "rounded border px-3 py-1.5 text-xs font-medium";
 const NEEDS_CALL = "Needs a call: owner permission; lot not verified clear";
 
 /** Where the lot is and what CoStar says about it. The name is the address when CoStar has no building name. */
-function Facts({ lot }: { lot: StagingLot }) {
+function Facts({ lot, basis }: { lot: StagingLot; basis: string }) {
   return (
     <>
       <p className="text-sm font-medium">
-        {[lot.name, lot.property_type, lot.address === lot.name ? null : lot.address, `${lot.km} km from open requests`].filter(Boolean).join(" · ")}
+        {[lot.name, lot.property_type, lot.address === lot.name ? null : lot.address, `${lot.km} km from ${basis}`].filter(Boolean).join(" · ")}
       </p>
       <p className="text-xs" style={secondary}>
         CoStar: {lot.surface_spaces} surface spaces{lot.lot_acres === null ? "" : ` · ${lot.lot_acres} acres`} · existing
@@ -79,7 +79,7 @@ export default function StagingCard() {
       )}
       {lot && (
         <>
-          <Facts lot={lot} />
+          <Facts lot={lot} basis={data?.basis ?? "open requests"} />
           {image ? (
             <figure className="space-y-1">
               {/* eslint-disable-next-line @next/next/no-img-element -- an object URL fetched with the password header */}

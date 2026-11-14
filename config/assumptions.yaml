@@ -130,4 +130,4 @@ storm:
 
 # ---- staging lots: where crews gather near an outage, proposed from CoStar parking data ----
 staging:
-  min_surface_spaces: {value: 100, source: "our call Nov 14: a surface lot this size leaves room for several vans; 131 non-apartment Houston properties in the kit pass", confirmed: false}
+  min_surface_spaces: {value: 100, source: "our call Nov 14: a surface lot this size leaves room for several vans; 129 existing Houston properties in the kit pass the staging rule", confirmed: false}

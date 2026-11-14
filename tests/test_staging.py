@@ -65,3 +65,20 @@ def test_a_chosen_lot_whose_zip_gets_a_request_is_marked_stale():
     store.put("staging", "current", lot("L2", zip="77002") | {"km": 1.0})
     dispatch.open_request("demo-1")
     assert staging.chosen()["stale"] is True
+
+
+def test_no_chosen_lot_costs_no_scene_and_a_view_reads_the_scene_once(monkeypatch):
+    calls, real = [], staging.scene
+    monkeypatch.setattr(staging, "scene", lambda: calls.append(1) or real())
+    assert staging.chosen() is None and calls == []  # crew pages poll this every 3 seconds
+    staging.view()
+    assert len(calls) == 1
+
+
+def test_the_view_says_what_the_distance_is_measured_from():
+    assert staging.view() == {"chosen": None, "options": [], "basis": None}
+    store.put("home", "p1", Home(patient_id="p1", building_id="B-SAMPLE", ok_without_h=4))
+    assert staging.view()["basis"] == "registered homes"
+    dispatch.open_request("demo-1")
+    view = staging.view()
+    assert (view["basis"], [o["building_id"] for o in view["options"]]) == ("open requests", ["L1"])

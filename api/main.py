@@ -443,13 +443,9 @@ class CallIn(BaseModel):
 
 
 # ---- staging lots: a real parking lot for crews to gather at, proposed from CoStar and picked by the dispatcher ----
-def _staging_view() -> dict:
-    return {"chosen": staging.chosen(), "options": staging.options()}
-
-
 @app.get("/api/staging")
 def staging_board():
-    return _staging_view()
+    return staging.view()
 
 
 class StagingChoice(BaseModel):
