@@ -113,10 +113,15 @@ and crew assignment. The world is identical under every policy; policies differ 
 
 ## Sweep and replay (Task S4)
 
-`HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim sweep --scenario beryl_2024` (crews 20, 40, 80, 160, 320 and 10 seeds from `sweep.*` in `assumptions.yaml`; the range was 5 to 80 until Nov 13, which covered only the start of the curve)
-(250 runs, about 4.5 min on 10 cores) writes `results/sweep_beryl_2024.json` and
+`HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim sweep --scenario beryl_2024` (crews 5, 10, 20, 40, 80, 10 seeds and every 36th patient from `sweep.*` in `assumptions.yaml`)
+(350 runs, about 2.5 min on 10 cores) writes `results/sweep_beryl_2024.json` and
 `results/sweep_beryl_2024.assumptions.yaml`. The committed sweep ran against the main store: 1,386 records-only
 profiles plus 6 agent surveys, no fixtures.
+
+**Scale (Nov 14, user decision).** The sweep simulates every 36th patient (`sweep.patient_stride`), 647 of 23,273,
+over 5 to 80 crews, so Hearth sits near 5,000 weighted patient-hours at 20 crews (median 5,134). From Nov 13 until
+then it ran all patients over 20 to 320 crews. The two paragraphs below were measured on that full-county sweep and
+have not been re-measured at the smaller scale. The map's county replay (`hearth.sim run`) still runs all patients.
 
 **What separates `p3` from `p3__nobld`.** The gap is 0.3% at 5 crews, 1.3% at 20 and 6% at 80. All of it comes from
 refuge destinations. With hotels and senior housing removed from the store, the gap at 20 and 80 crews is under

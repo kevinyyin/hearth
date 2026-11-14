@@ -67,15 +67,16 @@ def refuge_open(moved, dest, dest_dark_now) -> np.ndarray:
     return moved & ~((dest >= 0) & dest_dark_now[np.maximum(dest, 0)])
 
 
-def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(), out_root: Path | None = ROOT / "results") -> dict:
+def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(), out_root: Path | None = ROOT / "results",
+        every: int = 1) -> dict:
     """Simulate and return the summary; with out_root, also write out_root/<run_id>/ (meta, events, snapshots, summary,
-    a copy of assumptions.yaml)."""
+    a copy of assumptions.yaml). `every` simulates each every-th patient only: the county at a smaller scale."""
     assert policy in ("p0", "p3"), policy
     sc = load(scenario)
     dt, horizon = a("sim.tick_minutes") / 60, a("sim.horizon_h")
     ticks = pd.date_range(sc["start"], sc["end"], freq=f"{a('sim.tick_minutes')}min")
     hours = np.arange(len(ticks)) * dt
-    ps = (load_population if out_root is not None else generate)(scenario, seed)  # sweeps run in parallel: no parquet
+    ps = (load_population if out_root is not None else generate)(scenario, seed)[::every]  # sweeps run in parallel: no parquet
     n, idx_of = len(ps), {p.patient_id: i for i, p in enumerate(ps)}
     rng = np.random.default_rng([seed, 1])  # its own stream, apart from the population's
 

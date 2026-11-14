@@ -56,14 +56,21 @@ describe("what the map shows", () => {
     expect(new Set(households.map((h) => h.needsAt)).size).toBe(households.length);
   });
 
-  it("shows a household on today's map only once its call is in", () => {
-    const side = county.sides.todayAt;
-    const held = side.jobs.find((j) => !j.refill && j.knownAt !== null && j.knownAt - j.dueAt > 0.5)!;
-    expect(county.stateAt(held.h, (held.dueAt + held.knownAt!) / 2, "todayAt")).toBe("unaffected");
-    expect(county.stateAt(held.h, held.knownAt!, "todayAt")).toBe("waiting");
+  it("shows a household on today's map from the moment it rings, on hold or not", () => {
+    const held = county.sides.todayAt.calls.find((c) => !c.job.refill && c.answeredAt! - c.at > 0.5)!;
+    expect(county.stateAt(held.job.h, (held.job.dueAt + held.at) / 2, "todayAt")).toBe("unaffected");
+    expect(county.stateAt(held.job.h, (held.at + held.answeredAt!) / 2, "todayAt")).toBe("waiting");
+  });
 
-    const neverCalls = side.jobs.find((j) => !j.refill && j.knownAt === null)!;
-    expect(county.stateAt(neverCalls.h, RUN_HOURS, "todayAt")).toBe("unaffected");
+  it("ends the day with the same callers on both sides, and today further from done", () => {
+    // needs spread over the whole day and past it, as the real run's are
+    const spread = households.map((h, i) => ({ ...h, needsAt: (i / households.length) * (RUN_HOURS + 6) }));
+    for (const c of [county, buildCounty(spread)]) {
+      const hearth = c.tallyAt(RUN_HOURS, "hearthAt");
+      const today = c.tallyAt(RUN_HOURS, "todayAt");
+      expect(today.unaffected).toBe(hearth.unaffected);
+      expect(today.waiting + today.resupply).toBeGreaterThan(hearth.waiting + hearth.resupply);
+    }
   });
 
   it("changes a household's colour when the van pulls away, and shows the van parked until then", () => {

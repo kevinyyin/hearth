@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CallTranscript from "@/components/sim/CallTranscript";
-import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
 import BuildingViews from "@/components/sim/BuildingViews";
-import FullRun from "@/components/sim/FullRun";
 import RouteSim from "@/components/sim/RouteSim";
 import { CREW_VEHICLE } from "@/lib/routeSim";
 import { useResidentFeed } from "@/lib/simSource";
@@ -17,7 +15,6 @@ import {
   EVENT_CALL_ASK_LINE,
   EVENT_PHASES,
   HELP_REQUEST,
-  RUN_HOURS,
   type Actor,
   type EventPhase,
   type TranscriptLine,
@@ -28,7 +25,7 @@ const SPEED = 0.4;
 /** How long an automatic step sits on screen before it takes itself. */
 const AUTO_MS = 1100;
 
-type Stage = "intro" | "enrol" | "enrolled" | "event" | "full";
+type Stage = "intro" | "enrol" | "enrolled" | "event";
 type CallMode = "simulated" | "real";
 
 /** Reveals transcript lines on their own timings, and can be cut short. */
@@ -219,12 +216,6 @@ export default function SimulationPage() {
   const phaseReached = (p: EventPhase) =>
     EVENT_PHASES.findIndex((x) => x.phase === p) <= phaseIdx;
 
-  // the county panel follows the steps rather than its own clock
-  const countyHour =
-    stage === "event"
-      ? Math.round((phaseIdx / (EVENT_PHASES.length - 1)) * RUN_HOURS)
-      : 0;
-
   /** A field is known once the resident's answer to it has been said. */
   const landed = (label: string) =>
     stage === "enrolled" || enrol.n > (ENROLMENT_FIELDS.find((f) => f.label === label)?.after ?? Infinity);
@@ -244,10 +235,8 @@ export default function SimulationPage() {
               {stage === "event"
                 ? `During the event · ${current.clock}`
                 : stage === "intro"
-                  ? "Three ways in: one household, step by step, or the whole county"
-                  : stage === "full"
-                    ? "The whole county, both ways at once"
-                    : "Before the event · enrollment"}
+                  ? "One household, step by step"
+                  : "Before the event · enrollment"}
             </p>
           </div>
 
@@ -282,7 +271,7 @@ export default function SimulationPage() {
 
         {/* ---------- intro ---------- */}
         {stage === "intro" && (
-          <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
+          <div className="space-y-4">
             <section
               className="rounded-xl border p-8"
               style={{ background: "var(--surface-1)", borderColor: "var(--border)" }}
@@ -314,16 +303,6 @@ export default function SimulationPage() {
                     <strong style={{ color: "var(--text-primary)" }}>During the event.</strong> The
                     outage starts, Hearth calls them on its own, and a responder gets a job with the
                     access details already attached.
-                  </span>
-                </li>
-                <li className="flex gap-4">
-                  <span className="display shrink-0 text-3xl leading-none" style={{ color: "var(--accent)" }}>
-                    3
-                  </span>
-                  <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    <strong style={{ color: "var(--text-primary)" }}>The whole county.</strong> Both
-                    ways at once, with the call logs and the vans, so you can see where the
-                    difference actually comes from.
                   </span>
                 </li>
               </ol>
@@ -432,37 +411,23 @@ export default function SimulationPage() {
                 >
                   Start stage 1 — the enrollment call
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setStage("full")}
-                  className="rounded-lg border px-6 py-3.5 text-base font-semibold"
-                  style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)" }}
-                >
-                  3. Run a full simulation
-                </button>
               </div>
             </section>
 
-            <div className="space-y-4">
-              <CoverageMap hour={0} />
-              <p
-                className="rounded-xl border px-4 py-3 text-xs leading-relaxed"
-                style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
-              >
-                Every call, transcript and record in this simulation is a fixed placeholder written
-                into the page. The real enrollment call, its wording and the resident record belong to
-                the registration lane, and this screen is built to have them dropped in.
-              </p>
-            </div>
+            <p
+              className="rounded-xl border px-4 py-3 text-xs leading-relaxed"
+              style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+            >
+              Every call, transcript and record in this simulation is a fixed placeholder written
+              into the page. The real enrollment call, its wording and the resident record belong to
+              the registration lane, and this screen is built to have them dropped in.
+            </p>
           </div>
         )}
 
-        {/* ---------- stage 3: the whole county ---------- */}
-        {stage === "full" && <FullRun />}
-
         {/* ---------- stage 1 ---------- */}
         {(stage === "enrol" || stage === "enrolled") && (
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+          <div className={`grid gap-6 ${showTranscript ? "lg:grid-cols-[1.1fr_1fr]" : ""}`}>
             <Section side="Stage 1 · before the event" title="Enrolling the household">
               <div
                 className="mb-5 rounded-xl border p-5"
@@ -639,7 +604,7 @@ export default function SimulationPage() {
               )}
             </Section>
 
-            {showTranscript ? (
+            {showTranscript && (
               /* a fixed height, so the log scrolls inside itself instead of growing the page */
               <div className="h-[560px]">
                 <CallTranscript
@@ -650,8 +615,6 @@ export default function SimulationPage() {
                   onHide={() => setShowTranscript(false)}
                 />
               </div>
-            ) : (
-              <CoverageMap hour={0} />
             )}
           </div>
         )}
@@ -922,7 +885,6 @@ export default function SimulationPage() {
               {/* sidebar */}
               <div className="flex min-h-0 flex-col gap-5">
                 {phaseReached("accepted") && <RouteSim onArrive={advance} />}
-                <CoverageMap hour={countyHour} heading={false} />
               </div>
             </div>
           </>

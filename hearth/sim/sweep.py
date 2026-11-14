@@ -14,14 +14,15 @@ SWEEP = [("p0", Flags()), ("p3", Flags()), ("p3", Flags(use_buildings=False)), (
 
 
 def _one(job: tuple) -> dict:
-    scenario, policy, flags, crews, seed = job
-    s = run(scenario, policy, seed, crews, flags, out_root=None)
+    scenario, policy, flags, crews, seed, every = job
+    s = run(scenario, policy, seed, crews, flags, out_root=None, every=every)
     return {"policy": policy_label(policy, flags), "crews": crews, "seed": seed, **s}
 
 
-def sweep(scenario: str, crews: list[int], seeds: int, out_root: Path = ROOT / "results") -> list[dict]:
-    """Every policy x crew count x seed 1..seeds, in a process pool; writes sweep_<scenario>.json and the assumptions used."""
-    jobs = [(scenario, p, f, c, s) for p, f in SWEEP for c in crews for s in range(1, seeds + 1)]
+def sweep(scenario: str, crews: list[int], seeds: int, out_root: Path = ROOT / "results", every: int = 1) -> list[dict]:
+    """Every policy x crew count x seed 1..seeds, in a process pool, over each every-th patient; writes
+    sweep_<scenario>.json and the assumptions used."""
+    jobs = [(scenario, p, f, c, s, every) for p, f in SWEEP for c in crews for s in range(1, seeds + 1)]
     with ProcessPoolExecutor() as pool:
         rows = sweep_rows(list(pool.map(_one, jobs)))
     Path(out_root).mkdir(parents=True, exist_ok=True)

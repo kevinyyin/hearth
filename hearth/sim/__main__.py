@@ -1,5 +1,5 @@
 """python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20 [--no-buildings] [--no-moves] [--mutual-aid] [--routing greedy|paired|alns]
-python -m hearth.sim sweep --scenario beryl_2024 [--crews 20,40,80,160,320] [--seeds 10]   (defaults: sweep.* in assumptions.yaml)"""
+python -m hearth.sim sweep --scenario beryl_2024 [--crews 5,10,20,40,80] [--seeds 10] [--every 36]   (defaults: sweep.* in assumptions.yaml)"""
 import argparse
 import json
 
@@ -25,9 +25,10 @@ def main(argv=None):
     s.add_argument("--scenario", default="beryl_2024")
     s.add_argument("--crews", default=",".join(map(str, a("sweep.crews"))))
     s.add_argument("--seeds", type=int, default=a("sweep.seeds"))
+    s.add_argument("--every", type=int, default=a("sweep.patient_stride"), help="simulate each N-th patient only")
     args = p.parse_args(argv)
     if args.cmd == "sweep":
-        print(json.dumps(sweep(args.scenario, [int(c) for c in args.crews.split(",")], args.seeds), indent=1))
+        print(json.dumps(sweep(args.scenario, [int(c) for c in args.crews.split(",")], args.seeds, every=args.every), indent=1))
         return
     flags = Flags(use_buildings=not args.no_buildings, allow_moves=not args.no_moves, mutual_aid=args.mutual_aid, routing=args.routing)
     print(json.dumps(run(args.scenario, args.policy, args.seed, args.crews, flags), indent=1))

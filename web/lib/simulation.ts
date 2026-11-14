@@ -299,8 +299,9 @@ const CAPACITY = { hearthAt: 4, todayAt: 3 } as const;
 /** How far a crew will go for the next stop on a round it is already out on. */
 const CHAIN_RADIUS = { hearthAt: Infinity, todayAt: 0.18 } as const;
 /**
- * Today's phone tree. Hearth has the registry, so everyone is visible the moment
- * their power goes. Today a household is visible once its call has been answered:
+ * Today's phone tree. Hearth has the registry, so the dispatcher has every order
+ * the moment the power goes. Today every household rings in too, but the order
+ * exists only once its call has been answered:
  * calls wait in one queue and are taken in the order they rang, by a few operators
  * who each take one call at a time — the details, then writing up the order. Three
  * lines at half an hour a call is about six households an hour. An assumption, not
@@ -308,19 +309,6 @@ const CHAIN_RADIUS = { hearthAt: Infinity, todayAt: 0.18 } as const;
  */
 export const OPERATORS = 3;
 const CALL_H = 0.5;
-/**
- * The share of households that ever reach the dispatcher on their own. Hearth has
- * the registry, so all of them. Without it the people most likely never to call
- * are the ones this is for: too unwell to hold, no phone charge, no idea the
- * county would come. That gap, not idle crews, is where the difference lives —
- * and it is an assumption, like the queue rate.
- */
-const CALLS_IN = { hearthAt: 1, todayAt: 0.7 } as const;
-
-/** Stable per-household, so the same households are unreachable on every run. */
-const callsIn = (i: number, share: number): boolean =>
-  share >= 1 || ((Math.imul(i + 1, 2654435761) >>> 8) % 1000) / 1000 < share;
-
 /**
  * Everything the central planner needs to plan the Hearth side's day (POST /api/sim/day).
  * The page sends these with its households, so the API keeps no copy that could drift.
@@ -456,16 +444,18 @@ function runSide(households: Household[], which: SideKey): SideSim {
 
   const pos = (j: Job): [number, number] => [households[j.h].lon, households[j.h].lat];
 
-  /** A need starts. Hearth hears at once; today hears when the call is answered, if one comes. */
+  /** A need starts. Hearth hears at once; today the household rings, and is heard when the call is answered. */
   const addJob = (h: number, dueAt: number, refill: boolean) => {
     const job: Job = { h, dueAt, knownAt: null, sentAt: null, servedAt: null, refill };
     jobs.push(job);
     if (outbound) {
       job.knownAt = dueAt;
       events.push({ t: dueAt, kind: "call", text: `Called household ${h + 1} — on the registry, device down` });
-    } else if (callsIn(h, CALLS_IN.todayAt)) {
-      // people ring some time in the hour after their device runs out, not the moment it does
-      const at = dueAt + mulberry32(jobs.length)();
+    } else {
+      // People ring some time in the hour after their device runs out, not the moment it
+      // does, and before the day is out: both sides end the day with the same callers,
+      // and what differs is how many of them today has got to.
+      const at = dueAt + mulberry32(jobs.length)() * Math.min(1, RUN_HOURS - dueAt);
       let k = calls.length;
       while (k > nextCall && calls[k - 1].at > at) k -= 1;
       calls.splice(k, 0, { job, at, answeredAt: null });
@@ -669,12 +659,14 @@ export function buildCounty(households: Household[], hearthSide?: SideSim): Coun
     for (const j of sides[key].jobs) byHousehold[key][j.h].push(j);
   }
 
+  // today's side is always routed here, so its jobs are the same objects its calls hold
+  const rangAt = new Map(sides.todayAt.calls.map((c) => [c.job, c.at]));
+
   /**
-   * Each map is its dispatcher's view: a need shows once the dispatcher has the
-   * order. With the registry that is the moment the device goes down; today it is
-   * once the call has been answered and written up, so a household still on hold,
-   * or one that never calls, stays grey. `time` is continuous: a household turns
-   * green the moment its van pulls away.
+   * A need shows once the household has called. With the registry that is the
+   * moment the device goes down, because Hearth rings them; today it is when they
+   * ring in, so a household on hold already counts as waiting. `time` is
+   * continuous: a household turns green the moment its van pulls away.
    */
   const stateAt = (i: number, time: number, which: SideKey): HouseholdState => {
     const mine = byHousehold[which][i];
@@ -685,7 +677,8 @@ export function buildCounty(households: Household[], hearthSide?: SideSim): Coun
     let refillDone = false;
 
     for (const j of mine) {
-      if (j.knownAt === null || j.knownAt > time) continue;
+      const calledAt = which === "todayAt" ? (rangAt.get(j) ?? null) : j.knownAt;
+      if (calledAt === null || calledAt > time) continue;
       anyDue = true;
       if (j.servedAt === null || j.servedAt > time) {
         openNow = true;
