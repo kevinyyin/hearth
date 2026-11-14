@@ -8,3 +8,4 @@ empower_month: Jul_2024
 weather_station: IAH
 center: [29.76, -95.37]
 onset: "2024-07-08T09:00:00Z"    # landfall; cleaning runs from here to `end` (the utility map read near zero until 14:15 UTC)
+use_profiles: true               # building residents move into surveyed buildings from the store (HEARTH_DB); recorded in meta

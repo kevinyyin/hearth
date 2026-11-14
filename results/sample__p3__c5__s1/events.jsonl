@@ -25,33 +25,33 @@
 {"t": "2024-07-08T09:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0072", "data": {"zip": "77004"}}
 {"t": "2024-07-08T09:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0073", "data": {"zip": "77004"}}
 {"t": "2024-07-08T09:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0079", "data": {"zip": "77004"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0005", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0005", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0006", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0014", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0014", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0015", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0021", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0021", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0036", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0041", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0055", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0069", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0090", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0092", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0090", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0092", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0105", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0018", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0021", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0039", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0042", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0044", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0049", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0056", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0064", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0065", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0065", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0072", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0073", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0079", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0073", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0079", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0005", "data": {"job_id": "welfare_check-SIM-77002-0005-3.5", "kind": "welfare_check", "org_id": "s2", "crew_id": "c03", "eta": "2024-07-08T09:58:46Z"}}
 {"t": "2024-07-08T09:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0023", "data": {"job_id": "welfare_check-SIM-77002-0023-3.5", "kind": "welfare_check", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-08T09:57:40Z"}}
 {"t": "2024-07-08T09:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0018", "data": {"job_id": "ride-SIM-77004-0018-3.5", "kind": "ride", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T10:11:55Z"}}
@@ -80,29 +80,29 @@
 {"t": "2024-07-08T10:00:00Z", "type": "power_lost", "patient_id": "SIM-77004-0068", "data": {"zip": "77004"}}
 {"t": "2024-07-08T10:00:00Z", "type": "power_lost", "patient_id": "SIM-77004-0070", "data": {"zip": "77004"}}
 {"t": "2024-07-08T10:00:00Z", "type": "power_lost", "patient_id": "SIM-77004-0071", "data": {"zip": "77004"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0003", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0003", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0005", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0012", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0012", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0026", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0044", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0059", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0059", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0068", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0075", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0083", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0102", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0102", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0104", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0004", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0009", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0023", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0045", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0057", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0057", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0060", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0066", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0068", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0068", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0070", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0071", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0071", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0059", "data": {"job_id": "welfare_check-SIM-77002-0059-4", "kind": "welfare_check", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-08T10:12:51Z"}}
 {"t": "2024-07-08T10:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0012", "data": {"job_id": "welfare_check-SIM-77002-0012-4", "kind": "welfare_check", "org_id": "s2", "crew_id": "c03", "eta": "2024-07-08T10:15:16Z"}}
 {"t": "2024-07-08T10:30:00Z", "type": "moved", "patient_id": "SIM-77004-0018", "data": {"job_id": "ride-SIM-77004-0018-3.5"}}
@@ -143,40 +143,40 @@
 {"t": "2024-07-08T10:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0058", "data": {"zip": "77004"}}
 {"t": "2024-07-08T10:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0062", "data": {"zip": "77004"}}
 {"t": "2024-07-08T10:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0076", "data": {"zip": "77004"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0000", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0000", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0010", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0012", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0013", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0013", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0015", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0020", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0030", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0032", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0034", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0034", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0039", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0045", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0055", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0059", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0063", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0073", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0079", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0088", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0106", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0106", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0109", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0111", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0114", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0111", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0114", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0115", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0003", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0016", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0017", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0018", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0025", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0031", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0031", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0038", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0052", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0052", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0054", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0058", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T10:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0076", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T10:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0062", "data": {"job_id": "welfare_check-SIM-77002-0062-4.5", "kind": "welfare_check", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-08T10:42:31Z"}}
 {"t": "2024-07-08T10:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0031", "data": {"job_id": "welfare_check-SIM-77004-0031-4.5", "kind": "welfare_check", "org_id": "s2", "crew_id": "c03", "eta": "2024-07-08T10:46:50Z"}}
@@ -220,36 +220,36 @@
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0000", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0002", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0007", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0019", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0019", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0027", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0028", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0028", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0030", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0033", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0035", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0033", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0035", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0042", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0043", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0051", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0065", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0051", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0065", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0070", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0074", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0082", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0096", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0107", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0116", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0005", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0082", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0096", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0107", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0116", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0005", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0008", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0019", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0019", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0020", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "UNREACHABLE", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0031", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0032", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0031", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0032", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0036", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0037", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0041", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0043", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0047", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0055", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0055", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T11:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0051", "data": {"job_id": "welfare_check-SIM-77002-0051-5", "kind": "welfare_check", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T11:12:56Z"}}
 {"t": "2024-07-08T11:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0043", "data": {"job_id": "ride-SIM-77002-0043-5", "kind": "ride", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-08T11:14:30Z"}}
 {"t": "2024-07-08T11:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0028", "data": {"job_id": "welfare_check-SIM-77002-0028-5", "kind": "welfare_check", "org_id": "s3", "crew_id": "c05", "eta": "2024-07-08T11:15:29Z"}}
@@ -282,27 +282,27 @@
 {"t": "2024-07-08T11:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0034", "data": {"zip": "77004"}}
 {"t": "2024-07-08T11:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0035", "data": {"zip": "77004"}}
 {"t": "2024-07-08T11:30:00Z", "type": "power_lost", "patient_id": "SIM-77004-0046", "data": {"zip": "77004"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0001", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0011", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0001", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0011", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0028", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0035", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0043", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0051", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0053", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0056", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0060", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0060", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0061", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0077", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0080", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0087", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0089", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0091", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0098", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0091", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0098", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0101", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0103", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0108", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0103", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0108", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0110", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0002", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0002", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0005", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0022", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T11:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0034", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
@@ -360,46 +360,46 @@
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0011", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0016", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0022", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0024", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0024", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0025", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0037", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0038", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0037", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0038", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0040", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0046", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0046", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0048", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0052", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0054", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0058", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0052", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0054", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0058", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0064", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0071", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0076", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0078", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0081", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0078", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0081", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0084", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0093", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0095", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0099", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0100", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0099", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0100", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0112", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0119", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0119", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0002", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0010", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0010", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0011", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0012", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0014", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0015", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0015", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0016", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0019", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0027", "data": {"from": "NOT_AFFECTED", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0028", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0029", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0029", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0040", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0048", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0051", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0051", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0069", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0074", "data": {"from": "NOT_AFFECTED", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0075", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached; welfare check queued"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0075", "data": {"from": "NOT_AFFECTED", "to": "UNREACHABLE", "why": "not reached yet; silence is not treated as safe"}}
 {"t": "2024-07-08T12:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0052", "data": {"job_id": "welfare_check-SIM-77002-0052-6", "kind": "welfare_check", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-08T12:10:22Z"}}
 {"t": "2024-07-08T12:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0058", "data": {"job_id": "welfare_check-SIM-77002-0058-6", "kind": "welfare_check", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T12:14:08Z"}}
 {"t": "2024-07-08T12:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0059", "data": {"job_id": "ride-SIM-77002-0059-6", "kind": "ride", "org_id": "s3", "crew_id": "c05", "eta": "2024-07-08T12:17:24Z"}}
@@ -416,7 +416,7 @@
 {"t": "2024-07-08T12:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0028", "data": {"zip": "77004"}}
 {"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0014", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0024", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0052", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0052", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0058", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0059", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0099", "data": {"from": "RESUPPLY", "to": "RESTORED", "why": "power restored"}}
@@ -505,7 +505,7 @@
 {"t": "2024-07-08T14:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0058", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T14:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0064", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T14:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0015", "data": {"from": "UNREACHABLE", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-08T14:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T14:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T14:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T14:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0069", "data": {"from": "MOVE", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T14:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0036", "data": {"job_id": "ride-SIM-77002-0036-8.5", "kind": "ride", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-08T14:47:26Z"}}
@@ -527,7 +527,7 @@
 {"t": "2024-07-08T15:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0026", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T15:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0036", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T15:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0044", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T15:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0025", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T15:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0025", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T15:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0009", "data": {"job_id": "ride-SIM-77004-0009-9", "kind": "ride", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-08T15:21:32Z"}}
 {"t": "2024-07-08T15:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0023", "data": {"job_id": "ride-SIM-77004-0023-9", "kind": "ride", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T15:25:55Z"}}
 {"t": "2024-07-08T15:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0000", "data": {"job_id": "ride-SIM-77002-0000-9", "kind": "ride", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-08T15:20:33Z"}}
@@ -546,7 +546,7 @@
 {"t": "2024-07-08T15:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0000", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T15:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0010", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T15:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0032", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0009", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0023", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T15:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0039", "data": {"job_id": "ride-SIM-77002-0039-9.5", "kind": "ride", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-08T15:46:11Z"}}
@@ -595,12 +595,12 @@
 {"t": "2024-07-08T16:30:00Z", "type": "moved", "patient_id": "SIM-77002-0027", "data": {"job_id": "ride-SIM-77002-0027-10"}}
 {"t": "2024-07-08T16:30:00Z", "type": "job_completed", "patient_id": "SIM-77002-0027", "data": {"job_id": "ride-SIM-77002-0027-10", "kind": "ride", "org_id": "s3"}}
 {"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0002", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0003", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0003", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0007", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0014", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0020", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0014", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0020", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0027", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0038", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0038", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0044", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T16:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0049", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T16:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0028", "data": {"job_id": "ride-SIM-77002-0028-10.5", "kind": "ride", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T16:43:26Z"}}
@@ -619,7 +619,7 @@
 {"t": "2024-07-08T17:00:00Z", "type": "moved", "patient_id": "SIM-77002-0075", "data": {"job_id": "ride-SIM-77002-0075-10.5"}}
 {"t": "2024-07-08T17:00:00Z", "type": "job_completed", "patient_id": "SIM-77002-0075", "data": {"job_id": "ride-SIM-77002-0075-10.5", "kind": "ride", "org_id": "s3"}}
 {"t": "2024-07-08T17:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0028", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T17:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0033", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T17:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0033", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T17:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0035", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T17:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0042", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T17:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0068", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
@@ -720,7 +720,7 @@
 {"t": "2024-07-08T19:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0040", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T19:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0074", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T19:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0115", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T19:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T19:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T19:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0054", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T19:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0066", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T19:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0058", "data": {"job_id": "ride-SIM-77004-0058-13", "kind": "ride", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T19:17:35Z"}}
@@ -747,7 +747,7 @@
 {"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0064", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0112", "data": {"from": "MOVE", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0002", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0031", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0031", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0041", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0043", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T19:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0058", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
@@ -819,7 +819,7 @@
 {"t": "2024-07-08T21:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0076", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0010", "data": {"from": "RESUPPLY", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0011", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0040", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T21:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0001", "data": {"job_id": "delivery-SIM-77002-0001-15", "kind": "delivery", "org_id": "s2", "crew_id": "c03", "eta": "2024-07-08T21:12:40Z"}}
 {"t": "2024-07-08T21:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0116", "data": {"job_id": "delivery-SIM-77002-0116-15", "kind": "delivery", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-08T21:13:03Z"}}
@@ -851,7 +851,7 @@
 {"t": "2024-07-08T22:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0082", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T22:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0011", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T22:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0032", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-08T22:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0055", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T22:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0055", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T22:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0034", "data": {"job_id": "delivery-SIM-77002-0034-16", "kind": "delivery", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T22:16:24Z"}}
 {"t": "2024-07-08T22:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0090", "data": {"job_id": "welfare_check-SIM-77002-0090-16", "kind": "welfare_check", "org_id": "s3", "crew_id": "c05", "eta": "2024-07-08T22:10:55Z"}}
 {"t": "2024-07-08T22:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0096", "data": {"job_id": "welfare_check-SIM-77002-0096-16", "kind": "welfare_check", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-08T22:11:08Z"}}
@@ -867,11 +867,11 @@
 {"t": "2024-07-08T22:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0027", "data": {"zip": "77004"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0034", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0037", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0041", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0041", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0076", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0090", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0096", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0017", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0017", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0027", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0052", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T22:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0073", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
@@ -890,9 +890,9 @@
 {"t": "2024-07-08T23:00:00Z", "type": "job_completed", "patient_id": "SIM-77002-0091", "data": {"job_id": "welfare_check-SIM-77002-0091-16.5", "kind": "welfare_check", "org_id": "s2"}}
 {"t": "2024-07-08T23:00:00Z", "type": "power_restored", "patient_id": "SIM-77004-0040", "data": {"zip": "77004"}}
 {"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0013", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0090", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0091", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0091", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0096", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0040", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-08T23:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0073", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
@@ -908,7 +908,7 @@
 {"t": "2024-07-08T23:30:00Z", "type": "job_completed", "patient_id": "SIM-77002-0111", "data": {"job_id": "welfare_check-SIM-77002-0111-17", "kind": "welfare_check", "org_id": "s2"}}
 {"t": "2024-07-08T23:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0071", "data": {"zip": "77002"}}
 {"t": "2024-07-08T23:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0071", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-08T23:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0098", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T23:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0098", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T23:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0102", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-08T23:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0106", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-08T23:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0111", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
@@ -924,7 +924,7 @@
 {"t": "2024-07-09T00:00:00Z", "type": "job_completed", "patient_id": "SIM-77002-0098", "data": {"job_id": "delivery-SIM-77002-0098-17.5", "kind": "delivery", "org_id": "s1"}}
 {"t": "2024-07-09T00:00:00Z", "type": "job_completed", "patient_id": "SIM-77002-0114", "data": {"job_id": "welfare_check-SIM-77002-0114-17.5", "kind": "welfare_check", "org_id": "s2"}}
 {"t": "2024-07-09T00:00:00Z", "type": "job_completed", "patient_id": "SIM-77004-0057", "data": {"job_id": "welfare_check-SIM-77004-0057-17.5", "kind": "welfare_check", "org_id": "s3"}}
-{"t": "2024-07-09T00:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T00:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T00:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0098", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T00:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0102", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-09T00:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0111", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
@@ -944,14 +944,14 @@
 {"t": "2024-07-09T00:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0062", "data": {"job_id": "welfare_check-SIM-77004-0062-18", "kind": "welfare_check", "org_id": "s1"}}
 {"t": "2024-07-09T00:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0091", "data": {"zip": "77002"}}
 {"t": "2024-07-09T00:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0098", "data": {"zip": "77002"}}
-{"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0091", "data": {"from": "RESUPPLY", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0098", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0107", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0114", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0031", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0057", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T00:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "UNREACHABLE", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T00:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0103", "data": {"job_id": "delivery-SIM-77002-0103-18.5", "kind": "delivery", "org_id": "s3", "crew_id": "c05", "eta": "2024-07-09T00:53:27Z"}}
 {"t": "2024-07-09T00:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0030", "data": {"job_id": "delivery-SIM-77004-0030-18.5", "kind": "delivery", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-09T00:43:31Z"}}
 {"t": "2024-07-09T00:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0071", "data": {"job_id": "welfare_check-SIM-77004-0071-18.5", "kind": "welfare_check", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-09T00:44:13Z"}}
@@ -963,13 +963,13 @@
 {"t": "2024-07-09T01:00:00Z", "type": "job_completed", "patient_id": "SIM-77004-0024", "data": {"job_id": "delivery-SIM-77004-0024-18.5", "kind": "delivery", "org_id": "s2"}}
 {"t": "2024-07-09T01:00:00Z", "type": "job_completed", "patient_id": "SIM-77002-0062", "data": {"job_id": "delivery-SIM-77002-0062-18.5", "kind": "delivery", "org_id": "s1"}}
 {"t": "2024-07-09T01:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0108", "data": {"zip": "77002"}}
-{"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0034", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0034", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0103", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0108", "data": {"from": "RESUPPLY", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0032", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0032", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T01:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0071", "data": {"from": "UNREACHABLE", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
 {"t": "2024-07-09T01:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0071", "data": {"job_id": "ride-SIM-77004-0071-19", "kind": "ride", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-09T01:14:13Z"}}
 {"t": "2024-07-09T01:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0025", "data": {"job_id": "delivery-SIM-77004-0025-19", "kind": "delivery", "org_id": "s2", "crew_id": "c03", "eta": "2024-07-09T01:15:34Z"}}
@@ -984,7 +984,7 @@
 {"t": "2024-07-09T01:30:00Z", "type": "moved", "patient_id": "SIM-77004-0052", "data": {"job_id": "ride-SIM-77004-0052-19"}}
 {"t": "2024-07-09T01:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0052", "data": {"job_id": "ride-SIM-77004-0052-19", "kind": "ride", "org_id": "s1"}}
 {"t": "2024-07-09T01:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0022", "data": {"zip": "77004"}}
-{"t": "2024-07-09T01:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0019", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T01:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0019", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T01:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T01:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0022", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T01:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0025", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
@@ -1023,7 +1023,7 @@
 {"t": "2024-07-09T02:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0039", "data": {"job_id": "ride-SIM-77004-0039-20", "kind": "ride", "org_id": "s3"}}
 {"t": "2024-07-09T02:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0079", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-09T02:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0082", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
-{"t": "2024-07-09T02:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0106", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T02:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0106", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T02:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0021", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T02:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0039", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-09T02:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0068", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
@@ -1039,7 +1039,7 @@
 {"t": "2024-07-09T03:00:00Z", "type": "moved", "patient_id": "SIM-77002-0070", "data": {"job_id": "ride-SIM-77002-0070-20.5"}}
 {"t": "2024-07-09T03:00:00Z", "type": "job_completed", "patient_id": "SIM-77002-0070", "data": {"job_id": "ride-SIM-77002-0070-20.5", "kind": "ride", "org_id": "s3"}}
 {"t": "2024-07-09T03:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0001", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T03:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0065", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T03:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0065", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T03:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0070", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-09T03:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0017", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T03:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
@@ -1073,9 +1073,9 @@
 {"t": "2024-07-09T04:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0087", "data": {"zip": "77002"}}
 {"t": "2024-07-09T04:00:00Z", "type": "power_restored", "patient_id": "SIM-77004-0035", "data": {"zip": "77004"}}
 {"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0019", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0060", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0060", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0087", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0107", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0107", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0035", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0046", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-09T04:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0047", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
@@ -1089,11 +1089,11 @@
 {"t": "2024-07-09T04:30:00Z", "type": "job_completed", "patient_id": "SIM-77002-0092", "data": {"job_id": "delivery-SIM-77002-0092-22", "kind": "delivery", "org_id": "s1"}}
 {"t": "2024-07-09T04:30:00Z", "type": "job_completed", "patient_id": "SIM-77002-0116", "data": {"job_id": "delivery-SIM-77002-0116-22", "kind": "delivery", "org_id": "s2"}}
 {"t": "2024-07-09T04:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0053", "data": {"zip": "77002"}}
-{"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0013", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0013", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0053", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0060", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0092", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0103", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0103", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0116", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T04:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0042", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}
 {"t": "2024-07-09T04:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0013", "data": {"job_id": "delivery-SIM-77002-0013-22.5", "kind": "delivery", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-09T04:42:24Z"}}
@@ -1128,24 +1128,24 @@
 {"t": "2024-07-09T07:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0103", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T07:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0110", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T07:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0002", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T07:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0065", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T07:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0065", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T07:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0065", "data": {"job_id": "delivery-SIM-77004-0065-25", "kind": "delivery", "org_id": "s3", "crew_id": "c05", "eta": "2024-07-09T07:16:55Z"}}
 {"t": "2024-07-09T07:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0065", "data": {"job_id": "delivery-SIM-77004-0065-25", "kind": "delivery", "org_id": "s3"}}
 {"t": "2024-07-09T07:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0056", "data": {"zip": "77002"}}
 {"t": "2024-07-09T07:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0056", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T07:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0065", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T07:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0068", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T07:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0068", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T07:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0068", "data": {"job_id": "delivery-SIM-77004-0068-25.5", "kind": "delivery", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-09T07:44:47Z"}}
 {"t": "2024-07-09T08:00:00Z", "type": "job_completed", "patient_id": "SIM-77004-0068", "data": {"job_id": "delivery-SIM-77004-0068-25.5", "kind": "delivery", "org_id": "s2"}}
 {"t": "2024-07-09T08:00:00Z", "type": "power_restored", "patient_id": "SIM-77004-0046", "data": {"zip": "77004"}}
 {"t": "2024-07-09T08:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0046", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T08:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0068", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T08:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0079", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T08:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0079", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T08:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0079", "data": {"job_id": "delivery-SIM-77004-0079-26", "kind": "delivery", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-09T08:15:23Z"}}
 {"t": "2024-07-09T08:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0079", "data": {"job_id": "delivery-SIM-77004-0079-26", "kind": "delivery", "org_id": "s2"}}
 {"t": "2024-07-09T08:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0101", "data": {"zip": "77002"}}
 {"t": "2024-07-09T08:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0101", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T08:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T08:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T08:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0079", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T08:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0062", "data": {"job_id": "delivery-SIM-77004-0062-26.5", "kind": "delivery", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-09T08:45:27Z"}}
 {"t": "2024-07-09T09:00:00Z", "type": "job_completed", "patient_id": "SIM-77004-0062", "data": {"job_id": "delivery-SIM-77004-0062-26.5", "kind": "delivery", "org_id": "s1"}}
@@ -1156,7 +1156,7 @@
 {"t": "2024-07-09T09:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0082", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T09:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0096", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T09:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0062", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0004", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T09:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0004", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T09:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0004", "data": {"job_id": "delivery-SIM-77004-0004-27.5", "kind": "delivery", "org_id": "s3", "crew_id": "c05", "eta": "2024-07-09T09:43:31Z"}}
 {"t": "2024-07-09T10:00:00Z", "type": "job_completed", "patient_id": "SIM-77004-0004", "data": {"job_id": "delivery-SIM-77004-0004-27.5", "kind": "delivery", "org_id": "s3"}}
 {"t": "2024-07-09T10:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0002", "data": {"zip": "77002"}}
@@ -1210,7 +1210,7 @@
 {"t": "2024-07-09T13:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0070", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T13:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0019", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T13:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0041", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T14:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T14:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T14:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0024", "data": {"job_id": "delivery-SIM-77004-0024-32.5", "kind": "delivery", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-09T14:44:08Z"}}
 {"t": "2024-07-09T15:00:00Z", "type": "job_completed", "patient_id": "SIM-77004-0024", "data": {"job_id": "delivery-SIM-77004-0024-32.5", "kind": "delivery", "org_id": "s2"}}
 {"t": "2024-07-09T15:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0111", "data": {"zip": "77002"}}
@@ -1218,13 +1218,13 @@
 {"t": "2024-07-09T15:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0111", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T15:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0115", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T15:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T15:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0025", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T15:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0025", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T15:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0025", "data": {"job_id": "delivery-SIM-77004-0025-33", "kind": "delivery", "org_id": "s2", "crew_id": "c04", "eta": "2024-07-09T15:15:34Z"}}
 {"t": "2024-07-09T15:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0025", "data": {"job_id": "delivery-SIM-77004-0025-33", "kind": "delivery", "org_id": "s2"}}
 {"t": "2024-07-09T15:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0030", "data": {"zip": "77002"}}
 {"t": "2024-07-09T15:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0017", "data": {"zip": "77004"}}
 {"t": "2024-07-09T15:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0030", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0000", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0017", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T15:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0025", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T15:30:00Z", "type": "job_created", "patient_id": "SIM-77004-0000", "data": {"job_id": "delivery-SIM-77004-0000-33.5", "kind": "delivery", "org_id": "s3", "crew_id": "c05", "eta": "2024-07-09T15:45:43Z"}}
@@ -1242,9 +1242,9 @@
 {"t": "2024-07-09T16:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0073", "data": {"zip": "77002"}}
 {"t": "2024-07-09T16:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0088", "data": {"zip": "77002"}}
 {"t": "2024-07-09T16:30:00Z", "type": "power_restored", "patient_id": "SIM-77002-0106", "data": {"zip": "77002"}}
-{"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0003", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0014", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
-{"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0020", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0003", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0014", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
+{"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0020", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0032", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0073", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T16:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0088", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
@@ -1292,7 +1292,7 @@
 {"t": "2024-07-09T19:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0045", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T19:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0062", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T19:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0114", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T19:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T19:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T19:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0021", "data": {"job_id": "delivery-SIM-77004-0021-37", "kind": "delivery", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-09T19:21:05Z"}}
 {"t": "2024-07-09T19:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0021", "data": {"job_id": "delivery-SIM-77004-0021-37", "kind": "delivery", "org_id": "s1"}}
 {"t": "2024-07-09T19:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0016", "data": {"zip": "77004"}}
@@ -1302,7 +1302,7 @@
 {"t": "2024-07-09T20:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0102", "data": {"zip": "77002"}}
 {"t": "2024-07-09T20:00:00Z", "type": "power_restored", "patient_id": "SIM-77004-0057", "data": {"zip": "77004"}}
 {"t": "2024-07-09T20:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0083", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T20:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0092", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T20:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0092", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T20:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0102", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T20:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0057", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T20:00:00Z", "type": "job_created", "patient_id": "SIM-77002-0092", "data": {"job_id": "delivery-SIM-77002-0092-38", "kind": "delivery", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-09T20:15:46Z"}}
@@ -1313,7 +1313,7 @@
 {"t": "2024-07-09T21:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0104", "data": {"zip": "77002"}}
 {"t": "2024-07-09T21:00:00Z", "type": "power_restored", "patient_id": "SIM-77004-0071", "data": {"zip": "77004"}}
 {"t": "2024-07-09T21:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0104", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
-{"t": "2024-07-09T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0030", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T21:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0071", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T21:00:00Z", "type": "job_created", "patient_id": "SIM-77004-0030", "data": {"job_id": "delivery-SIM-77004-0030-39", "kind": "delivery", "org_id": "s1", "crew_id": "c02", "eta": "2024-07-09T21:13:05Z"}}
 {"t": "2024-07-09T21:30:00Z", "type": "job_completed", "patient_id": "SIM-77004-0030", "data": {"job_id": "delivery-SIM-77004-0030-39", "kind": "delivery", "org_id": "s1"}}
@@ -1326,14 +1326,14 @@
 {"t": "2024-07-09T22:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0024", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T22:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0009", "data": {"zip": "77004"}}
 {"t": "2024-07-09T22:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0060", "data": {"zip": "77004"}}
-{"t": "2024-07-09T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0041", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T22:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0041", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T22:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0009", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T22:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0060", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T22:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0041", "data": {"job_id": "delivery-SIM-77002-0041-40.5", "kind": "delivery", "org_id": "s2", "crew_id": "c03", "eta": "2024-07-09T22:43:18Z"}}
 {"t": "2024-07-09T23:00:00Z", "type": "job_completed", "patient_id": "SIM-77002-0041", "data": {"job_id": "delivery-SIM-77002-0041-40.5", "kind": "delivery", "org_id": "s2"}}
 {"t": "2024-07-09T23:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0044", "data": {"zip": "77002"}}
 {"t": "2024-07-09T23:00:00Z", "type": "power_restored", "patient_id": "SIM-77002-0068", "data": {"zip": "77002"}}
-{"t": "2024-07-09T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0023", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0041", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0044", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-09T23:00:00Z", "type": "state_change", "patient_id": "SIM-77002-0068", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
@@ -1350,7 +1350,7 @@
 {"t": "2024-07-10T00:00:00Z", "type": "state_change", "patient_id": "SIM-77004-0023", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-10T00:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0045", "data": {"zip": "77004"}}
 {"t": "2024-07-10T00:30:00Z", "type": "power_restored", "patient_id": "SIM-77004-0068", "data": {"zip": "77004"}}
-{"t": "2024-07-10T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-10T00:30:00Z", "type": "state_change", "patient_id": "SIM-77002-0021", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-10T00:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0045", "data": {"from": "MOVED", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-10T00:30:00Z", "type": "state_change", "patient_id": "SIM-77004-0068", "data": {"from": "OWN_BACKUP", "to": "RESTORED", "why": "power restored"}}
 {"t": "2024-07-10T00:30:00Z", "type": "job_created", "patient_id": "SIM-77002-0021", "data": {"job_id": "delivery-SIM-77002-0021-42.5", "kind": "delivery", "org_id": "s2", "crew_id": "c03", "eta": "2024-07-10T00:41:43Z"}}

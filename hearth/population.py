@@ -95,11 +95,12 @@ def generate(scenario: str, seed: int) -> list[Patient]:
     profile = np.where(rng.random(n) < a("population.complete_profile_rate"), "complete", "partial")
     in_building = rng.random(n) < a("population.costar_building_share")
 
-    # building residents move into the nearest surveyed CoStar building, so the engine can use its profile
+    # building residents move into the nearest surveyed CoStar building, so the engine can use its profile; only
+    # scenarios that opt in (use_profiles), so synthetic scenarios' committed outputs never carry CoStar data
     building, floor = np.full(n, None, object), np.ones(n, int)
-    for prof in sorted(store.all("profile"), key=lambda p: p["building_id"]):
-        if "hotel" in str(prof["property_type"]["value"]).lower():
-            continue  # refuge candidates, not homes
+    for prof in sorted(store.all("profile") if sc.get("use_profiles") else [], key=lambda p: p["building_id"]):
+        if any(k in str(prof["property_type"]["value"]).lower() for k in ("hotel", "senior")):
+            continue  # refuges in the simulation, never a patient's dark home
         cand = np.flatnonzero(in_building & (building == None))  # noqa: E711 (object array)
         d = km(lat[cand], lon[cand], prof["lat"], prof["lon"])
         order = np.argsort(d, kind="stable")[: a("population.patients_per_building")]

@@ -50,5 +50,8 @@ def fraction_out(scenario: str) -> pd.Series:
 
 
 def dark_mask(r: np.ndarray, f: pd.Series) -> np.ndarray:
-    """(ticks, patients): patient i is dark while r_i < f(t), so the lowest r lose power first and get it back last."""
-    return r[None, :] < f.to_numpy()[:, None]
+    """(ticks, patients): patient i is dark while r_i < f(t), so the lowest r lose power first and get it back last.
+    A one-interval return between two dark intervals (a natural wiggle in the curve) stays dark."""
+    m = r[None, :] < f.to_numpy()[:, None]
+    m[1:-1] |= m[:-2] & m[2:]
+    return m
