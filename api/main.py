@@ -203,7 +203,9 @@ def building_survey(building_id: str, fresh: bool = False):
 # ---- home markup: what a resident persona says about their own home, shown to the responder ----
 @app.get("/api/demo-patients")
 def demo_patients():
-    return json.loads(DEMO_PATIENTS.read_text()) if DEMO_PATIENTS.exists() else []
+    """The demo personas whose building exists in the data being served (the fixtures, or the CoStar extract)."""
+    rows = json.loads(DEMO_PATIENTS.read_text()) if DEMO_PATIENTS.exists() else []
+    return [r for r in rows if r.get("building_id") and tools.costar_record(r["building_id"])]
 
 
 def _home(doc: dict | None) -> Home | None:
