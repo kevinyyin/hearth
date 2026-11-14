@@ -30,6 +30,7 @@ Every number on the results page comes from these commands (patients are synthet
 uv run python scripts/fetch_data.py --scenario beryl_2024             # public data: emPOWER, EAGLE-I, MCC, IAH weather, ZCTA
 uv run python -m hearth.buildings bulk                                # records-only building profiles (needs the CoStar kit and Vexcel key)
 uv run python -m hearth.sim sweep --scenario beryl_2024               # writes results/sweep_beryl_2024.json (crews and seeds from assumptions.yaml)
+uv run python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20   # the map's county replay (about 350 MB, git-ignored)
 ```
 
 The sweep copies `config/assumptions.yaml` next to its results. Caveats are listed on the results page and in `docs/sim-notes.md`.

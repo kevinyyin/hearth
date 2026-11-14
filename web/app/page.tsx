@@ -65,7 +65,7 @@ export default function HomePage() {
       try {
         const runs = await getJson<Run[]>("/api/runs");
         if (runs.length === 0) throw new Error("No runs available.");
-        const first = runs[0];
+        const first = runs.find((r) => r.scenario === "beryl_2024") ?? runs[0];  // the county replay when it has been generated
         const [m, ev] = await Promise.all([
           getJson<Meta>(`/api/runs/${first.run_id}/meta`),
           getJson<HearthEvent[]>(`/api/runs/${first.run_id}/events`).catch(() => [] as HearthEvent[]),
