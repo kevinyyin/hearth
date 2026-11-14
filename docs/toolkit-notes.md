@@ -21,6 +21,9 @@ Field names and coverage only. No sponsor records are copied here; raw data stay
   - elevators: `propertyApartment.elevators[]` or `property{Office,Retail,Industrial,Flex}.structural.elevators[]`;
     passenger = `elevatorType 1`, `elevatorState` 1 yes / 2 no, `numElevators` sometimes. `propertyApartment.isWalkup`
     is a proxy for none. Hospitality has no elevator block.
+  - surface parking: `parking[]` rows with `parkingType == 1` (Surface), summed `totalSpaces` (Houston: space counts on
+    1,247 of 1,758 records).
+  - lot size: `lotSize` in the unit `lotSizeMeasurementType` names (1 square feet, 2 acres); on 1,752 Houston records.
   - Matterport model ids: any `attachments[]` entry (also under `propertyApartment.models[]` and `.units[]`) with
     `videoExternalReferenceType` 36 or 234; `videoKey` is the model id.
 - Houston coverage (Nov 13 probe): multifamily 1,314 (elevator known for 1,179), office 191, industrial 98,

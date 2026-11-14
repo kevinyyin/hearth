@@ -114,7 +114,11 @@ def normalize_costar(r: dict) -> dict:
         kind = _TYPES.get(ptype, "other")
     street = " ".join(str(pa[k]) for k in ("streetNumber", "streetDirection", "streetName", "streetType", "streetSuffix") if pa.get(k))
     elevator_count, elevator_note = _elevators(r)
+    surface = [p["totalSpaces"] for p in r.get("parking") or [] if p.get("parkingType") == 1 and p.get("totalSpaces")]
+    per_acre = {1: 43560, 2: 1}.get(r.get("lotSizeMeasurementType"))  # 1 square feet, 2 acres; anything else is unknown
     return {
+        "surface_spaces": sum(surface) if surface else None,
+        "lot_acres": round(r["lotSize"] / per_acre, 2) if per_acre and r.get("lotSize") else None,
         "building_id": str(r["id"]), "name": r.get("buildingName"), "zip": str(pa.get("postcode") or "")[:5] or None,
         "address": f"{street}, {pa.get('city')}, {pa.get('state')} {str(pa.get('postcode') or '')[:5]}",
         "lat": pa.get("latitude"), "lon": pa.get("longitude"), "property_type": kind,
@@ -139,11 +143,11 @@ def _costar_index() -> dict[str, dict]:
     """Houston records, normalized once and kept under data/buildings/_costar/ (git-ignored)."""
     global _costar
     if _costar is None:
-        path = CACHE_ROOT / "_costar" / "houston_v3.json"  # bump the name when normalize_costar changes
+        path = CACHE_ROOT / "_costar" / "houston_v4.json"  # bump the name when normalize_costar changes
         if not path.exists() and not COSTAR_FILE.exists():  # a host without the kit reads the index from storage
             from hearth import remote
 
-            path = remote.fetch("costar/houston_v3.json") or path
+            path = remote.fetch("costar/houston_v4.json") or path
         if not path.exists():
             rows = {}
             with COSTAR_FILE.open() as f:
