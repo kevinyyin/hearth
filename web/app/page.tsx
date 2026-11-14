@@ -174,6 +174,9 @@ export default function HomePage() {
         >
           Results
         </a>
+        <a href="/start" className="text-xs underline underline-offset-2" style={{ color: "var(--text-secondary)" }}>
+          Switch role
+        </a>
       </header>
 
       <div className="flex min-h-0 flex-1">
