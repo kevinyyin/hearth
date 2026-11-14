@@ -101,3 +101,33 @@ def facts_for(patient_id: str) -> dict:
             "unit": h.get("unit"), "scan_id": h.get("scan_id"), "complex_building": h.get("complex_building"),
             "backup_hours": h.get("ok_without_h"), "floor": p.get("floor"), "has_elevator": h.get("has_elevator"),
             "door": h.get("door"), "door_from_aerial": h.get("door_from_aerial"), "room": h.get("room"), "scan_room": h.get("scan_room")}
+
+
+def storm() -> dict:
+    """The simulated storm: the county alert text to each alert phone, and a check call to every phone registrant whose
+    ZIP is in the forecast area. Every failure is listed, never raised, so one bad number does not stop the rest."""
+    from hearth.messaging import photon, voice  # late: voice imports this module
+    from hearth.messaging.templates import render
+
+    out = {"alerted": [], "dialed": [], "failed": []}
+    line = os.environ.get("HEARTH_LINE_NUMBER")
+    for phone in alert_phones():
+        try:
+            if not line:
+                raise LookupError("HEARTH_LINE_NUMBER is not set, so the alert cannot say what to call")
+            photon._send(phone, render("alert_text", line=line))
+            out["alerted"].append(phone)
+        except Exception as e:
+            out["failed"].append(f"{phone}: {e}")
+    zips = set(a("storm.forecast_zips"))
+    for pid in dict.fromkeys(_phone_homes()):
+        if (store.get("patient", pid) or {}).get("zip") not in zips:
+            continue
+        try:
+            if voice.dial(voice.start_call(pid, "check", storm=True)):
+                out["dialed"].append(pid)
+            else:
+                out["failed"].append(f"{pid}: not dialed (the phone line is not set up)")
+        except Exception as e:
+            out["failed"].append(f"{pid}: {e}")
+    return out

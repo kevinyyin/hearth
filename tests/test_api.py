@@ -237,3 +237,7 @@ def test_a_browser_register_call_needs_a_listed_phone(monkeypatch):
     monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
     r = client.post("/api/calls", json={"kind": "register", "phone": "+15550100002"})
     assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "register"
+
+
+def test_storm_route_reports_what_it_sent():
+    assert client.post("/api/storm").json() == {"alerted": [], "dialed": [], "failed": []}

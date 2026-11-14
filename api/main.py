@@ -261,6 +261,14 @@ def registrations():
     return registry.registrations()
 
 
+@app.post("/api/storm")
+def storm():
+    """Simulated: the county alert text to the alert phones, and check calls to phone registrants in the forecast area."""
+    from hearth.messaging import registry
+
+    return registry.storm()
+
+
 # ---- help loop: a resident asks, a model orders, code offers the job to a crew with a refuge as the drop-off ----
 CrewName = PathParam(pattern=r"^[A-Za-z0-9 _-]{1,40}$")
 

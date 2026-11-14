@@ -19,6 +19,7 @@ export default function DispatchPage() {
   const { data, error, refresh } = usePoll<DispatchView>(API ? "/api/dispatch" : null);
   const { data: phone } = usePoll<Registrations>(API ? "/api/registrations" : null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [storm, setStorm] = useState<{ alerted: string[]; dialed: string[]; failed: string[] } | null>(null);
 
   if (!API) return <p className="mx-auto max-w-2xl px-6 py-10 text-sm">This page needs the Hearth API.</p>;
 
@@ -30,6 +31,15 @@ export default function DispatchPage() {
       setFailed(e instanceof Error ? e.message : String(e));
     }
     refresh();
+  }
+
+  async function forecast() {
+    try {
+      setStorm(await sendJson("POST", "/api/storm"));
+      setFailed(null);
+    } catch (e) {
+      setFailed(e instanceof Error ? e.message : String(e));
+    }
   }
 
   const stuck = data?.requests.filter((r) => r.request.blocked && r.request.state === "waiting") ?? [];
@@ -45,7 +55,21 @@ export default function DispatchPage() {
         Simulated patients. A resident&apos;s own request goes straight to a crew: a model orders the queue, code picks the crew and the
         drop-off. A person is asked only for the requests listed first.
       </p>
-      {(failed ?? error) && <p role="alert" className="text-sm" style={{ color: "#d03b3b" }}>{failed ?? error}</p>}
+      <section className={card} style={cardStyle}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm">Texts the county alert to the alert phones and calls every phone registrant in the forecast area.</p>
+          <button type="button" onClick={forecast} className="shrink-0 rounded border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)" }}>
+            Storm forecast (simulated)
+          </button>
+        </div>
+        {storm && (
+          <p className="text-xs" style={muted}>
+            Alert texted to {storm.alerted.length} phone{storm.alerted.length === 1 ? "" : "s"}; {storm.dialed.length} check call
+            {storm.dialed.length === 1 ? "" : "s"} placed.{storm.failed.length ? ` Not done: ${storm.failed.join("; ")}` : ""}
+          </p>
+        )}
+      </section>
+            {(failed ?? error) && <p role="alert" className="text-sm" style={{ color: "#d03b3b" }}>{failed ?? error}</p>}
 
       <section className={card} style={cardStyle}>
         <h2 className="text-sm font-semibold">Needs a person ({stuck.length + (phone?.needs_person.length ?? 0)})</h2>

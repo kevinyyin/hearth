@@ -73,3 +73,31 @@ def test_environment_lists(monkeypatch):
     monkeypatch.setenv("HEARTH_DEMO_CALLERS", " +15550001111 ,+15550002222")
     assert registry.building_phones() == {"H-LEVEL": "+15551230000", "B-SAMPLE": "+15551230001"}
     assert registry.demo_callers() == {"+15550001111", "+15550002222"} and registry.alert_phones() == []
+
+
+def test_storm_texts_alert_phones_and_calls_registrants_in_the_area(monkeypatch):
+    from hearth.messaging import photon, voice
+    texts, dials = [], []
+    monkeypatch.setattr(photon, "_send", lambda phone, text: texts.append((phone, text)) or "pho1")
+    monkeypatch.setattr(voice, "dial", lambda call_id: dials.append(store.get("call", call_id)) or "conv1")
+    monkeypatch.setenv("HEARTH_ALERT_PHONES", "+15550009999")
+    monkeypatch.setenv("HEARTH_LINE_NUMBER", "(555) 010-0000")
+    inside = registry.save(call(**FULL))
+    outside = registry.save({"patient_id": None, "ctx": {"phone": "+15550002222"}, "facts": dict(FULL)})
+    store.put("patient", outside, store.get("patient", outside) | {"zip": "99999"})
+    out = registry.storm()
+    assert out == {"alerted": ["+15550009999"], "dialed": [inside], "failed": []}
+    assert texts == [("+15550009999", "Simulated Harris County alert: a hurricane is forecast for your area. If you or someone at home relies on "
+                                      "powered medical equipment, call Hearth at (555) 010-0000 so a crew knows how to reach you. In an emergency, call 911.")]
+    assert [(d["patient_id"], d["kind"], d["ctx"]["storm"]) for d in dials] == [(inside, "check", True)]
+
+
+def test_storm_with_nothing_configured():
+    assert registry.storm() == {"alerted": [], "dialed": [], "failed": []}
+
+
+def test_a_storm_call_that_cannot_ring_is_reported(monkeypatch):
+    from hearth.messaging import voice
+    monkeypatch.setattr(voice, "dial", lambda call_id: None)  # no phone line set up
+    pid = registry.save(call(**FULL))
+    assert registry.storm()["failed"] == [f"{pid}: not dialed (the phone line is not set up)"]
