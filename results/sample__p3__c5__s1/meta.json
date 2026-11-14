@@ -116,5 +116,6 @@
  "synthetic": true,
  "label": null,
  "corrected_intervals": [],
+ "profiles_used": [],
  "note": "simulated run over synthetic patients; outcomes are model outputs, not a count of lives saved"
 }

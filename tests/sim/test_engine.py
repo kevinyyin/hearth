@@ -4,6 +4,7 @@ import json
 import time
 
 import numpy as np
+import pytest
 
 from hearth.contracts import Event, PlanState, Snapshot
 from hearth.decision import decide, with_hysteresis
@@ -12,6 +13,11 @@ from hearth.sim.engine import run
 from hearth.sim.policies import CODE, decide_vec, hysteresis_vec
 
 from conftest import ctx, pat
+
+
+@pytest.fixture(autouse=True)
+def _empty_store(tmp_path, monkeypatch):
+    monkeypatch.setenv("HEARTH_DB", str(tmp_path / "hearth.db"))
 
 
 def digest(d):
@@ -102,3 +108,11 @@ def test_documented_case_replay_is_labeled_and_moves_once_the_home_turns_hot(tmp
     # charged device, hot home: once the home is forecast unsafe she is never left on her own backup
     assert "MOVE" in states and "OWN_BACKUP" not in states[states.index("MOVE"):]
     assert any(e["type"] == "moved" and e["t"] < "2024-07-11" for e in evs)
+
+
+def test_reasons_shown_to_the_dispatcher_are_true(tmp_path):
+    run("sample", "p0", 1, 5, out_root=tmp_path); d = next(tmp_path.iterdir())
+    whys = {json.loads(l)["data"]["why"] for l in (d / "events.jsonl").read_text().splitlines() if '"state_change"' in l}
+    assert not [w for w in whys if "queued" in w]  # under p0 nobody is queued until a call fails
+    meta = json.loads((d / "meta.json").read_text())
+    assert meta["profiles_used"] == [] and json.loads((d / "summary.json").read_text())["profiles_used"] == 0

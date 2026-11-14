@@ -81,7 +81,7 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
     lat, lon, use_rate, weight, backup = col("lat"), col("lon"), col("use_rate"), col("risk_weight"), col("backup_hours_on_hand")
     device, sens, supplier = np.array([p.device.value for p in ps]), col("temp_sensitive"), col("supplier_id")
     verified = col("phone_status") == "verified"
-    profiles = {d["building_id"]: BuildingProfile.model_validate(d) for d in store.all("profile")}
+    profiles = {d["building_id"]: BuildingProfile.model_validate(d) for d in (store.all("profile") if sc.get("use_profiles") else [])}
     prof = [profiles.get(p.building_id) for p in ps]
     d_heat, d_cold = float(a("temperature.default_heat_tc_h")), float(a("temperature.default_cold_tc_h"))
     heat = np.array([q.heat_time_constant_h if q else d_heat for q in prof])
@@ -239,12 +239,13 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
     rid = run_id(scenario, policy_label(policy, flags), crews, seed)
     summary = {"run_id": rid, **{k: float(v) for k, v in summarize(risk, weight, dt).items()},
                "device_hours": float(device_h), "temp_hours": float(temp_h), "moves": moves,
-               "patients_reaching_zero": int(zeroed.sum()), "assumptions_sha256": hashlib.sha256(ASSUMPTIONS.read_bytes()).hexdigest()}
+               "patients_reaching_zero": int(zeroed.sum()), "assumptions_sha256": hashlib.sha256(ASSUMPTIONS.read_bytes()).hexdigest(),
+               "profiles_used": len(profiles)}
     if out is not None:
         (out / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
         meta = {"run_id": rid, "scenario": scenario, "policy": policy_label(policy, flags), "crews": crews, "seed": seed,
                 "flags": vars(flags), "ticks": snaps, "center": sc["center"], "patients": n, "synthetic": True,
-                "label": sc.get("label"), "corrected_intervals": f.attrs["corrected"],
+                "label": sc.get("label"), "corrected_intervals": f.attrs["corrected"], "profiles_used": sorted(profiles),
                 "note": "simulated run over synthetic patients; outcomes are model outputs, not a count of lives saved"}
         (out / "meta.json").write_text(json.dumps(meta, indent=1))
         (out / "summary.json").write_text(json.dumps(summary, indent=1))

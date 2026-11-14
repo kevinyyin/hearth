@@ -45,7 +45,7 @@ the customer total are clipped. Gaps after landfall are interpolated, not treate
 
 Which patients are dark: each patient draws `r` once by seed and is dark while `r < f(t)`, so the curve's share of
 patients is dark at every tick, the same people stay dark as the curve falls, and nobody's power returns for one
-interval because of a glitch. Darkness is not geographic (no ZIP-level outage data is used).
+interval (glitches are cleaned, and a one-interval return between two dark intervals stays dark). Darkness is not geographic (no ZIP-level outage data is used).
 
 ## Synthetic attributes
 
@@ -53,9 +53,11 @@ Device type by ZIP is not public. Oxygen per ZIP is the emPOWER oxygen count cap
 by `population.non_oxygen_mix`. Counts published as 11 mean "1 to 11" and are drawn uniformly by seed. Backup hours,
 mobility, heat or cold sensitivity, supplier, phone and profile status are drawn from `population.*` (most are our
 placeholders, `confirmed: false`). No patient has a phone number. Homes are uniform random points inside the ZIP's
-polygon. A building resident (`population.costar_building_share`) moves into the nearest surveyed CoStar building
-within `population.building_match_km` (at most `population.patients_per_building` each), so a run uses that
-building's profile; with no surveyed buildings everybody uses the default time constants.
+polygon. In scenarios with `use_profiles: true` (Beryl only), a building resident (`population.costar_building_share`)
+moves into the nearest surveyed CoStar home building (not hotels or senior housing, which are refuges) within
+`population.building_match_km`, at most `population.patients_per_building` each, so a run uses that building's
+profile. With no surveyed buildings everybody uses the default time constants. Synthetic scenarios (sample) never
+use the store, so their committed outputs carry no CoStar data. `meta.json` lists the profiles a run used.
 
 ## Engine (Task S3)
 
