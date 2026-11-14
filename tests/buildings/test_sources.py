@@ -97,11 +97,11 @@ def test_costar_index_comes_from_storage_when_the_extract_is_absent(monkeypatch,
     import json
     from hearth import remote
     from hearth.buildings import tools
-    idx = tmp_path / "houston_v2.json"
+    idx = tmp_path / "houston_v3.json"
     idx.write_text(json.dumps({"77": {"building_id": "77", "address": "1 A St", "lat": 29.7, "lon": -95.3, "property_type": "hotel"}}))
     monkeypatch.delenv("HEARTH_FIXTURES", raising=False)
     monkeypatch.setattr(tools, "CACHE_ROOT", tmp_path / "cache")
     monkeypatch.setattr(tools, "COSTAR_FILE", tmp_path / "absent.jsonl")
     monkeypatch.setattr(tools, "_costar", None)
-    monkeypatch.setattr(remote, "fetch", lambda path: idx if path == "costar/houston_v2.json" else None)
+    monkeypatch.setattr(remote, "fetch", lambda path: idx if path == "costar/houston_v3.json" else None)
     assert tools.costar_record("77")["property_type"] == "hotel"

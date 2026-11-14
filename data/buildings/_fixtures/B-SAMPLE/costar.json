@@ -15,5 +15,26 @@
   "zip": "77002",
   "matterport_model_ids": [
     "fixture-B-SAMPLE"
+  ],
+  "num_buildings": 2,
+  "walkup": false,
+  "floor_plans": [
+    {
+      "name": "1BR, 1BA - 700SF (fixture)",
+      "beds": 1,
+      "scan_ids": [
+        "fixture-B-SAMPLE"
+      ],
+      "units": [
+        {
+          "number": "00-0310",
+          "building": "A"
+        },
+        {
+          "number": "410",
+          "building": null
+        }
+      ]
+    }
   ]
 }
