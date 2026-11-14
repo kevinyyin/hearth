@@ -5,6 +5,7 @@ renders only keys `allowed` for the patient's plan state and job status. A model
 """
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -46,7 +47,7 @@ def respond(call_id: str, caller_text: str, keypad: str | None = None) -> str:
     call = store.get("call", call_id)
     if call is None:
         raise KeyError(call_id)
-    text = caller_text.strip()
+    text = caller_text.strip() if re.search(r"\w", caller_text) else ""  # ElevenLabs sends "..." for a silent turn
     if text or keypad:
         call["transcript"].append({"role": "caller", "text": text or f"[keypad {keypad}]", "t": time.time()})
     state = PlanState.MOVE if call["kind"] == "move_consent" else PlanState.OWN_BACKUP

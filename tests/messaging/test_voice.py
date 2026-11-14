@@ -147,3 +147,10 @@ def test_interpreter_sees_the_last_question_and_not_this_turn_twice(monkeypatch)
     monkeypatch.setattr(voice, "interpret_turn", lambda text, keypad, ctx, history: seen.append(history) or FAKE[text])
     c = call_at_ask(); respond(c, "about forty minutes")
     assert seen[-1][-1]["role"] == "agent" and "about forty minutes" not in [m["text"] for m in seen[-1]]
+
+
+def test_elevenlabs_silence_marker_counts_as_silence():
+    c = call_at_ask()
+    assert "Is that about right?" in respond(c, "...")  # first silence: ask again
+    respond(c, " … "); respond(c, "...")
+    assert store.get("call", c)["status"] == "escalated"
