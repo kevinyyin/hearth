@@ -131,6 +131,20 @@ export type BuildingDetail = {
   /** The building's real scan models; empty with fixtures or when CoStar lists none. */
   scan_ids: string[];
   scan_sdk_key: string | null;
+  /** What someone said by phone today about power and the elevator; one person's word at one time. */
+  status: BuildingStatus | null;
+  /** This building's office has a real number to call (never one from the CoStar kit). */
+  can_call: boolean;
+};
+
+export type BuildingStatus = {
+  building_id: string;
+  said_by: "resident" | "building_office";
+  call_id: string;
+  power: boolean | null;
+  elevator: "yes" | "no" | "unknown" | null;
+  /** Unix seconds. */
+  t: number;
 };
 
 // --- Home markup shapes (mirrors Patient and Home in hearth/contracts.py). ---
@@ -177,7 +191,8 @@ export type Home = {
   movable: boolean | null;
   /** No longer asked on the resident page; older saved homes may carry one. */
   backup_plan: string;
-  size: SizeId;
+  /** null: not asked (a home registered by phone). */
+  size: SizeId | null;
   /** Width, depth, height in cm; only for a custom size. */
   size_cm: [number, number, number] | null;
   /** The scan the resident says is laid out like their home; null: none of them. */
@@ -189,12 +204,29 @@ export type Home = {
   contacts: Person[];
   /** People who live with the resident and can help before a crew arrives. */
   helpers: Person[];
+  /** What a caller said by phone; a home saved on the resident page keeps the defaults. */
+  source: "web" | "phone";
+  unit: string | null;
+  complex_building: string | null;
+  door: string;
+  door_from_aerial: boolean;
+  room: string;
+  scan_room: string | null;
+  has_elevator: boolean | null;
+  mobility_asked: boolean;
+  said_at: string | null;
 };
 
 /** Someone the resident names. Invented, like the resident. */
 export type Person = { name: string; relation: string; phone: string; note: string };
 
 export type HomeRow = { home: Home; patient: Patient; address: string };
+
+/** Phone registrations, newest first, and registration calls that ended before anyone was registered. */
+export type Registrations = {
+  registered: { patient: Patient; home: Home; address: string | null; call_id: string | null; call_status: string | null }[];
+  needs_person: { call_id: string; phone: string | null; facts: Record<string, unknown>; status: string; started_at: number | null }[];
+};
 
 export type Vehicle = "car" | "van" | "wheelchair_van" | "ambulance";
 export type Equipment = "oxygen" | "power" | "wheelchair_lift" | "stretcher";

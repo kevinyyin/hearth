@@ -44,3 +44,18 @@ def test_say_hours():
     assert say_hours(0.67) == "forty minutes"
     assert say_hours(3.0) == "three hours, that's one hundred eighty minutes"
     assert say_hours(12.2) == "about twelve hours"
+
+
+NEW = ["reg_open", "ask_address", "readback_address", "reg_ask_hours", "ask_floor_building", "ask_door_aerial", "readback_home",
+       "reg_close", "menu", "help_opened", "safe_noted", "check_address", "ask_elevator_working", "bldg_open", "alert_text"]
+
+
+@pytest.mark.parametrize("key", NEW)
+def test_new_keys_are_allowed_outside_moves(key):
+    assert allowed(key, PlanState.OWN_BACKUP, "none")
+
+
+def test_no_new_line_promises_a_crew():
+    import re
+    for key in NEW:
+        assert not re.search(r"\b(on (its|the) way|will arrive|is coming)\b", TEMPLATES[key], re.I)

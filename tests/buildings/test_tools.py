@@ -46,6 +46,39 @@ def test_path_like_ids_are_rejected():
         costar_record("../../etc")
 
 
+def raw(**over):
+    return {"id": 1, "propertyType": 11, "constructionStatus": 1, "primaryAddress": {
+        "streetNumber": "1", "streetName": "Main", "city": "Houston", "state": "TX", "postcode": "77002", "latitude": 29.7, "longitude": -95.3}} | over
+
+
+def test_normalize_reads_buildings_walkup_and_floor_plans():
+    n = tools.normalize_costar(raw(propertyApartment={"numBuildings": 3, "isWalkup": False, "models": [
+        {"modelName": "The Avondale", "numBeds": 1, "units": [{"unitNumber": "00-1410", "buildingName": None}],
+         "attachments": [{"videoExternalReferenceType": 36, "videoKey": "vkx"}]},
+        {"modelName": "Empty", "numBeds": 2, "units": [], "attachments": []}]}))
+    assert (n["num_buildings"], n["walkup"]) == (3, False)
+    assert n["floor_plans"] == [{"name": "The Avondale", "beds": 1, "scan_ids": ["vkx"], "units": [{"number": "00-1410", "building": None}]}]
+
+
+@pytest.mark.parametrize("status,existing", [(1, True), (2, False), (3, False), (None, True)])
+def test_a_closed_hotel_is_not_existing(status, existing):
+    assert tools.normalize_costar(raw(propertyType=1, propertyHospitality={"operatingStatus": status}))["existing"] is existing
+
+
+def test_matterport_rooms_can_be_limited_to_some_scans(monkeypatch):
+    monkeypatch.delenv("HEARTH_FIXTURES")
+    monkeypatch.setenv("MATTERPORT_API_KEY", "k"), monkeypatch.setenv("MATTERPORT_API_TOKEN", "t")
+    asked = []
+
+    class R:
+        def raise_for_status(self): pass
+        def json(self): return {"data": {"model": None}}
+
+    monkeypatch.setattr(tools.httpx, "post", lambda url, json, **kw: asked.append(json["variables"]["id"]) or R())
+    tools.matterport_rooms("anything", model_ids=["m1", "m2"])
+    assert asked == ["m1", "m2"]
+
+
 def test_an_entrance_reading_is_a_point_on_the_tile_or_nothing():
     assert tools.parse_entrance('Here: {"x": 0.44, "y": 0.69, "note": "canopy on the south side"}') == {
         "x": 0.44, "y": 0.69, "note": "canopy on the south side"}

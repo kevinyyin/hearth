@@ -15,7 +15,8 @@ from pydantic import BaseModel, ValidationError
 
 from api import live
 from hearth import dispatch, remote, store
-from hearth.buildings import refuge, tools
+from hearth.buildings import refuge, status, tools
+from hearth.messaging import registry
 from hearth.buildings.agent import survey
 from hearth.buildings.brief import access_brief
 from hearth.buildings.profile import hours_to_unsafe, layer_effects
@@ -95,7 +96,8 @@ def _building(building_id: str) -> dict:
 
 
 def _patient(patient_id: str) -> Patient:
-    """Demo patients first, then lane S's patients file. Stored as a "patient" doc so the voice lane can read it."""
+    """Demo patients first, then lane S's patients file, then the store (phone registrants live only there). Stored as a
+    "patient" doc so the voice lane can read it."""
     found = None
     if DEMO_PATIENTS.exists():
         found = next((Patient(**r) for r in json.loads(DEMO_PATIENTS.read_text()) if r["patient_id"] == patient_id), None)
@@ -108,6 +110,8 @@ def _patient(patient_id: str) -> Patient:
             found = Patient(**json.loads(hit.iloc[[0]].to_json(orient="records"))[0])
     elif found is None and (copy := remote.fetch(PATIENTS_JSON)):  # hosted: a JSON copy
         found = next((Patient(**r) for r in json.loads(copy.read_text()) if r["patient_id"] == patient_id), None)
+    if found is None and (stored := dispatch._valid(Patient, store.get("patient", patient_id))):
+        return stored  # a phone registrant: already stored by the registration call
     if found is None:
         raise HTTPException(404, "no such patient")
     store.put("patient", patient_id, found)
@@ -176,13 +180,26 @@ def building(building_id: str):
            "profile": None, "brief": None, "layer_effects": None, "hours_to_unsafe": None,
            "embed_url": tools.matterport_embed_url(building_id), "image_url": f"/api/buildings/{building_id}/image",
            # the embed SDK key is a browser key by design; it travels here so it sits behind the password, not in the web bundle
-           "scan_ids": tools.matterport_scan_ids(building_id), "scan_sdk_key": os.environ.get("MATTERPORT_SDK_KEY") or None}
+           "scan_ids": tools.matterport_scan_ids(building_id), "scan_sdk_key": os.environ.get("MATTERPORT_SDK_KEY") or None,
+           # what someone said by phone today about power and the elevator, and whether this building's office can be called
+           "status": status.latest(building_id), "can_call": building_id in registry.building_phones()}
     if doc := store.get("profile", building_id):
         p = BuildingProfile.model_validate(doc)
         # validated, so profiles stored before a contract field existed get it as unknown
         out.update(profile=p.model_dump(mode="json") | {"cached": True}, brief=access_brief(p).model_dump(), layer_effects=layer_effects(p),
                    hours_to_unsafe=hours_to_unsafe(p.heat_time_constant_h))
     return out
+
+
+@app.post("/api/buildings/{building_id}/call")
+def call_building(building_id: str):
+    """Rings the building's office about power and the elevator. Only a number in HEARTH_BUILDING_PHONES: every phone
+    number in the CoStar kit is fake."""
+    _building(building_id)
+    if building_id not in registry.building_phones():
+        raise HTTPException(403, "no phone number is set for this building")
+    call_id = live.start_call(None, "building_check", building_id=building_id)
+    return {"call_id": call_id, "conversation_id": live.dial(call_id)}
 
 
 @app.get("/api/buildings/{building_id}/image")
@@ -261,6 +278,22 @@ def homes():
         except HTTPException:  # the patient or building is gone: not a job a responder can take
             continue
     return out
+
+
+@app.get("/api/registrations")
+def registrations():
+    """Phone registrations, newest first, and registration calls that ended before anyone was registered."""
+    from hearth.messaging import registry
+
+    return registry.registrations()
+
+
+@app.post("/api/storm")
+def storm():
+    """Simulated: the county alert text to the alert phones, and check calls to phone registrants in the forecast area."""
+    from hearth.messaging import registry
+
+    return registry.storm()
 
 
 # ---- help loop: a resident asks, a model orders, code offers the job to a crew with a refuge as the drop-off ----
@@ -404,12 +437,21 @@ def decision(proposal_id: str, body: Decision):
 
 
 class CallIn(BaseModel):
-    patient_id: str
-    kind: Literal["impact", "move_consent"]
+    patient_id: str | None = None
+    kind: Literal["impact", "move_consent", "register"]
+    phone: str | None = None  # register only: the browser phone stands in for this listed demo number (it has no caller ID)
 
 
 @app.post("/api/calls")
 def calls(body: CallIn):
+    if body.kind == "register":
+        from hearth.messaging import registry
+
+        if body.phone not in registry.demo_callers():  # strangers' details never reach the store
+            raise HTTPException(403, "only a number on the demo caller list can register")
+        return {"call_id": live.start_call(None, "register", phone=body.phone)}
+    if not body.patient_id:
+        raise HTTPException(422, "a patient id is needed")
     proposal_id = None
     if body.kind == "move_consent":
         approved = [p for p in store.all("proposal") if p["patient_id"] == body.patient_id and p["status"] == "approved"]

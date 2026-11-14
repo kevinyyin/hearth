@@ -94,6 +94,11 @@ def _elevators(r: dict) -> tuple[int | None, str]:
     return None, "no elevator information"
 
 
+def _floor_plan(m: dict) -> dict:
+    return {"name": m.get("modelName"), "beds": m.get("numBeds"), "scan_ids": _matterport_ids(m.get("attachments") or [], []),
+            "units": [{"number": str(u["unitNumber"]), "building": u.get("buildingName")} for u in m.get("units") or [] if u.get("unitNumber")]}
+
+
 def normalize_costar(r: dict) -> dict:
     """One CoStar commercial-property record -> the flat fields the agent reads. Missing stays None."""
     pa = r.get("primaryAddress") or {}
@@ -118,7 +123,10 @@ def normalize_costar(r: dict) -> dict:
         "year_built": next((e.get("year") for e in r.get("constructionEvents") or [] if e.get("eventType") == 2), None),
         "construction": _MATERIAL.get(r.get("buildingConstructionMaterial")),
         "elevator_count": elevator_count, "elevator_note": elevator_note,
-        "existing": r.get("constructionStatus") == 1,
+        # a hotel CoStar lists as temporarily (2) or permanently (3) closed is not a refuge
+        "existing": r.get("constructionStatus") == 1 and (r.get("propertyHospitality") or {}).get("operatingStatus") not in (2, 3),
+        "num_buildings": apt.get("numBuildings"), "walkup": apt.get("isWalkup"),
+        "floor_plans": [plan for m in apt.get("models") or [] if (plan := _floor_plan(m))["units"] or plan["scan_ids"]],
         # building-level tours first, then model-unit tours
         "matterport_model_ids": _matterport_ids(r, _matterport_ids(r.get("attachments") or [], [])),
     }
@@ -131,11 +139,11 @@ def _costar_index() -> dict[str, dict]:
     """Houston records, normalized once and kept under data/buildings/_costar/ (git-ignored)."""
     global _costar
     if _costar is None:
-        path = CACHE_ROOT / "_costar" / "houston_v2.json"  # bump the name when normalize_costar changes
+        path = CACHE_ROOT / "_costar" / "houston_v3.json"  # bump the name when normalize_costar changes
         if not path.exists() and not COSTAR_FILE.exists():  # a host without the kit reads the index from storage
             from hearth import remote
 
-            path = remote.fetch("costar/houston_v2.json") or path
+            path = remote.fetch("costar/houston_v3.json") or path
         if not path.exists():
             rows = {}
             with COSTAR_FILE.open() as f:
@@ -362,13 +370,15 @@ def normalize_rooms(model: dict) -> dict:
     return {"unit_type": model.get("name"), "rooms": rooms}
 
 
-def matterport_rooms(building_id: str) -> list[dict]:
-    """[{unit_type, rooms: [{room, width_m, length_m, area_m2}]}] per scan; [] when the building has no scan."""
+def matterport_rooms(building_id: str, model_ids: list[str] | None = None) -> list[dict]:
+    """[{unit_type, rooms: [{room, width_m, length_m, area_m2}]}] per scan; [] when the building has no scan.
+    `model_ids` limits the fetch to those scans (a floor plan's own)."""
     if _fixtures_on():
         return (_fixture(building_id, "matterport") or {}).get("units", [])
     auth = (os.environ["MATTERPORT_API_KEY"], os.environ["MATTERPORT_API_TOKEN"])
     units = []
-    for mid in (costar_record(building_id) or {}).get("matterport_model_ids", [])[:MP_MODELS_PER_BUILDING]:
+    ids = model_ids if model_ids is not None else (costar_record(building_id) or {}).get("matterport_model_ids", [])
+    for mid in ids[:MP_MODELS_PER_BUILDING]:
         r = httpx.post(MATTERPORT_GRAPH, json={"query": _MP_ROOMS, "variables": {"id": mid}}, auth=auth, timeout=30)
         r.raise_for_status()
         if model := (r.json().get("data") or {}).get("model"):

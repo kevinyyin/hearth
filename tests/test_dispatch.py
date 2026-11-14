@@ -176,7 +176,8 @@ def test_the_model_sees_the_residents_own_words_and_a_long_reason_is_cut(monkeyp
     assert len(dispatch.open_request("p4").reason) == 140
     assert seen[0] | {"minutes_waiting": 0} == {
         "patient_id": "p4", "device": "oxygen", "device_detail": seen[0]["device_detail"], "mobility": "walks", "temp_sensitive": "heat",
-        "backup_hours_on_record": 13.0, "ok_without_h": 4, "backup_plan": "one spare tank", "note": "put me first", "minutes_waiting": 0}
+        "backup_hours_on_record": 13.0, "ok_without_h": 4, "backup_plan": "one spare tank", "note": "put me first", "minutes_waiting": 0,
+        "floor": 6, "elevator": None, "minutes_at_building": None}
     monkeypatch.setattr(dispatch, "_ask_model", lambda rows: seen.append(rows[-1]) or answer([r["patient_id"] for r in rows]))
     dispatch.open_request("p2")  # no home markup: the model is told the resident has not said, not given a guess
     assert seen[-1]["ok_without_h"] is None and seen[-1]["backup_hours_on_record"] == 21.8
@@ -287,3 +288,25 @@ def test_a_bad_stored_profile_cannot_stop_dispatch():
     store.put("profile", "junk", {"address": "no id"})
     crew("A")
     assert dispatch.open_request("p4").state == "offered"
+
+
+def test_rank_rows_carry_floor_elevator_and_minutes(monkeypatch):
+    from hearth.buildings import status
+    store.put("profile", "B-SAMPLE", profile("B-SAMPLE", floors=8, elevators=1))
+    status.record("B-SAMPLE", "resident", "C-1", elevator="no")
+    rows = []
+    monkeypatch.setattr(dispatch, "_ask_model", lambda r: rows.extend(r) or answer([x["patient_id"] for x in r]))
+    dispatch.open_request("p4")  # floor 6
+    row = next(r for r in rows if r["patient_id"] == "p4")
+    assert (row["floor"], row["elevator"], row["minutes_at_building"]) == (6, {"state": "no", "said_by": "resident"}, 10 + 4 * 6)
+
+
+def test_the_fallback_puts_a_stair_carry_first(monkeypatch):
+    from hearth.buildings import status
+    store.put("profile", "B-SAMPLE", profile("B-SAMPLE", floors=8, elevators=1))
+    status.record("B-SAMPLE", "resident", "C-1", elevator="no")
+    for pid, floor in (("p2", 1), ("p4", 6)):
+        store.put("patient", pid, store.get("patient", pid) | {"floor": floor, "backup_hours_on_hand": 5.0, "risk_weight": 3.0})
+    monkeypatch.setattr(dispatch, "_ask_model", lambda rows: (_ for _ in ()).throw(RuntimeError("down")))
+    dispatch.open_request("p2"), dispatch.open_request("p4")
+    assert (dispatch.request("p4").rank, dispatch.request("p2").rank) == (1, 2)

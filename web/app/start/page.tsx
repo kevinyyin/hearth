@@ -2,25 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
-import { API, getJson } from "@/lib/api";
+import { type FormEvent, useState } from "react";
+import { API } from "@/lib/api";
 import { setPersona } from "@/lib/home";
-import type { Patient } from "@/lib/types";
 
-const words = (s: string) => s.replace(/_/g, " ");
 const card = "space-y-2 rounded-lg border p-4";
-const button = "w-full rounded border px-3 py-2 text-left text-sm";
 
 /** Demo personas, not logins: the choice is kept in this browser and the shared password still guards the hosted site. */
 export default function StartPage() {
   const router = useRouter();
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [crew, setCrew] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (API) getJson<Patient[]>("/api/demo-patients").then(setPatients).catch((e) => setError(String(e)));
-  }, []);
 
   if (!API) return <p className="mx-auto max-w-md px-6 py-10 text-sm">This page needs the Hearth API.</p>;
 
@@ -40,23 +31,10 @@ export default function StartPage() {
         </p>
       </header>
 
+      {/* residents register, ask for help and hear back by phone; the resident page still works at /resident as a backup */}
       <section className={card} style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
         <h2 className="text-sm font-semibold">Resident</h2>
-        {patients.map((p) => (
-          <button
-            key={p.patient_id}
-            type="button"
-            className={button}
-            style={{ borderColor: "var(--border)" }}
-            onClick={() => {
-              setPersona({ role: "resident", id: p.patient_id });
-              router.push("/resident");
-            }}
-          >
-            {p.patient_id} · {words(p.device)} · {words(p.mobility)}
-          </button>
-        ))}
-        {error && <p className="text-xs" style={{ color: "#d03b3b" }}>{error}</p>}
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Residents register and ask for help by phone, on the Hearth line.</p>
       </section>
 
       <form onSubmit={asResponder} className={card} style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>

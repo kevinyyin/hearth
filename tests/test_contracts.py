@@ -70,3 +70,9 @@ def test_responder_name_and_help_reason_bounds():
                 lambda: Responder(crew_id="ok", equipment=["laser"], **crew), lambda: HelpRequest(patient_id="x", reason="r" * 141)):
         with pytest.raises(ValidationError):
             bad()
+
+
+def test_a_home_from_a_call_needs_no_size():
+    from hearth.contracts import Home
+    h = Home(patient_id="R-1", building_id="B-SAMPLE", ok_without_h=4, source="phone", unit="00-1410")
+    assert h.size is None and h.source == "phone" and not h.mobility_asked
