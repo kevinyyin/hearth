@@ -42,7 +42,9 @@ export const RESIDENT: SimResident = {
   phone: "(713) 555-0147",
   device: "Oxygen concentrator",
   backupHours: 4,
-  buildingLabel: "Simulated mid-rise, Harris County",
+  // A real Harris County address, so the aerial tile and the scan have somewhere
+  // to point. The resident living at it is synthetic, as every patient here is.
+  buildingLabel: "1720 Crestdale Dr, Houston, TX 77080",
   floor: 3,
   elevator: false,
   pins: [

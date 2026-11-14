@@ -46,11 +46,18 @@ export default function BuildingViews({
 
   return (
     <div>
+      {/* The record loads from the fixture too, so the address shows either way;
+          only the imagery below depends on an API being there. */}
       <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="text-sm font-semibold">The building itself</h3>
+        <h3 className="text-sm font-semibold">
+          {data?.address ?? data?.name ?? "The building itself"}
+        </h3>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          {live ? `${data?.name ?? buildingId} · ${detail}` : "no building data reachable"}
-          {error && ` · ${error}`}
+          {data
+            ? `${data.building_id} · ${live ? "CoStar record" : "fixture record"}`
+            : error
+              ? `no record: ${error}`
+              : "looking up the record…"}
         </p>
       </div>
 
