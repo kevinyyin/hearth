@@ -64,7 +64,9 @@ def test_homes_list_demo_patients_and_building_detail():
     assert row["home"]["patient_id"] == "demo-1" and row["patient"]["mobility"] == "wheelchair_power"
     assert row["address"] == client.get("/api/buildings/B-SAMPLE").json()["address"]
     demo = client.get("/api/demo-patients").json()
-    assert {"demo-1", "demo-2"} <= {p["patient_id"] for p in demo} and all(p["synthetic"] for p in demo)
+    ids = {p["patient_id"] for p in demo}
+    # only personas whose building exists in the data being served: demo-2 lives in a real building, not a fixture
+    assert "demo-1" in ids and "demo-2" not in ids and all(p["synthetic"] for p in demo)
     d = client.get("/api/buildings/B-SAMPLE").json()
     assert d["scan_ids"] == [] and "scan_sdk_key" in d
 

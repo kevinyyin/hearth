@@ -6,7 +6,7 @@ import type { InsideKind, InsidePin, Vec3 } from "@/lib/types";
 
 const SDK_SRC = "https://static.matterport.com/showcase-sdk/latest.js";
 const MAX_PINS = 50; // the API's cap
-const OPEN_TIMEOUT_MS = 30_000; // a cold scan takes 10 to 20 s
+const OPEN_TIMEOUT_MS = 60_000; // a cold scan was measured at about 25 s; twice that before calling it failed
 const HOLD_MS = 800;
 
 // The slice of Matterport's embed SDK used here (verified Nov 14 on a real scan).
