@@ -277,7 +277,7 @@ def run() -> None:
                 else:
                     r.blocked = ""  # crews that fit exist; if all are busy this simply waits its turn
                     placed[r.patient_id] = (r, patient, home, here, refuge)
-            free = [c for c in on_duty.values() if c.crew_id not in busy]
+            free = sorted((c for c in on_duty.values() if c.crew_id not in busy), key=lambda c: c.crew_id)
 
             def fits(pid: str, c: Responder, strict: bool = False) -> bool:
                 r, patient, home, _, _ = placed[pid]
@@ -286,18 +286,22 @@ def run() -> None:
             serve = []  # who gets a crew this round: each request in order that the free crews can still cover
             for pid in placed:
                 trial = serve + [pid]
+                if len(trial) > len(free):
+                    break  # every free crew is spoken for
                 if len(routing.solve([[1.0 if fits(q, c) else 0.0 for c in free] for q in trial])) == len(trial):
                     serve = trial
 
-            def worth(k: int, pid: str, c: Responder) -> float:
+            def worth(k: int, j: int, pid: str) -> float:
+                c = free[j]
                 if not fits(pid, c):
-                    return -1e6  # never: every request in `serve` has a crew that fits
+                    return -1e9  # never: every request in `serve` has a crew that fits
                 here = placed[pid][3]
-                drive = planner.travel_h((c.lat, c.lon), (here.lat, here.lon))
-                return (1000.0 if fits(pid, c, strict=True) else 0.0) + 0.5 ** k * (10.0 - drive)
+                drive = min(planner.travel_h((c.lat, c.lon), (here.lat, here.lon)), 999.0)  # always worth something
+                # equipment first, then the drive (each place in the order counts twice the next), then the lower crew id
+                return (1e6 if fits(pid, c, strict=True) else 0.0) + 0.5 ** k * (1000.0 - drive - 1e-6 * j)
 
             offered = 0
-            for k, j in sorted(routing.solve([[worth(k, pid, c) for c in free] for k, pid in enumerate(serve)])):
+            for k, j in sorted(routing.solve([[worth(k, j, pid) for j in range(len(free))] for k, pid in enumerate(serve)])):
                 r, patient, _, here, refuge = placed[serve[k]]
                 again = _refuge(patient, here, dark, taken, profiles)
                 if again is None or again.building_id != refuge.building_id:
@@ -306,7 +310,7 @@ def run() -> None:
                 done = planner.travel_h((c.lat, c.lon), (here.lat, here.lon)) + planner.travel_h((here.lat, here.lon), (refuge.lat, refuge.lon))
                 r.job = Job(job_id=f"ride-{r.patient_id}-0", kind="ride", patient_id=r.patient_id, org_id=c.crew_id, status="created",
                             eta=_eta(c, here), data={"crew_id": c.crew_id, "done_h": done, "dest": [refuge.lat, refuge.lon]})
-                r.refuge = refuge
+                r.refuge = again  # counted after the offers ahead of it this round, so "places left" is true
                 taken[refuge.building_id] += 1
                 busy.add(c.crew_id)
                 _enter(r, "offered")

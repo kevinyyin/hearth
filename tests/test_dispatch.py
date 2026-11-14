@@ -377,3 +377,31 @@ def test_two_requests_for_the_last_place_the_first_in_line_gets_it(monkeypatch):
     first, second = dispatch.request("p1"), dispatch.request("demo-1")
     assert (first.state, first.refuge.building_id) == ("offered", "H-LEVEL")
     assert second.state == "waiting" and second.job is None and second.blocked.startswith("no refuge within 15 km")
+
+
+def test_two_offers_in_one_pass_count_the_places_left_one_after_the_other(monkeypatch):
+    order(monkeypatch, "p4", "p2")
+    with monkeypatch.context() as hold:
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("p4"), dispatch.open_request("p2")
+        crew("A"), crew("B")
+    dispatch.run()
+    assert "2 of 2 places left" in dispatch.request("p4").refuge.reasons
+    assert "1 of 2 places left" in dispatch.request("p2").refuge.reasons
+
+
+def test_equal_crews_go_in_crew_id_order_whatever_order_they_came_on_duty(monkeypatch):
+    order(monkeypatch, "p4", "p2")
+    with monkeypatch.context() as hold:
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("p4"), dispatch.open_request("p2")
+        crew("B"), crew("A")  # the same base, the same car
+    dispatch.run()
+    assert {r.patient_id: r.job.org_id for r in dispatch.requests()} == {"p4": "A", "p2": "B"}
+
+
+def test_a_crew_many_hours_away_is_still_offered_the_job_when_it_is_the_only_one(monkeypatch):
+    from hearth import planner
+    monkeypatch.setattr(planner, "travel_h", lambda *a, **k: 12.0)
+    crew("A")
+    assert dispatch.open_request("p4").job.org_id == "A"

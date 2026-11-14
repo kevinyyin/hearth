@@ -90,23 +90,34 @@ function toHousehold(p: Snap["patients"][number]): Household {
   };
 }
 
+/** The planner answers in about 0.2 s for the page's own request; a slow host should not hold the map. */
+const PLAN_TIMEOUT_MS = 8000;
+
 /**
  * The Hearth side's day from the central planner. Any failure — no route, a
- * refusal, a shape the page cannot draw — is null, and the caller keeps the
- * browser's own routes: the map must never wait on this or go blank for it.
+ * refusal, a slow answer, a shape the page cannot draw — is null, and the caller
+ * keeps the browser's own routes: the map must never hang on this or go blank for it.
  */
 async function planDay(households: Household[], signal: AbortSignal): Promise<SideSim | null> {
+  // the real households are already in hand: past this wait they are drawn with the browser's own routes
+  const ac = new AbortController();
+  const stop = () => ac.abort();
+  const timer = setTimeout(stop, PLAN_TIMEOUT_MS);
+  signal.addEventListener("abort", stop);
   try {
     const res = await fetch(`${API}/api/sim/day`, {
       method: "POST",
       cache: "no-store",
-      signal,
+      signal: ac.signal,
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ households, constants: DAY_CONSTANTS }),
     });
     return res.ok ? parseSide(await res.json(), households.length) : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", stop);
   }
 }
 

@@ -199,3 +199,7 @@ def test_a_routed_crew_does_one_job_at_a_time_and_a_patient_has_one_job_at_a_tim
             open_jobs.add(e["patient_id"])
         elif e["type"] == "job_completed":
             open_jobs.discard(e["patient_id"])
+
+
+def test_the_phone_tree_is_never_labelled_with_a_routing_it_does_not_use():
+    assert policy_label("p0", Flags(routing="paired")) == "p0"

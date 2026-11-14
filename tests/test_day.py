@@ -20,6 +20,12 @@ def test_the_planner_day_waits_no_longer_than_the_pages_greedy(side):
     assert weighted_wait(side, K["runHours"]) <= FX["greedy"]["weightedWait"]
 
 
+def test_the_hosted_solver_also_waits_no_longer_than_the_pages_greedy(monkeypatch):
+    from hearth import routing
+    monkeypatch.setattr(routing, "_lsa", None)  # the hosted API has no scipy: the plain solver breaks ties its own way
+    assert weighted_wait(run_day(FX["households"], K), K["runHours"]) <= FX["greedy"]["weightedWait"]
+
+
 def test_the_day_has_the_shape_the_page_draws(side):
     vans = len(K["stations"]) * K["crewsPerStation"]
     assert set(side) == {"jobs", "calls", "legs", "station", "tours", "stops", "refills", "events"} and side["calls"] == []

@@ -36,7 +36,7 @@ from hearth.weather import hourly_weather
 
 def policy_label(policy: str, flags: Flags) -> str:
     return policy + ("__nobld" if not flags.use_buildings else "") + ("__nomove" if not flags.allow_moves else "") + \
-        ("__aid" if flags.mutual_aid else "") + ("" if flags.routing == "greedy" else f"__{flags.routing}")
+        ("__aid" if flags.mutual_aid else "") + ("" if flags.routing == "greedy" or policy == "p0" else f"__{flags.routing}")
 
 
 def _iso(t) -> str:
