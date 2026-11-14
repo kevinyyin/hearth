@@ -8,51 +8,70 @@ import {
   type CountySim,
   type HouseholdState,
   type SideKey,
+  type Vehicle,
 } from "@/lib/simulation";
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const HOMES = "households";
 const HOMES_LAYER = "households-circles";
 const CREWS = "crews";
-const CREWS_LAYER = "crews-circles";
+const CREWS_LAYER = "crews-vans";
 
 const FILL: Record<HouseholdState, string> = {
   reached: "#0e7a54",
   waiting: "#c4461a",
+  /** Blue: helped once, and the delivery has run down. A different problem from never reached. */
+  resupply: "#2a6fd6",
   unaffected: "#b8b1a4",
 };
 
+/** A van seen from above, nose pointing up, so icon-rotate can aim it. */
+const CAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="54" viewBox="0 0 34 54">
+  <g>
+    <rect x="4" y="2" width="26" height="50" rx="7" fill="#3d382e"/>
+    <path d="M9 12 h16 v9 h-16 z" fill="#cfd6da" opacity="0.95"/>
+    <rect x="8" y="30" width="18" height="12" rx="3" fill="#2a2520"/>
+    <circle cx="17" cy="7" r="2.2" fill="#ffd9a0"/>
+  </g>
+</svg>`;
+
 /** Waiting is drawn as a ring, so the three states differ in shape as well as colour. */
+const STATE_MATCH = [
+  "match", ["get", "state"],
+  "reached", FILL.reached,
+  "waiting", FILL.waiting,
+  "resupply", FILL.resupply,
+  FILL.unaffected,
+];
+
+/** Waiting is a ring and resupply is a filled blue, so the three read apart by shape too. */
 const HOME_PAINT = {
-  "circle-color": [
+  "circle-color": STATE_MATCH,
+  "circle-opacity": [
     "match", ["get", "state"],
-    "reached", FILL.reached,
-    "waiting", FILL.waiting,
-    FILL.unaffected,
+    "reached", 1,
+    "resupply", 0.95,
+    "waiting", 0.12,
+    0.85,
   ],
-  "circle-opacity": ["match", ["get", "state"], "reached", 1, "waiting", 0.12, 0.85],
   "circle-radius": [
     "interpolate", ["linear"], ["zoom"],
     7, ["match", ["get", "state"], "unaffected", 2, 3.4],
     12, ["match", ["get", "state"], "unaffected", 4, 7],
   ],
-  "circle-stroke-color": [
-    "match", ["get", "state"],
-    "reached", FILL.reached,
-    "waiting", FILL.waiting,
-    FILL.unaffected,
-  ],
-  "circle-stroke-width": ["match", ["get", "state"], "waiting", 2, 0.6],
+  "circle-stroke-color": STATE_MATCH,
+  "circle-stroke-width": ["match", ["get", "state"], "waiting", 2, "resupply", 1.4, 0.6],
   "circle-stroke-opacity": 1,
 } as const;
 
-/** Deliberately quiet: the vans show motion without competing with the dots. */
-const CREW_PAINT = {
-  "circle-color": "#3d382e",
-  "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 2.6, 12, 5],
-  "circle-stroke-color": "#fbf9f4",
-  "circle-stroke-width": 1.2,
-  "circle-opacity": 0.9,
+/** The van icon, aimed along its leg. */
+const CREW_LAYOUT = {
+  "icon-image": "hearth-van",
+  "icon-size": ["interpolate", ["linear"], ["zoom"], 7, 0.3, 12, 0.62],
+  "icon-rotate": ["get", "bearing"],
+  "icon-rotation-alignment": "map",
+  "icon-allow-overlap": true,
+  "icon-ignore-placement": true,
 } as const;
 
 function homes(
@@ -71,16 +90,30 @@ function homes(
   };
 }
 
-function crews(points: [number, number][]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+function crews(vans: Vehicle[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: "FeatureCollection",
-    features: points.map((p, i) => ({
+    features: vans.map((v, i) => ({
       type: "Feature",
       id: i,
-      geometry: { type: "Point", coordinates: p },
-      properties: {},
+      geometry: { type: "Point", coordinates: [v.lon, v.lat] },
+      properties: { bearing: v.bearing },
     })),
   };
+}
+
+/** Rasterises the van once per map, so the symbol layer has something to place. */
+function addVanIcon(m: MapLibreMap): Promise<void> {
+  return new Promise((resolve) => {
+    if (m.hasImage("hearth-van")) return resolve();
+    const img = new Image(34, 54);
+    img.onload = () => {
+      if (!m.hasImage("hearth-van")) m.addImage("hearth-van", img, { pixelRatio: 2 });
+      resolve();
+    };
+    img.onerror = () => resolve(); // no icon is better than a dead map
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(CAR_SVG)}`;
+  });
 }
 
 export default function HouseholdMap({
@@ -100,10 +133,11 @@ export default function HouseholdMap({
   which: SideKey;
   hour: number;
   /** Crew positions this frame; empty when nothing is moving. */
-  vehicles?: [number, number][];
+  vehicles?: Vehicle[];
   /** False for the small panel on the simulation page: same picture, no controls. */
   interactive?: boolean;
-  height?: number;
+  /** A CSS length: a number of px, or something like "min(62vh, 620px)". */
+  height?: number | string;
   /** Hands the map instance up, so a parent can wire two of them together. */
   onMap?: (m: MapLibreMap | null) => void;
   ariaLabel: string;
@@ -132,13 +166,16 @@ export default function HouseholdMap({
       m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     }
 
-    m.on("load", () => {
+    m.on("load", async () => {
       m.addSource(HOMES, { type: "geojson", data: homes(county, which, 0) });
       m.addSource(CREWS, { type: "geojson", data: crews([]) });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       m.addLayer({ id: HOMES_LAYER, type: "circle", source: HOMES, paint: HOME_PAINT as any });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      m.addLayer({ id: CREWS_LAYER, type: "circle", source: CREWS, paint: CREW_PAINT as any });
+      await addVanIcon(m);
+      if (!m.getLayer(CREWS_LAYER)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        m.addLayer({ id: CREWS_LAYER, type: "symbol", source: CREWS, layout: CREW_LAYOUT as any });
+      }
       ready.current = true;
       // MapLibre renders the compact attribution open on first paint; collapse it
       // back to the "i" so it is opt-in rather than opt-out.

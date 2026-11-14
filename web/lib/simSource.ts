@@ -67,6 +67,8 @@ function toHousehold(p: Snap["patients"][number]): Household {
     lon: p.lon,
     lat: p.lat,
     needsAt: Math.max(0, Math.min(RUN_HOURS, Math.floor(p.unpowered ? hours : hours + 1))),
+    // a short battery is the one that runs down again inside the same day
+    repeats: hours <= 6,
   };
 }
 
