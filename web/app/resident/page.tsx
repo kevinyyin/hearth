@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import AerialPins from "@/components/AerialPins";
 import { API, getJson, putJson } from "@/lib/api";
-import { emptyHome, getPersona, PIN_COLOR, PIN_LABEL, SIZES, withBuilding } from "@/lib/home";
-import type { BuildingDetail, Home, OutsideKind, Patient, SizeId } from "@/lib/types";
+import ScanPins from "@/components/ScanPins";
+import { emptyHome, getPersona, PIN_COLOR, PIN_LABEL, SIZES, withBuilding, withScan } from "@/lib/home";
+import type { BuildingDetail, Home, InsideKind, OutsideKind, Patient, SizeId } from "@/lib/types";
 
 type BuildingRow = { building_id: string; name: string | null; address: string };
 
 const OUTSIDE_KINDS: OutsideKind[] = ["park", "entrance", "blocked", "route"];
+const INSIDE_KINDS: InsideKind[] = ["machine", "blocked", "route"];
 const words = (s: string) => s.replace(/_/g, " ");
 const input = "mt-1 w-full rounded border px-3 py-2 text-sm";
 const inputStyle = { borderColor: "var(--border)", background: "var(--surface-0)", color: "var(--text-primary)" };
@@ -49,6 +51,7 @@ export default function ResidentPage() {
   const [detail, setDetail] = useState<BuildingDetail | null>(null);
   const [query, setQuery] = useState("");
   const [outsideKind, setOutsideKind] = useState<OutsideKind>("park");
+  const [insideKind, setInsideKind] = useState<InsideKind>("machine");
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
@@ -82,6 +85,11 @@ export default function ResidentPage() {
   const q = query.trim().toLowerCase();
   const matches = q.length < 2 ? [] : buildings.filter((b) => `${b.address} ${b.name ?? ""}`.toLowerCase().includes(q)).slice(0, 8);
   const cm = home.size_cm ?? [50, 40, 30];
+  const scans = (detail?.scan_ids ?? []).slice(0, 6);
+  const pickScan = (id: string | null) => {
+    setHome(withScan(home, id));
+    setStatus(null);
+  };
 
   async function save() {
     if (!home) return;
@@ -176,7 +184,40 @@ export default function ResidentPage() {
       </Section>
 
       <Section title="Inside">
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>Choose your building to see its scans.</p>
+        {!detail ? (
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Choose your building to see its scans.</p>
+        ) : (
+          <>
+            {scans.length === 0 ? (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>No 3D scan for this building.</p>
+            ) : (
+              <div>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Which of these is laid out like your home?</p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {scans.map((id, i) => (
+                    <Choice key={id} on={home.scan_id === id} onClick={() => pickScan(id)}>Layout {i + 1}</Choice>
+                  ))}
+                  <Choice on={home.scan_id === null} onClick={() => pickScan(null)}>None of these</Choice>
+                </div>
+              </div>
+            )}
+            {home.scan_id && scans.includes(home.scan_id) && (
+              <>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Sample unit from this building, not your own home.</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {INSIDE_KINDS.map((k) => (
+                    <Choice key={k} on={insideKind === k} color={PIN_COLOR[k]} onClick={() => setInsideKind(k)}>{PIN_LABEL[k]}</Choice>
+                  ))}
+                </div>
+                <ScanPins scanId={home.scan_id} sdkKey={detail.scan_sdk_key} pins={home.inside} kind={insideKind} onChange={(inside) => set({ inside })} />
+              </>
+            )}
+            <label className="block text-xs" style={{ color: "var(--text-secondary)" }}>
+              Note for the responder
+              <input value={home.note} maxLength={500} className={input} style={inputStyle} onChange={(e) => set({ note: e.target.value })} />
+            </label>
+          </>
+        )}
       </Section>
 
       <div className="flex items-center gap-3">
