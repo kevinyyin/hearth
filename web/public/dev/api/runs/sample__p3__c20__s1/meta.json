@@ -1,0 +1,17 @@
+{
+  "run_id": "sample__p3__c20__s1",
+  "scenario": "sample",
+  "policy": "p3",
+  "crews": 20,
+  "seed": 1,
+  "ticks": [
+    "2024-07-08T12:00:00Z",
+    "2024-07-08T12:30:00Z"
+  ],
+  "center": [
+    29.76,
+    -95.37
+  ],
+  "synthetic": true,
+  "note": "hand-written sample to the contracts; not a simulation result"
+}
