@@ -22,6 +22,9 @@ const FILL: Record<HouseholdState, string> = {
   waiting: "#c4461a",
   /** Blue: helped once, and the delivery has run down. A different problem from never reached. */
   resupply: "#2a6fd6",
+  /** Purple: a second delivery has been made. Carries a halo, because blue and
+   *  purple sit close enough that colour alone is not enough to tell them apart. */
+  restocked: "#9333a8",
   unaffected: "#b8b1a4",
 };
 
@@ -41,6 +44,7 @@ const STATE_MATCH = [
   "reached", FILL.reached,
   "waiting", FILL.waiting,
   "resupply", FILL.resupply,
+  "restocked", FILL.restocked,
   FILL.unaffected,
 ];
 
@@ -51,6 +55,7 @@ const HOME_PAINT = {
     "match", ["get", "state"],
     "reached", 1,
     "resupply", 0.95,
+    "restocked", 1,
     "waiting", 0.12,
     0.85,
   ],
@@ -60,8 +65,15 @@ const HOME_PAINT = {
     12, ["match", ["get", "state"], "unaffected", 4, 7],
   ],
   "circle-stroke-color": STATE_MATCH,
-  "circle-stroke-width": ["match", ["get", "state"], "waiting", 2, "resupply", 1.4, 0.6],
-  "circle-stroke-opacity": 1,
+  // the halo on restocked is the secondary encoding that separates it from blue
+  "circle-stroke-width": [
+    "match", ["get", "state"],
+    "waiting", 2,
+    "restocked", 3,
+    "resupply", 1.4,
+    0.6,
+  ],
+  "circle-stroke-opacity": ["match", ["get", "state"], "restocked", 0.35, 1],
 } as const;
 
 /** The van icon, aimed along its leg. */
