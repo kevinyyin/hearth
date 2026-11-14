@@ -21,7 +21,7 @@ def postgres_url() -> str | None:
 
 def _pg(url: str, sql: str, params: tuple = ()):
     """Runs one statement on this process's connection (psycopg connections are thread-safe); a dropped connection
-    is replaced once. Every statement here is a read or an upsert, so running it again is safe."""
+    is replaced once. Every statement here is a read, an upsert or a delete, so running it again is safe."""
     import psycopg
 
     for attempt in (0, 1):
@@ -77,3 +77,11 @@ def all(kind: str) -> list[dict]:
     with closing(_conn()) as c:
         rows = c.execute("SELECT json FROM docs WHERE kind = ? ORDER BY rowid", (kind,)).fetchall()
     return [json.loads(r[0]) for r in rows]
+
+
+def delete(kind: str, id: str) -> None:
+    if url := postgres_url():
+        _pg(url, "DELETE FROM docs WHERE kind = %s AND id = %s", (kind, id))
+        return
+    with closing(_conn()) as c, c:
+        c.execute("DELETE FROM docs WHERE kind = ? AND id = ?", (kind, id))

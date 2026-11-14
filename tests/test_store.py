@@ -16,6 +16,14 @@ def test_store_accepts_models_and_overwrites(tmp_path, monkeypatch):
     assert store.all("profile") == [{"x": 2}]
 
 
+def test_delete_removes_a_document(tmp_path, monkeypatch):
+    monkeypatch.setenv("HEARTH_DB", str(tmp_path / "t.db"))
+    store.put("home", "R-1", {"x": 1}), store.put("home", "R-2", {"x": 2})
+    store.delete("home", "R-1")
+    assert store.get("home", "R-1") is None and store.all("home") == [{"x": 2}]
+    store.delete("home", "nope")  # deleting nothing is fine
+
+
 def test_hearth_db_wins_over_a_database_url(tmp_path, monkeypatch):
     monkeypatch.setenv("HEARTH_DB", str(tmp_path / "t.db"))
     monkeypatch.setenv("HEARTH_DATABASE_URL", "postgresql://nobody@127.0.0.1:1/none")  # would fail if used
