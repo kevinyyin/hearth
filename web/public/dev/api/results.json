@@ -1,0 +1,31 @@
+[
+  { "policy": "p0", "crews": 5, "median": 18400, "p5": 16100, "p95": 21300, "unweighted_median": 8300 },
+  { "policy": "p0", "crews": 10, "median": 17900, "p5": 15600, "p95": 20700, "unweighted_median": 8050 },
+  { "policy": "p0", "crews": 20, "median": 17100, "p5": 14900, "p95": 19800, "unweighted_median": 7700 },
+  { "policy": "p0", "crews": 40, "median": 16200, "p5": 14000, "p95": 18900, "unweighted_median": 7300 },
+  { "policy": "p0", "crews": 80, "median": 15600, "p5": 13400, "p95": 18200, "unweighted_median": 7020 },
+
+  { "policy": "p3", "crews": 5, "median": 12600, "p5": 10300, "p95": 15400, "unweighted_median": 5800 },
+  { "policy": "p3", "crews": 10, "median": 9100, "p5": 7200, "p95": 11600, "unweighted_median": 4250 },
+  { "policy": "p3", "crews": 20, "median": 5400, "p5": 4000, "p95": 7300, "unweighted_median": 2600 },
+  { "policy": "p3", "crews": 40, "median": 3300, "p5": 2300, "p95": 4700, "unweighted_median": 1620 },
+  { "policy": "p3", "crews": 80, "median": 2500, "p5": 1700, "p95": 3600, "unweighted_median": 1240 },
+
+  { "policy": "p3__nobld", "crews": 5, "median": 13400, "p5": 11000, "p95": 16400, "unweighted_median": 6150 },
+  { "policy": "p3__nobld", "crews": 10, "median": 10400, "p5": 8300, "p95": 13100, "unweighted_median": 4820 },
+  { "policy": "p3__nobld", "crews": 20, "median": 7200, "p5": 5500, "p95": 9500, "unweighted_median": 3400 },
+  { "policy": "p3__nobld", "crews": 40, "median": 5100, "p5": 3700, "p95": 7000, "unweighted_median": 2450 },
+  { "policy": "p3__nobld", "crews": 80, "median": 4300, "p5": 3100, "p95": 6000, "unweighted_median": 2080 },
+
+  { "policy": "p3__nomove", "crews": 5, "median": 14900, "p5": 12400, "p95": 18000, "unweighted_median": 6800 },
+  { "policy": "p3__nomove", "crews": 10, "median": 12300, "p5": 10000, "p95": 15200, "unweighted_median": 5650 },
+  { "policy": "p3__nomove", "crews": 20, "median": 9600, "p5": 7600, "p95": 12200, "unweighted_median": 4480 },
+  { "policy": "p3__nomove", "crews": 40, "median": 8100, "p5": 6300, "p95": 10500, "unweighted_median": 3820 },
+  { "policy": "p3__nomove", "crews": 80, "median": 7600, "p5": 5800, "p95": 9900, "unweighted_median": 3600 },
+
+  { "policy": "p3__aid", "crews": 5, "median": 11800, "p5": 9600, "p95": 14500, "unweighted_median": 5420 },
+  { "policy": "p3__aid", "crews": 10, "median": 8200, "p5": 6400, "p95": 10600, "unweighted_median": 3830 },
+  { "policy": "p3__aid", "crews": 20, "median": 4500, "p5": 3200, "p95": 6300, "unweighted_median": 2180 },
+  { "policy": "p3__aid", "crews": 40, "median": 2600, "p5": 1700, "p95": 3900, "unweighted_median": 1290 },
+  { "policy": "p3__aid", "crews": 80, "median": 1900, "p5": 1200, "p95": 2900, "unweighted_median": 960 }
+]
