@@ -67,3 +67,9 @@ building:
 refuge:
   search_radius_km: {value: 15, source: "our call: a short ride across Houston", confirmed: false}
   max_candidates: {value: 3, source: "our call: each uncached candidate costs a 30-60 s survey", confirmed: false}
+
+voice:
+  county: {value: Harris County, source: "design: synthetic Harris County patients", confirmed: true}
+  min_confidence: {value: 0.7, source: "plan Task V2: an interpreted turn below 0.7 goes to a person", confirmed: false}
+  silences_to_escalate: {value: 3, source: "plan Task V2: three empty turns in a row end the call", confirmed: false}
+  turn_timeout_s: {value: 7, source: "ElevenLabs default turn_timeout; seconds of caller silence before a turn counts as empty", confirmed: false}
