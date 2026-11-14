@@ -17,3 +17,4 @@ data/processed/building_ranking.json
 data/*.db
 .vercel
 .env*
+_uv/
