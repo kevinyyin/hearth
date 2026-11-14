@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import AccessBrief from "@/components/AccessBrief";
 import AgentTrace from "@/components/AgentTrace";
 import ProposalCard from "@/components/ProposalCard";
-import { API, authHeaders, getJson } from "@/lib/api";
+import { getJson } from "@/lib/api";
+import { useAuthedImage } from "@/lib/useAuthedImage";
 import { reduceTrace, streamEvents } from "@/lib/sse";
 import { PROFILE_FIELDS, type BuildingDetail, type RefugeProposal, type TraceEvent } from "@/lib/types";
 
@@ -31,21 +32,7 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
   const [proposal, setProposal] = useState<RefugeProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // the aerial tile comes through the API, which needs the password header, so it is fetched rather than linked
-  const [image, setImage] = useState<string | null>(null);
-  useEffect(() => {
-    if (!detail || !API) return;
-    let url: string | null = null;
-    fetch(`${API}${detail.image_url}`, { headers: authHeaders() })
-      .then((r) => (r.ok ? r.blob() : null))
-      .then((b) => {
-        if (b) setImage((url = URL.createObjectURL(b)));
-      })
-      .catch(() => setImage(null));
-    return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [detail]);
+  const image = useAuthedImage(detail?.image_url ?? null);
 
   const load = useCallback(() => {
     getJson<BuildingDetail>(`/api/buildings/${buildingId}`).then(setDetail).catch((e) => setError(String(e)));

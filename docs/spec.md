@@ -266,6 +266,10 @@ Sources, corrections and the two oddities we investigated are in `docs/sim-notes
 | `GET /api/buildings`, `/api/buildings/ranking`, `/api/buildings/{id}`, `/image` | Profiles, brief, layer effects |
 | `GET /api/buildings/{id}/survey` | The live agent trace, streamed |
 | `POST /api/patients/{id}/propose` | The refuge finder, streamed, ending at the approval pause |
+| `GET /api/demo-patients` | The demo patients a resident persona can pick |
+| `GET /api/patients/{id}/home` | The patient and the home markup they saved, if any |
+| `PUT /api/patients/{id}/home` | Save the home markup: device answers, the matching scan, outside and inside pins |
+| `GET /api/homes` | Every saved home markup with its patient and address, for the responder's job list |
 | `GET /api/proposals`, `POST /api/proposals/{id}/decision` | Approve or reject, with a reason on reject |
 | `POST /api/calls`, `GET /api/calls/{id}` | Start a call (refused without an approved proposal); read its transcript and confirmed facts |
 | `POST /voice/v1/chat/completions` | The model endpoint ElevenLabs calls |

@@ -22,6 +22,23 @@ export function onUnauthorized(): never {
   throw new Error("password required");
 }
 
+/** PUTs JSON to the live API. There is no dev-file fallback for writes. */
+export async function putJson<T>(path: string, body: unknown): Promise<T> {
+  if (!API) throw new Error("This page needs the Hearth API.");
+  const res = await fetch(`${API}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) onUnauthorized();
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => null))?.detail;
+    // FastAPI sends a string for our own errors and a list of field errors for a body that fails validation
+    throw new Error(typeof detail === "string" ? detail : Array.isArray(detail) ? detail.map((d) => d.msg).join("; ") : res.statusText);
+  }
+  return (await res.json()) as T;
+}
+
 /**
  * Fetches `${API}${path}`. With no API configured it reads the static dev files
  * under `public/dev/`, so every page works before the backend exists.
