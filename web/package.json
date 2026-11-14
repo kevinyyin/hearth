@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@elevenlabs/react": "1.22.1",
     "maplibre-gl": "5.9.0",
     "next": "15.5.4",
     "react": "19.1.1",
