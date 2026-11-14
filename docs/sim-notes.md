@@ -45,17 +45,49 @@ the customer total are clipped. Gaps after landfall are interpolated, not treate
 
 Which patients are dark: each patient draws `r` once by seed and is dark while `r < f(t)`, so the curve's share of
 patients is dark at every tick, the same people stay dark as the curve falls, and nobody's power returns for one
-interval because of a glitch. Darkness is not geographic (no ZIP-level outage data is used).
+interval (glitches are cleaned, and a one-interval return between two dark intervals stays dark). Darkness is not geographic (no ZIP-level outage data is used).
 
 ## Synthetic attributes
 
-Device type by ZIP is not public. Oxygen per ZIP is the emPOWER oxygen count capped at the ZIP total; the rest split
-by `population.non_oxygen_mix`. Counts published as 11 mean "1 to 11" and are drawn uniformly by seed. Backup hours,
-mobility, heat or cold sensitivity, supplier, phone and profile status are drawn from `population.*` (most are our
-placeholders, `confirmed: false`). No patient has a phone number. Homes are uniform random points inside the ZIP's
-polygon. A building resident (`population.costar_building_share`) moves into the nearest surveyed CoStar building
-within `population.building_match_km` (at most `population.patients_per_building` each), so a run uses that
-building's profile; with no surveyed buildings everybody uses the default time constants.
+**Device mix.** Device type by ZIP is not public, so every ZIP gets the same mix, drawn by seed from cited Texas
+counts for 2024 (`population.device_counts`, `confirmed: false`). Recompute them with
+`uv run python scripts/fetch_data.py --device-counts`.
+
+| Device | Source | Count (Texas, 2024, Medicare) | Share |
+|---|---|---|---|
+| Oxygen concentrator | CMS "Medicare Durable Medical Equipment, Devices & Supplies - by Geography and Service", HCPCS E1390 (stationary concentrator), rental 50,535 + purchase 1,160 beneficiaries | 51,695 | 80.9% |
+| Ventilator | same, E0465 (invasive interface) 266 + E0466 (non-invasive) 4,787 + E0467 (multi-function) 498 | 5,551 | 8.7% |
+| Home dialysis | Not DME. CMS "Medicare Dialysis Facilities" FY2026: over 717 Texas facilities, Medicare patients alive 12/31/2024 x (% home hemodialysis + % cycler PD) | 5,366 | 8.4% |
+| Enteral feeding pump | DME data, B9002, rental 1,022 + purchase 226 | 1,248 | 2.0% |
+
+Notes on these counts:
+- Beneficiary counts are summed over suppliers and over rental and purchase rows, so a patient who changed supplier
+  is counted twice. The DME data counts Medicare fee-for-service claims, attributed to the referring provider's state.
+- Portable concentrators (E1392, 19,255) are left out because most of those patients also have an E1390.
+- Manual CAPD (about 670 patients in Texas) needs no power and is left out. The dialysis count applies each
+  facility's modality shares, which cover all its patients, to its Medicare count.
+- emPOWER's total also counts devices the model does not have (BiPAP, suction, IV pumps, power wheelchairs,
+  hospital beds). Those patients are folded into these four types in the same proportions.
+- emPOWER's oxygen column is no longer used.
+
+**Home dialysis** has no battery. Its "backup" is the hours until the next session is due, drawn uniformly within
+`population.dialysis_due_within_days` (2). The clock runs only while the home is dark, so a patient is at risk once
+the session passes in a dark home without a ride to care (a hospital stands in for an open clinic), not from the
+moment power drops. Under p0 a reached dialysis patient is escalated (URGENT), never sent a delivery.
+
+**Other attributes.** Counts published as 11 mean "1 to 11" and are drawn uniformly by seed. Backup hours, mobility,
+heat or cold sensitivity, supplier, phone and profile status are drawn from `population.*`; most are our
+placeholders, `confirmed: false`. No patient has a phone number. Homes are uniform random points inside the ZIP's
+polygon.
+
+**Buildings.** In scenarios with `use_profiles: true` (Beryl only), a building resident
+(`population.costar_building_share`, 35%) moves into the nearest surveyed residential CoStar building (multifamily
+or senior housing; never hotels; never ids that are not CoStar ids) within `population.building_match_km`. Each
+building takes at most `population.patients_per_building`. With the main store's 1,392 profiles (1,341 residential),
+seed 1 places **2,939 patients in 1,027 buildings**, against about 8,100 flagged. The 3-per-building cap binds in 936
+of them. A run uses those buildings' time constants and service minutes. Synthetic scenarios (sample) never use the
+store, so their committed outputs carry no CoStar data. `meta.json` lists the profiles a run used and
+`patients_in_buildings`.
 
 ## Engine (Task S3)
 
@@ -72,19 +104,33 @@ and crew assignment. The world is identical under every policy; policies differ 
   Crews go to the highest risk weight per hour left (welfare checks assume `decision.low_backup_h` left).
 - **Crews** belong to suppliers (split by `population.supplier_shares`), start at synthetic depots, and deliver only
   for their own supplier unless mutual aid. A delivery adds `planner.delivery_backup_h`. A ride ends at the nearest
-  hospital or shelter in `planner.destinations` (plus surveyed hotels and senior housing when buildings are on). A
+  open destination. Hospitals and shelters in `planner.destinations` are always open. With buildings on, surveyed
+  hotels and senior housing are open only while their own power is on: each building has one power state, shared
+  by its residents, so nobody is moved into their own dark building. Destinations have no capacity limit. A
   dispatcher's approval of each move is assumed in the simulation; the live app requires it.
 - **`--no-buildings`** gives the planner default time constants and no refuge buildings; the world keeps the true
   ones. Building time constants come from surveyed profiles in the store (`HEARTH_DB`), else config defaults.
 
 ## Sweep and replay (Task S4)
 
-`uv run python -m hearth.sim sweep --scenario beryl_2024 --crews 5,10,20,40,80 --seeds 10` (250 runs, about 2.5 min
-on 10 cores) writes `results/sweep_beryl_2024.json` and `results/sweep_beryl_2024.assumptions.yaml`. It ran with an
-empty profile store, so **`p3__nobld` equals `p3`**: no synthetic home sits in a surveyed building yet. The store in
-the main checkout holds hand-made fixtures (B-SAMPLE, H-*) that must not feed published results. Rerun the sweep
-after real season-sweep profiles are in the store to see a building effect (expect it to be small: a few residents
-per surveyed building).
+`HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim sweep --scenario beryl_2024 --crews 5,10,20,40,80 --seeds 10`
+(250 runs, about 4.5 min on 10 cores) writes `results/sweep_beryl_2024.json` and
+`results/sweep_beryl_2024.assumptions.yaml`. The committed sweep ran against the main store: 1,386 records-only
+profiles plus 6 agent surveys, no fixtures.
+
+**What separates `p3` from `p3__nobld`.** The gap is 0.3% at 5 crews, 1.3% at 20 and 6% at 80. All of it comes from
+refuge destinations. With hotels and senior housing removed from the store, the gap at 20 and 80 crews is under
+0.2% either way. Building time constants (median 9.2 h against the default 8 h, for the 2,939 residents) barely
+change decisions, because the default is the more cautious guess. Refuges have no capacity limit here, so the
+refuge effect is an upper bound.
+
+**Crew throughput** (seed 1, p3, main store). Crews work around the clock in the model, and a job averages about
+0.95 h. At 20 crews a crew completes about 20 jobs a day, 13 of them deliveries. Total stock is 6,000 deliveries
+(`planner.stock_per_supplier` x 3), and at 80 crews all of it is used, so from about 40 crews deliveries are
+stock-bound and extra crews only add rides and welfare checks (`p3__nomove` levels off there). Peak dark is about
+20,200 patients, and a delivery buys `planner.delivery_backup_h` (24 h), so peak demand is on the order of 10,000
+deliveries a day; 80 crews supply about 1,000. Weighted risk-hours for p3 by crew count (seed 1): 160 crews 1.68M,
+320 crews 0.52M, 640 crews 0.02M (nearly everyone moved, with unlimited shelter capacity).
 
 `results/case_jarrett__p3__c20__s1/` replays one documented case (Spring, TX, July 2024; sources in
 `config/scenarios/case_jarrett.yaml`) with a synthetic stand-in patient, labeled "replay of a documented case;
@@ -92,5 +138,5 @@ outcome under Hearth is simulated". The home cooled to 22-26 C during the storm 
 on day 2 the forecast turned unsafe and the patient was moved, two days before the documented date. The replay gives
 this one patient all 20 crews, so it is optimistic; the county run shows the contention.
 
-Regenerate the map's county run (about 7 s, about 350 MB, git-ignored) and the patients file the API reads:
-`uv run python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20`.
+Regenerate the map's county run (about 8 s, about 350 MB, git-ignored) and the patients file the API reads, against
+the main store: `HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20`.

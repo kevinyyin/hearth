@@ -14,6 +14,7 @@ from hearth.contracts import Patient
 from hearth.scenario import PROCESSED, load, processed
 
 MASKED = 11  # emPOWER publishes any count from 1 to 11 as 11
+RESIDENTIAL = ("multifamily", "senior_housing")
 DETAIL = {"oxygen": "concentrator", "ventilator": "home ventilator", "home_dialysis": "home dialysis machine"}
 
 
@@ -49,31 +50,29 @@ def _homes(rng, rings: list[np.ndarray], n: int) -> np.ndarray:
     return out[:n]
 
 
-def _zip_table(sc: dict, rng) -> tuple[list[str], np.ndarray, np.ndarray, dict]:
-    """(zips, patients per ZIP, oxygen per ZIP, ZIP -> polygon rings)."""
+def _zip_table(sc: dict, rng) -> tuple[list[str], np.ndarray, dict]:
+    """(zips, patients per ZIP, ZIP -> polygon rings)."""
     feats = json.loads(processed(f"zcta_{sc.get('zcta_from', sc['name'])}.geojson").read_text())["features"]
     shapes = {f["properties"]["zip"]: _rings(f["geometry"]) for f in feats}
     if "zips" in sc:  # synthetic scenarios list their ZIP counts
-        return [z["zip"] for z in sc["zips"]], np.array([z["total"] for z in sc["zips"]]), np.array([z["o2"] for z in sc["zips"]]), shapes
+        return [z["zip"] for z in sc["zips"]], np.array([z["total"] for z in sc["zips"]]), shapes
     month = sc["empower_month"]
     d = pd.read_csv(processed(f"empower_{sc['name']}.csv"), dtype=str)
     total = d[f"{month}_Power_Dependent_Devices_DME"].astype(int).to_numpy()
-    o2 = d[f"{month}_O2_Services_Any_DME"].astype(int).to_numpy()
     total = np.where(total == MASKED, rng.integers(1, MASKED + 1, len(total)), total)
-    o2 = np.minimum(np.where(o2 == MASKED, rng.integers(1, MASKED + 1, len(o2)), o2), total)
-    return d.Zip_Code.tolist(), total, o2, shapes
+    return d.Zip_Code.tolist(), total, shapes
 
 
 def generate(scenario: str, seed: int) -> list[Patient]:
     sc, rng = load(scenario), np.random.default_rng(seed)
     if "patients" in sc:  # documented-case replays list their one patient explicitly
         return [Patient(**p) for p in sc["patients"]]
-    zips, total, o2, shapes = _zip_table(sc, rng)
-    mix = a("population.non_oxygen_mix")
+    zips, total, shapes = _zip_table(sc, rng)
+    counts = a("population.device_counts")  # cited counts; device type by ZIP is not public, so every ZIP gets the same mix
+    shares = np.array(list(counts.values()), float) / sum(counts.values())
     zip_, device, pid, homes = [], [], [], []
-    for z, n, n_o2 in zip(zips, total, o2):
-        rest = rng.multinomial(n - n_o2, list(mix.values()))
-        device += ["oxygen"] * n_o2 + [k for k, m in zip(mix, rest) for _ in range(m)]
+    for z, n in zip(zips, total):
+        device += [k for k, m in zip(counts, rng.multinomial(n, shares)) for _ in range(m)]
         zip_ += [z] * n
         pid += [f"SIM-{z}-{k:04d}" for k in range(n)]
         homes.append(_homes(rng, shapes[z], n))
@@ -84,7 +83,8 @@ def generate(scenario: str, seed: int) -> list[Patient]:
         return rng.choice(list(m), size=n, p=list(m.values()))
 
     mobility, temp = pick(a("population.mobility_mix")), pick(a("population.temp_sensitive_mix"))
-    bounds = np.array([a("population.backup_h")[d] for d in device], float)
+    due_h = 24 * a("population.dialysis_due_within_days")  # home dialysis: hours until the next session is due
+    bounds = np.array([[0, due_h] if d == "home_dialysis" else a("population.backup_h")[d] for d in device], float)
     backup = rng.uniform(bounds[:, 0], bounds[:, 1])
     jejunal = rng.random(n) < a("population.feeding_jejunal_share")
     detail = np.array([DETAIL.get(d) or ("jejunal" if j else "gastric") for d, j in zip(device, jejunal)])
@@ -95,11 +95,12 @@ def generate(scenario: str, seed: int) -> list[Patient]:
     profile = np.where(rng.random(n) < a("population.complete_profile_rate"), "complete", "partial")
     in_building = rng.random(n) < a("population.costar_building_share")
 
-    # building residents move into the nearest surveyed CoStar building, so the engine can use its profile
+    # building residents move into the nearest surveyed CoStar building, so the engine can use its profile; only
+    # scenarios that opt in (use_profiles), so synthetic scenarios' committed outputs never carry CoStar data
     building, floor = np.full(n, None, object), np.ones(n, int)
-    for prof in sorted(store.all("profile"), key=lambda p: p["building_id"]):
-        if "hotel" in str(prof["property_type"]["value"]).lower():
-            continue  # refuge candidates, not homes
+    for prof in sorted(store.all("profile") if sc.get("use_profiles") else [], key=lambda p: p["building_id"]):
+        if prof["property_type"]["value"] not in RESIDENTIAL or not str(prof["building_id"])[:1].isdigit():
+            continue  # never hotels; never hand-made fixtures (CoStar ids are numbers)
         cand = np.flatnonzero(in_building & (building == None))  # noqa: E711 (object array)
         d = km(lat[cand], lon[cand], prof["lat"], prof["lon"])
         order = np.argsort(d, kind="stable")[: a("population.patients_per_building")]

@@ -536,5 +536,7 @@
  "synthetic": true,
  "label": "replay of a documented case; outcome under Hearth is simulated (Spring, TX, Hurricane Beryl, July 2024)",
  "corrected_intervals": [],
+ "profiles_used": [],
+ "patients_in_buildings": 0,
  "note": "simulated run over synthetic patients; outcomes are model outputs, not a count of lives saved"
 }

@@ -29,3 +29,8 @@ def test_hourly_weather_has_no_gaps():
     w = hourly_weather("beryl_2024")
     assert list(w.columns) == ["temp_c", "rh"] and not w.isna().any().any()
     assert (w.index.to_series().diff().dropna() == pd.Timedelta("1h")).all() and w.temp_c.between(15, 45).all()
+
+
+def test_nobody_gets_power_back_for_one_interval():
+    m = dark_mask(np.random.default_rng(1).random(23_000), fraction_out("beryl_2024"))
+    assert not (m[:-2] & ~m[1:-1] & m[2:]).any()

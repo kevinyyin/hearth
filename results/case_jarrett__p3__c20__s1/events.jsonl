@@ -1,14 +1,14 @@
 {"t": "2024-07-08T09:30:00Z", "type": "power_lost", "patient_id": "CASE-SPRING-TX-01", "data": {"zip": "77373"}}
-{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-08T09:30:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "NOT_AFFECTED", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-08T09:30:00Z", "type": "job_created", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "delivery-CASE-SPRING-TX-01-3.5", "kind": "delivery", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-08T10:42:20Z"}}
 {"t": "2024-07-08T11:00:00Z", "type": "job_completed", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "delivery-CASE-SPRING-TX-01-3.5", "kind": "delivery", "org_id": "s1"}}
 {"t": "2024-07-08T11:00:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
-{"t": "2024-07-09T09:30:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin"}}
+{"t": "2024-07-09T09:30:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup short of the horizon plus margin, or home forecast unsafe and no move possible"}}
 {"t": "2024-07-09T09:30:00Z", "type": "job_created", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "delivery-CASE-SPRING-TX-01-27.5", "kind": "delivery", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-09T09:40:00Z"}}
 {"t": "2024-07-09T10:00:00Z", "type": "job_completed", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "delivery-CASE-SPRING-TX-01-27.5", "kind": "delivery", "org_id": "s1"}}
 {"t": "2024-07-09T10:00:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "RESUPPLY", "to": "OWN_BACKUP", "why": "backup covers the horizon plus margin"}}
 {"t": "2024-07-09T12:30:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "OWN_BACKUP", "to": "MOVE", "why": "home unsafe or forecast unsafe, or no delivery possible"}}
-{"t": "2024-07-09T12:30:00Z", "type": "job_created", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "ride-CASE-SPRING-TX-01-30.5", "kind": "ride", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-09T13:52:03Z"}}
+{"t": "2024-07-09T12:30:00Z", "type": "job_created", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "ride-CASE-SPRING-TX-01-30.5", "kind": "ride", "org_id": "s1", "crew_id": "c01", "eta": "2024-07-09T13:52:03Z", "dest": [29.752, -95.358]}}
 {"t": "2024-07-09T14:00:00Z", "type": "moved", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "ride-CASE-SPRING-TX-01-30.5"}}
 {"t": "2024-07-09T14:00:00Z", "type": "job_completed", "patient_id": "CASE-SPRING-TX-01", "data": {"job_id": "ride-CASE-SPRING-TX-01-30.5", "kind": "ride", "org_id": "s1"}}
 {"t": "2024-07-09T14:00:00Z", "type": "state_change", "patient_id": "CASE-SPRING-TX-01", "data": {"from": "MOVE", "to": "MOVED", "why": "ride completed"}}

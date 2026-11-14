@@ -7,9 +7,10 @@ from hearth.contracts import PlanState
 STATES = list(PlanState)
 CODE = {s: i for i, s in enumerate(STATES)}
 NA, OWN, RES, MOVE, MOVED, URG, UNR, RESTORED = (CODE[s] for s in STATES)
-WHY = {OWN: "backup covers the horizon plus margin", RES: "backup short of the horizon plus margin",
+WHY = {OWN: "backup covers the horizon plus margin",
+       RES: "backup short of the horizon plus margin, or home forecast unsafe and no move possible",
        MOVE: "home unsafe or forecast unsafe, or no delivery possible", URG: "no delivery or move possible",
-       UNR: "not reached; welfare check queued", MOVED: "ride completed", RESTORED: "power restored", NA: "power on"}
+       UNR: "not reached yet; silence is not treated as safe", MOVED: "ride completed", RESTORED: "power restored", NA: "power on"}
 
 
 def decide_vec(device, sens, backup, hours_to_restoration, home_unsafe, temp_unsafe, delivery, move, allow_moves) -> np.ndarray:

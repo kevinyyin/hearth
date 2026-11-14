@@ -61,5 +61,5 @@ def assign(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_
         c.free_at_h, (c.lat, c.lon) = done, (n.dest or (n.lat, n.lon))
         free.remove(c)
         jobs.append(Job(job_id=f"{n.kind}-{n.patient_id}-{now_h:g}", kind=n.kind, patient_id=n.patient_id, org_id=c.org_id,
-                        status="accepted", data={"crew_id": c.crew_id, "done_h": done}))
+                        status="accepted", data={"crew_id": c.crew_id, "done_h": done, **({"dest": list(n.dest)} if n.dest else {})}))
     return jobs

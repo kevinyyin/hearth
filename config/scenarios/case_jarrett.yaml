@@ -1,7 +1,7 @@
 # Replay of one documented case from Hurricane Beryl: a 64-year-old woman in Spring, TX, who used a wheelchair and a
 # feeding tube, died of heat on July 11, 2024, the fourth day without power, while her sister kept the feeding pump
-# charged; she was on the utility's emergency list and power returned Tuesday, July 16 (Harris County Medical
-# Examiner, as reported by ABC13 Houston and The Texas Tribune, July 2024).
+# charged; her sister said she was on the utility's emergency list; power returned Tuesday, July 16 (Harris County
+# Medical Examiner, as reported by ABC13 Houston and The Texas Tribune, July 2024).
 # The patient record below is a synthetic stand-in: location is the ZIP area, not the home; backup hours, supplier and
 # phone status are our assumptions. The outcome under Hearth is simulated and is not a claim about what would have happened.
 name: case_jarrett
