@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Choice from "@/components/Choice";
 import { RUN_HOURS } from "@/lib/simulation";
-
-const SPEEDS = [0.5, 1, 2, 4];
 
 /**
  * The clock both runs play on, in simulated hours. `hourMs` is one hour at 1×;
@@ -48,15 +45,22 @@ export function useRunClock(hourMs: number, resetOn: unknown) {
 
 export function SpeedControl({ speed, onChange }: { speed: number; onChange: (s: number) => void }) {
   return (
-    <div role="group" aria-label="Run speed" className="flex items-center gap-1.5">
-      <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-        Speed
+    <label className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+      Speed
+      <input
+        type="range"
+        min={0.25}
+        max={8}
+        step={0.25}
+        value={speed}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-valuetext={`${speed} times`}
+        className="w-28"
+        style={{ accentColor: "var(--text-primary)" }}
+      />
+      <span className="tnum w-9 font-semibold" style={{ color: "var(--text-primary)" }}>
+        {speed}×
       </span>
-      {SPEEDS.map((s) => (
-        <Choice key={s} on={speed === s} onClick={() => onChange(s)}>
-          {s}×
-        </Choice>
-      ))}
-    </div>
+    </label>
   );
 }
