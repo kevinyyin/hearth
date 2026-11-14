@@ -9,7 +9,7 @@ from hearth.messaging import scripts
 from hearth.messaging.interpreter import Turn
 from hearth.messaging.templates import render
 
-YES, NO = Turn(confirms=True, confidence=1.0), Turn(confirms=False, confidence=1.0)
+YES, NO = Turn(confirms=True), Turn(confirms=False)
 
 
 @pytest.fixture(autouse=True)

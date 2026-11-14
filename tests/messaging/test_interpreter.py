@@ -4,12 +4,12 @@ from hearth.messaging import guard, interpreter
 from hearth.messaging.interpreter import interpret_turn
 
 ctx = {"device": "oxygen", "profile_backup_hours": 6}
-GOOD = '{"safe": null, "needs_help_now": null, "device_running": null, "backup_hours": 0.67, "can_move": null, "destination_offered": null, "consents_to_move": null, "confirms": null, "wants_human": false, "medical_question": false, "language": "en", "confidence": 0.9, "ack": null}'
+GOOD = '{"safe": null, "needs_help_now": null, "device_running": null, "backup_hours": 0.67, "can_move": null, "destination_offered": null, "consents_to_move": null, "confirms": null, "wants_human": false, "medical_question": false, "language": "en", "ack": null}'
 
 
 def test_keypad_one_means_safe():
     t = interpret_turn("", "1", ctx, [])
-    assert t.safe is True and t.confidence == 1.0
+    assert t.safe is True
 
 
 def test_bare_digit_reply_means_the_keypad_choice(monkeypatch):
@@ -21,7 +21,7 @@ def test_bare_digit_reply_means_the_keypad_choice(monkeypatch):
 def test_plain_yes_or_no_is_read_by_code(monkeypatch, text, yes):
     monkeypatch.setattr(interpreter, "_call_model", lambda *a: pytest.fail("a plain yes/no must not reach the model"))
     t = interpret_turn(text, None, ctx, [])
-    assert t.confirms is yes and not t.wants_human and t.confidence == 1.0
+    assert t.confirms is yes and not t.wants_human
 
 
 def test_keypad_two_means_help_now():
@@ -44,7 +44,7 @@ def test_invalid_model_output_escalates_after_one_retry(monkeypatch):
     calls = []
     monkeypatch.setattr(interpreter, "_call_model", lambda *a: calls.append(a) or "not json")
     t = interpret_turn("uh", None, ctx, [])
-    assert t.wants_human and t.confidence == 0 and t.backup_hours is None and len(calls) == 2
+    assert t.wants_human and t.backup_hours is None and len(calls) == 2
 
 
 def test_retry_recovers_from_one_bad_output(monkeypatch):
@@ -57,7 +57,7 @@ def test_model_error_escalates(monkeypatch):
     def boom(*a): raise TimeoutError("model timed out")
     monkeypatch.setattr(interpreter, "_call_model", boom)
     t = interpret_turn("forty minutes", None, ctx, [])
-    assert t.wants_human and t.confidence == 0
+    assert t.wants_human
 
 
 @pytest.mark.parametrize("line", [
@@ -83,9 +83,9 @@ def test_live_minutes_become_hours():
 def test_eval_scoring_counts_hours_within_ten_percent_and_escalations():
     from evals.run_interpreter import score
     rows = [
-        ({"expected": {"backup_hours": 0.67}, "must_escalate": False}, interpreter.Turn(backup_hours=0.7, confidence=0.9)),
-        ({"expected": {"backup_hours": 6}, "must_escalate": True}, interpreter.Turn(backup_hours=4, confidence=0.9)),
-        ({"expected": {"needs_help_now": True}, "must_escalate": True}, interpreter.Turn(needs_help_now=True, confidence=0.9)),
+        ({"expected": {"backup_hours": 0.67}, "must_escalate": False}, interpreter.Turn(backup_hours=0.7)),
+        ({"expected": {"backup_hours": 6}, "must_escalate": True}, interpreter.Turn(backup_hours=4)),
+        ({"expected": {"needs_help_now": True}, "must_escalate": True}, interpreter.Turn(needs_help_now=True)),
     ]
     s = score(rows)
     assert s["backup_hours"] == (1, 2) and s["needs_help_now"] == (1, 1)
@@ -98,7 +98,7 @@ def test_live_plain_no_to_a_readback_is_clear():
             {"role": "agent", "text": "I have you at forty minutes of backup. Is that right?"}]
     for _ in range(2):
         t = interpret_turn("no", None, ctx, hist)
-        assert t.confirms is False and not t.wants_human and t.confidence >= 0.7
+        assert t.confirms is False and not t.wants_human
 
 
 
@@ -117,8 +117,8 @@ def test_the_eval_grades_the_new_fields():
     from evals.run_interpreter import score
     from hearth.messaging.interpreter import Turn
     case = lambda exp: {"expected": exp, "must_escalate": False}  # noqa: E731
-    s = score([(case({"floor": 3}), Turn(floor=3, confidence=0.9)), (case({"door": "the side door"}), Turn(door="The side door by the pool", confidence=0.9)),
-               (case({"intent": "safe"}), Turn(intent="help", confidence=0.9))])
+    s = score([(case({"floor": 3}), Turn(floor=3)), (case({"door": "the side door"}), Turn(door="The side door by the pool")),
+               (case({"intent": "safe"}), Turn(intent="help"))])
     assert s["other"] == (2, 3)
 
 
@@ -129,5 +129,5 @@ def test_the_schema_stays_within_the_apis_union_limit():
 
 def test_an_empty_string_from_the_model_means_not_said():
     from hearth.messaging.interpreter import Turn
-    t = Turn.model_validate_json('{"device": "", "intent": "", "street": "", "room_label": "", "which_part": "", "confidence": 0.9}')
+    t = Turn.model_validate_json('{"device": "", "intent": "", "street": "", "room_label": "", "which_part": ""}')
     assert (t.device, t.intent, t.street, t.room_label, t.which_part) == (None, None, None, None, None)

@@ -33,6 +33,12 @@ DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
 BARE_NUMBER = {"ask_hours": "backup_hours", "reg_ask_hours": "backup_hours", "ask_floor": "floor", "ask_floor_building": "floor",
                "ask_unit": "unit", "ask_building": "building"}
 BARE_TEXT = {"ask_unit", "ask_building"}  # their answer is a name, kept as said
+BACKUP_STEPS = {
+    "impact": {"ask", "readback"},
+    "register": {"hours", "hours_readback"},
+    "check": {"check_hours", "hours", "hours_readback"},
+    "menu": {"check_hours", "hours", "hours_readback"},
+}
 GREETINGS = {"hello", "hi", "hey", "yes", "yeah", "speaking", "this is she", "this is he", "who is this", "who's this"}
 
 
@@ -120,8 +126,8 @@ def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, script
     call["silences"] = 0
     if active and call["step"] == "open" and " ".join(re.sub(r"[^a-z' ]", " ", text.lower()).split()) in GREETINGS:
         return None, _script(call, scripts.opening(call))
-    if active and call["last"] and call["last"][0] in BARE_NUMBER and text.isdigit() and len(text) <= 3:
-        t = Turn(**{BARE_NUMBER[call["last"][0]]: text if call["last"][0] in BARE_TEXT else int(text)}, confidence=1.0)
+    if not keypad and active and call["last"] and call["last"][0] in BARE_NUMBER and text.isdigit() and len(text) <= 3:
+        t = Turn(**{BARE_NUMBER[call["last"][0]]: text if call["last"][0] in BARE_TEXT else int(text)})
     else:
         history = [{"role": m["role"], "text": m["text"]} for m in call["transcript"][:-1]]  # [-1] is this turn
         t = interpret_turn(text, keypad, call["ctx"], history)
@@ -138,14 +144,28 @@ def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, script
         # then ask the pending question again, so a "yes" to the hand-off line is not read as an answer
         again = scripts.opening(call) if call["step"] == "open" else [tuple(call["last"])]
         return None, [("medical_handoff", {})] + _script(call, again)
-    if t.wants_human or t.confidence < a("voice.min_confidence"):
+    if t.wants_human:
         _end(call, "handoff", "handoff", "caller asked for a person, or the turn was unclear")
         return None, [("human_handoff", {})]
     if not active:
         return None, [("close_no_promise" if call["status"] == "done" else "human_handoff", {})]
     if call["step"] == "open":
         return None, _script(call, scripts.opening(call))
-    return (t.ack if t.ack and guard.allows(t.ack) else None), _script(call, scripts.advance(call, t))
+    step = call["step"]
+    lines = scripts.advance(call, t)
+    backup_steps = BACKUP_STEPS.get(call["kind"], ())
+    if call["status"] == "active" and step in backup_steps:
+        if call["step"] not in backup_steps:
+            call.pop("backup_retries", None)
+        elif (step, call["step"]) not in {("ask", "readback"), ("hours", "hours_readback")}:
+            # One clarification is allowed. Corrections also spend the retry so repeated
+            # changes to a pending value cannot keep the call in read-back indefinitely.
+            if call.get("backup_retries", 0):
+                call.pop("pending", None)
+                _end(call, "handoff", "handoff", "backup duration unresolved")
+                return None, _script(call, [("human_handoff", {})])
+            call["backup_retries"] = 1
+    return (t.ack if t.ack and guard.allows(t.ack) else None), _script(call, lines)
 
 
 def _script(call: dict, lines: scripts.Lines) -> scripts.Lines:

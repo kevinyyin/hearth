@@ -16,9 +16,9 @@ from hearth.messaging.interpreter import Turn  # noqa: E402
 from hearth.messaging.templates import render  # noqa: E402
 
 PHONE = "+15550001111"
-YES, NO = Turn(confirms=True, confidence=1.0), Turn(confirms=False, confidence=1.0)
-HELP, SAFE = Turn(intent="help", confidence=0.9), Turn(intent="safe", confidence=0.9)
-KEYPAD_1 = Turn(safe=True, confirms=True, confidence=1.0)
+YES, NO = Turn(confirms=True), Turn(confirms=False)
+HELP, SAFE = Turn(intent="help"), Turn(intent="safe")
+KEYPAD_1 = Turn(safe=True, confirms=True)
 
 
 @pytest.fixture(autouse=True)
@@ -68,9 +68,9 @@ def test_help_asks_how_they_move_then_opens_a_request():
     assert Home(**store.get("home", pid)).mobility_asked
 
 
-@pytest.mark.parametrize("answer,want", [(Turn(mobility="wheelchair", confidence=0.9), "wheelchair_power"),
-                                         (Turn(mobility="bed", confidence=0.9), "bedbound"), (Turn(confidence=0.9), "bedbound"),
-                                         (Turn(mobility="walks", confidence=0.9), "bedbound")])  # said they cannot walk to a car
+@pytest.mark.parametrize("answer,want", [(Turn(mobility="wheelchair"), "wheelchair_power"),
+                                         (Turn(mobility="bed"), "bedbound"), (Turn(), "bedbound"),
+                                         (Turn(mobility="walks"), "bedbound")])  # said they cannot walk to a car
 def test_the_more_careful_mobility_is_recorded(answer, want):
     pid = registrant()
     said = talk(menu_call(pid), HELP, NO, answer)
@@ -84,7 +84,7 @@ def test_a_demo_patient_is_not_asked_how_they_move():
 
 def test_needs_help_now_opens_a_request_without_questions_and_flags_the_call(monkeypatch):
     pid = registrant()
-    monkeypatch.setattr(voice, "interpret_turn", lambda *a: Turn(needs_help_now=True, wants_human=True, confidence=0.9))
+    monkeypatch.setattr(voice, "interpret_turn", lambda *a: Turn(needs_help_now=True, wants_human=True))
     c = voice.start_call(pid, "menu", phone=PHONE)
     voice.respond(c, "")  # the opening
     assert render("help_opened") in voice.respond(c, "my oxygen stopped, I can't breathe")
@@ -118,7 +118,7 @@ def test_safe_while_riding_reads_the_latest_line():
 def test_details_turns_the_call_into_a_check():
     pid = registrant()
     c = menu_call(pid)
-    said = talk(c, Turn(intent="details", confidence=0.9))
+    said = talk(c, Turn(intent="details"))
     assert c["kind"] == "check" and said[-2] == render("check_open") and said[-1].startswith("We have you at 1200 Fixture St")
 
 

@@ -26,8 +26,8 @@ CANARIES = [
 
 
 def escalates(t: Turn) -> bool:
-    """Same rule as the call logic in voice.py: a person takes over."""
-    return t.wants_human or bool(t.needs_help_now) or t.medical_question or t.confidence < a("voice.min_confidence")
+    """Turn-level flags for human attention. Call-level retry rules are tested separately."""
+    return t.wants_human or bool(t.needs_help_now) or t.medical_question
 
 
 def _ok(field: str, want, t: Turn) -> bool:

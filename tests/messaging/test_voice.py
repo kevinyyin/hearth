@@ -18,17 +18,17 @@ RIDE = {"job_id": "j1", "kind": "ride", "patient_id": "p1", "org_id": "o1", "sta
         "data": {"org_name": "Harris Mobility", "window": "4 and 5 PM"}}
 vars1 = {"org": "Harris Mobility", "window": "4 and 5 PM"}
 FAKE = {
-    "yes": Turn(confirms=True, confidence=0.95),
-    "yes okay": Turn(consents_to_move=True, confirms=True, confidence=0.95),
-    "no": Turn(confirms=False, confidence=0.95),
-    "about forty minutes": Turn(backup_hours=0.67, confidence=0.9),
-    "maybe, I guess": Turn(confidence=0.4),
-    "should I turn my oxygen down?": Turn(medical_question=True, wants_human=True, confidence=0.9),
-    "it's forty minutes, sorry": Turn(backup_hours=0.67, confidence=0.9, ack="I hear you."),
-    "they said forty minutes": Turn(backup_hours=0.67, confidence=0.9, ack="Help is on the way."),
-    "I can't breathe, should I turn it up?": Turn(needs_help_now=True, medical_question=True, confidence=0.9),
-    "my oxygen stopped, I can't breathe": Turn(needs_help_now=True, wants_human=True, confidence=0.9),
-    "thanks, bye": Turn(confidence=0.9),
+    "yes": Turn(confirms=True),
+    "yes okay": Turn(consents_to_move=True, confirms=True),
+    "no": Turn(confirms=False),
+    "about forty minutes": Turn(backup_hours=0.67),
+    "maybe, I guess": Turn(),
+    "should I turn my oxygen down?": Turn(medical_question=True, wants_human=True),
+    "it's forty minutes, sorry": Turn(backup_hours=0.67, ack="I hear you."),
+    "they said forty minutes": Turn(backup_hours=0.67, ack="Help is on the way."),
+    "I can't breathe, should I turn it up?": Turn(needs_help_now=True, medical_question=True),
+    "my oxygen stopped, I can't breathe": Turn(needs_help_now=True, wants_human=True),
+    "thanks, bye": Turn(),
 }
 
 
@@ -218,7 +218,7 @@ def test_an_internal_error_hands_off_instead_of_failing(monkeypatch):
 
 
 def test_short_distress_at_the_opening_escalates(monkeypatch):
-    FAKE["help me"] = Turn(needs_help_now=True, wants_human=True, confidence=0.9)
+    FAKE["help me"] = Turn(needs_help_now=True, wants_human=True)
     c = start_call("p1", "impact")
     out = respond(c, "help me")
     assert store.get("call", c)["status"] == "escalated" and render("help_opened") in out  # a person sees the call, and help is asked for
@@ -344,11 +344,31 @@ def chunks(r):
 
 def test_a_handed_off_call_says_so_honestly_then_hangs_up():
     c = call_at_ask()
+    assert respond(c, "maybe, I guess") == render("ask_hours")
+    assert store.get("call", c)["status"] == "active"
     r = client().post("/voice/v1/chat/completions", json={
         "stream": True, "tools": END_CALL, "messages": [{"role": "user", "content": "maybe, I guess"}], "elevenlabs_extra_body": {"call_id": c}})
     said, calls = sse_text(r), [t for ch in chunks(r) for t in ch["choices"][0]["delta"].get("tool_calls", [])]
     assert said == render("human_handoff") and "connecting" not in said and "911" in said
+    assert store.get("call", c)["events"][-1]["text"] == "backup duration unresolved"
     assert [t["function"]["name"] for t in calls] == ["end_call"] and chunks(r)[-1]["choices"][0]["finish_reason"] == "tool_calls"
+
+
+def test_backup_clarification_can_confirm_zero_hours():
+    c = call_at_ask()
+    respond(c, "maybe, I guess")
+    assert respond(c, "0") != render("human_handoff")
+    assert "backup_hours" not in confirmed_facts(c)
+    respond(c, "yes")
+    assert confirmed_facts(c)["backup_hours"] == 0
+
+
+def test_rejected_readback_and_unresolved_retry_go_to_review():
+    c = call_at_ask()
+    respond(c, "about forty minutes")
+    assert respond(c, "no") == render("ask_hours")
+    assert respond(c, "maybe, I guess") == render("human_handoff")
+    assert "backup_hours" not in confirmed_facts(c)
 
 
 def test_an_active_call_and_a_browser_without_end_call_stay_up():
@@ -384,7 +404,7 @@ def test_a_finished_call_hangs_up_after_the_closing_line(monkeypatch):
 
 def test_the_impact_call_asks_about_the_elevator_above_floor_1():
     from hearth.buildings import status
-    FAKE["it's not working"] = Turn(elevator_working="no", confidence=0.9)
+    FAKE["it's not working"] = Turn(elevator_working="no")
     c = call_at_ask()  # p1: floor 6 in a fixture building with an elevator on record
     assert respond(c, "yes") == render("ask_elevator_working")
     assert respond(c, "it's not working") == render("ask_temperature")
@@ -399,7 +419,7 @@ def test_no_elevator_question_on_floor_1():
 
 def test_the_endpoint_opens_the_help_request_after_the_line():
     from hearth import dispatch
-    FAKE["I need help"] = Turn(intent="help", confidence=0.9)
+    FAKE["I need help"] = Turn(intent="help")
     c = start_call("p1", "menu", phone="+15550100002")
     respond(c, "hello?")
     r = client().post("/voice/v1/chat/completions", json={
