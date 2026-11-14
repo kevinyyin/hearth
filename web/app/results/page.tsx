@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CrewsChart from "@/components/CrewsChart";
 import { formatHours } from "@/lib/results";
-import SideBySide from "@/components/sim/SideBySide";
+import FullRun from "@/components/sim/FullRun";
 import { API, getJson } from "@/lib/api";
 import { POLICY_LABELS, POLICY_ORDER, type PolicyId, type SweepRow } from "@/lib/types";
 
@@ -281,7 +281,7 @@ export default function ResultsPage() {
         {/* ---------- the live side-by-side ---------- */}
         {rows != null && rows.length > 0 && (
           <div className="mt-7">
-            <SideBySide />
+            <FullRun />
           </div>
         )}
 
