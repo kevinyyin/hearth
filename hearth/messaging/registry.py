@@ -117,6 +117,10 @@ def storm() -> dict:
     from hearth.messaging import photon, voice  # late: voice imports this module
     from hearth.messaging.templates import render
 
+    wait = a("storm.again_after_min")
+    if time.time() - (store.get("storm", "last") or {}).get("t", 0) < wait * 60:  # a second press must not ring every phone again
+        return {"alerted": [], "dialed": [], "failed": [f"the storm alert was already sent a moment ago; wait {wait} minutes to send it again"]}
+    store.put("storm", "last", {"t": time.time()})
     out = {"alerted": [], "dialed": [], "failed": []}
     line = os.environ.get("HEARTH_LINE_NUMBER")
     for phone in alert_phones():

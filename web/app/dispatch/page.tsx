@@ -21,6 +21,7 @@ export default function DispatchPage() {
   const { data: phone } = usePoll<Registrations>(API ? "/api/registrations" : null);
   const [failed, setFailed] = useState<string | null>(null);
   const [storm, setStorm] = useState<{ alerted: string[]; dialed: string[]; failed: string[] } | null>(null);
+  const [sending, setSending] = useState(false);
 
   if (!API) return <p className="mx-auto max-w-2xl px-6 py-10 text-sm">This page needs the Hearth API.</p>;
 
@@ -35,12 +36,14 @@ export default function DispatchPage() {
   }
 
   async function forecast() {
+    setSending(true); // each press rings every registrant, so one press at a time
     try {
       setStorm(await sendJson("POST", "/api/storm"));
       setFailed(null);
     } catch (e) {
       setFailed(e instanceof Error ? e.message : String(e));
     }
+    setSending(false);
   }
 
   const stuck = data?.requests.filter((r) => r.request.blocked && r.request.state === "waiting") ?? [];
@@ -59,8 +62,8 @@ export default function DispatchPage() {
       <section className={card} style={cardStyle}>
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm">Texts the county alert to the alert phones and calls every phone registrant in the forecast area.</p>
-          <button type="button" onClick={forecast} className="shrink-0 rounded border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)" }}>
-            Storm forecast (simulated)
+          <button type="button" onClick={forecast} disabled={sending} className="shrink-0 rounded border px-3 py-1.5 text-xs font-medium disabled:opacity-50" style={{ borderColor: "var(--border)" }}>
+            {sending ? "Texting and calling…" : "Storm forecast (simulated)"}
           </button>
         </div>
         {storm && (
