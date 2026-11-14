@@ -34,7 +34,7 @@ export default function EmsOffer({
           </p>
           <h3 className="text-lg font-semibold">{HELP_REQUEST.summary}</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-            {buildingLabel} · 2.4 km · about 11 min
+            {buildingLabel} · 2.9 km · about 11 min
           </p>
         </div>
         <span
