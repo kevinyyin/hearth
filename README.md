@@ -21,3 +21,15 @@ Run the API (the map reads it at `http://localhost:8000`):
 ```bash
 uv run uvicorn api.main:app --port 8000
 ```
+
+## Reproduce the results
+
+Every number on the results page comes from these commands (patients are synthetic; sponsor data stays local):
+
+```bash
+uv run python scripts/fetch_data.py --scenario beryl_2024             # public data: emPOWER, EAGLE-I, MCC, IAH weather, ZCTA
+uv run python -m hearth.buildings bulk                                # records-only building profiles (needs the CoStar kit and Vexcel key)
+uv run python -m hearth.sim sweep --scenario beryl_2024               # writes results/sweep_beryl_2024.json (crews and seeds from assumptions.yaml)
+```
+
+The sweep copies `config/assumptions.yaml` next to its results. Caveats are listed on the results page and in `docs/sim-notes.md`.

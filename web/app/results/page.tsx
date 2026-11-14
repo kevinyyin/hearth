@@ -10,6 +10,8 @@ const ASSUMPTIONS = [
   "Crews accept jobs instantly.",
   "The indoor temperature model is a simple heuristic.",
   "Hearth assumes per-home outage data from the utility.",
+  "Shelters, hospitals and refuge buildings take everyone (no capacity limit), which favors moving people; the gap from building data at high crew counts is an upper bound.",
+  "Crews work around the clock.",
 ];
 
 export default function ResultsPage() {

@@ -27,7 +27,6 @@ function seriesColor(policy: string): string {
   return `var(--series-${slot === -1 ? 1 : slot + 1})`;
 }
 
-const CREW_TICKS = [5, 10, 20, 40, 80];
 
 const fmt = new Intl.NumberFormat("en-US");
 
@@ -96,6 +95,8 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
   const [showTable, setShowTable] = useState(false);
 
   const allSeries = useMemo(() => toSeries(rows, weighted), [rows, weighted]);
+  // the crew counts come from the sweep file (sweep.crews in assumptions.yaml), not from the page
+  const crewTicks = useMemo(() => [...new Set(rows.map((r) => r.crews))].sort((a, b) => a - b), [rows]);
   const visible = useMemo(
     () => allSeries.filter((s) => shown.includes(s.policy)),
     [allSeries, shown],
@@ -160,8 +161,8 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
               dataKey="crews"
               type="number"
               scale="log"
-              domain={[4.4, 92]}
-              ticks={CREW_TICKS}
+              domain={[crewTicks[0] / 1.15, crewTicks[crewTicks.length - 1] * 1.15]}
+              ticks={crewTicks}
               tickLine={false}
               axisLine={{ stroke: "var(--border)" }}
               tick={{ fill: "var(--text-muted)", fontSize: 12 }}
@@ -176,7 +177,7 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
             <YAxis
               tickLine={false}
               axisLine={false}
-              width={68}
+              width={96}
               tick={{ fill: "var(--text-muted)", fontSize: 12 }}
               tickFormatter={(v: number) => fmt.format(v)}
               label={{
@@ -280,7 +281,7 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
                 <th scope="col" className="py-2 pr-4 text-left font-medium">
                   Policy
                 </th>
-                {CREW_TICKS.map((c) => (
+                {crewTicks.map((c) => (
                   <th scope="col" key={c} className="py-2 pr-4 text-right font-medium">
                     {c} crews
                   </th>
@@ -300,7 +301,7 @@ export default function CrewsChart({ rows }: { rows: SweepRow[] }) {
                       {s.label}
                     </span>
                   </th>
-                  {CREW_TICKS.map((c) => {
+                  {crewTicks.map((c) => {
                     const point = s.points.find((p) => p.crews === c);
                     return (
                       <td key={c} className="tnum py-2 pr-4 text-right">
