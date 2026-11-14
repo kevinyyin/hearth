@@ -1,0 +1,90 @@
+# Every default number Hearth uses. Each leaf is {value, source, confirmed}.
+# Shared and append-only: any lane may add keys; nobody edits another lane's keys.
+# confirmed: false means our own call or a placeholder awaiting a real source.
+
+models:
+  interpreter: {value: claude-haiku-5-5, source: "design: model access confirmed Nov 13", confirmed: true}
+  guard: {value: claude-haiku-5-5, source: "design: model access confirmed Nov 13", confirmed: true}
+  agent: {value: claude-sonnet-5-5, source: "design: model access confirmed Nov 13", confirmed: true}
+  vision: {value: claude-sonnet-5-5, source: "design: model access confirmed Nov 13", confirmed: true}
+  subagent: {value: claude-haiku-5-5, source: "our call: layer subagents only call tools and summarize; speed", confirmed: false}
+  agent_effort: {value: medium, source: "our call: survey latency target ~30 s", confirmed: false}
+  subagent_effort: {value: low, source: "our call: survey latency target ~30 s", confirmed: false}
+  vision_effort: {value: low, source: "our call: one short visual answer per call", confirmed: false}
+
+decision:
+  margin_h: {value: 12, source: "hearth-spec v5 §4", confirmed: true}
+  low_backup_h: {value: 4, source: "hearth-spec v5 §4", confirmed: true}
+  urgent_h: {value: 1, source: "our call", confirmed: false}
+  hysteresis_ticks: {value: 2, source: "hearth-spec v5 §4", confirmed: true}
+
+temperature:
+  default_heat_tc_h: {value: 8, source: "hearth-spec v5 §5 (heuristic)", confirmed: true}
+  default_cold_tc_h: {value: 12, source: "hearth-spec v5 §5 (heuristic)", confirmed: true}
+  unsafe_heat_index_c: {value: 32, source: "hearth-spec v5 §5 (NWS extreme caution band)", confirmed: true}
+  unsafe_cold_c: {value: 16, source: "hearth-spec v5 §5", confirmed: true}
+  setpoint_c: {value: 22, source: "hearth-spec v5 §5", confirmed: true}
+
+sim:
+  tick_minutes: {value: 30, source: "hearth-spec v5 §9.1", confirmed: true}
+  horizon_h: {value: 12, source: "hearth-spec v5 §9.1", confirmed: true}
+  detection_delay_min: {value: 5, source: "hearth-spec v5 §9.1", confirmed: true}
+  snapshot_every_ticks: {value: 6, source: "our call (lane S): 3-hourly map frames keep a county run's snapshots near 300 MB; scenarios may override", confirmed: false}
+
+risk_weight:
+  oxygen: {value: 3, source: "hearth-spec v5 §3.2", confirmed: true}
+  ventilator: {value: 5, source: "hearth-spec v5 §3.2", confirmed: true}
+  home_dialysis: {value: 2, source: "hearth-spec v5 §3.2", confirmed: true}
+  feeding_gastric: {value: 1, source: "hearth-spec v5 §3.2", confirmed: true}
+  feeding_jejunal: {value: 2, source: "hearth-spec v5 §3.2", confirmed: true}
+
+population:
+  complete_profile_rate: {value: 0.5, source: "hearth-spec v5 §3.2", confirmed: true}
+  reachable_phone_rate: {value: 0.7, source: "hearth-spec v5 §3.2", confirmed: true}
+  costar_building_share: {value: 0.35, source: "hearth-spec v5 §3.2", confirmed: true}
+  supplier_shares: {value: [0.40, 0.35, 0.25], source: "hearth-spec v5 §3.2", confirmed: true}
+  non_oxygen_mix: {value: {ventilator: 0.25, home_dialysis: 0.25, feeding_pump: 0.5}, source: "our call; device type by ZIP is not public", confirmed: false}
+  # lane S additions
+  backup_h: {value: {oxygen: [4, 48], ventilator: [8, 24], home_dialysis: [24, 48], feeding_pump: [8, 24]}, source: "our call: uniform range of hours the device runs on what is at home (cylinders, batteries); for home dialysis, hours a session can be put off. Placeholder", confirmed: false}
+  mobility_mix: {value: {walks: 0.35, walks_with_help: 0.25, wheelchair_manual: 0.15, wheelchair_power: 0.15, bedbound: 0.10}, source: "our call; placeholder", confirmed: false}
+  temp_sensitive_mix: {value: {heat: 0.45, cold: 0.05, both: 0.20, none: 0.30}, source: "our call: most are older Medicare beneficiaries; placeholder", confirmed: false}
+  feeding_jejunal_share: {value: 0.2, source: "our call; placeholder", confirmed: false}
+  patients_per_building: {value: 3, source: "our call: synthetic residents placed in each surveyed CoStar building", confirmed: false}
+  building_match_km: {value: 2.0, source: "our call: a building resident moves to a surveyed building only if one is this close", confirmed: false}
+
+phone_tree:
+  unreachable_rate: {value: 0.414, source: "Broome County: 24 of 58 unreachable", confirmed: true}
+  staff: {value: 6, source: "placeholder; replace from interviews", confirmed: false}
+  calls_per_staff_hour: {value: 12, source: "placeholder; replace from interviews", confirmed: false}
+
+travel:
+  detour_factor: {value: 1.4, source: "hearth-spec v5 §9.1", confirmed: true}
+  speed_kmh: {value: 40, source: "hearth-spec v5 §9.1", confirmed: true}
+
+building:
+  service_base_min: {value: 10, source: "hearth-spec v5 §9.1", confirmed: true}
+  service_min_per_floor_no_elevator: {value: 4, source: "hearth-spec v5 §9.1", confirmed: true}
+  # building time-constant heuristic (Task 3); a labeled heuristic, not a thermal model
+  tc:
+    construction: {value: {masonry: 1.3, concrete: 1.3, steel: 1.0, wood: 0.9, unknown: 1.0}, source: "our heuristic: heavier walls hold temperature longer", confirmed: false}
+    roof: {value: {light: 1.15, medium: 1.0, dark: 0.85}, source: "our heuristic: dark roofs absorb more sun", confirmed: false}
+    shade_per_tree_cover: {value: 0.3, source: "our heuristic: shade = 1 + 0.3 * tree cover fraction", confirmed: false}
+    age: {value: {before_1980: 0.9, from_1980: 1.0, from_2000: 1.15}, source: "our heuristic: energy codes tightened from 1980 and 2000", confirmed: false}
+    clamp_h: {value: [3, 24], source: "our heuristic", confirmed: false}
+
+refuge:
+  search_radius_km: {value: 15, source: "our call: a short ride across Houston", confirmed: false}
+  max_candidates: {value: 3, source: "our call: each uncached candidate costs a 30-60 s survey", confirmed: false}
+
+# ---- lane S (simulation) ----
+outage:
+  dip_ratio: {value: 0.75, source: "our call: a reading below 75% of both sides' recent max is a data glitch (EAGLE-I near-zero runs and the Jul 8 false dip); plan's 10% rule missed multi-interval runs", confirmed: false}
+  dip_window_h: {value: 6, source: "our call: longest glitch run in the Beryl window is under 6 h", confirmed: false}
+  onset_fraction: {value: 0.05, source: "our call: the late-onset ramp ends at the first reading above 5% of customers", confirmed: false}
+
+planner:
+  depots: {value: {s1: [29.80, -95.45], s2: [29.70, -95.30], s3: [29.95, -95.42]}, source: "our call: synthetic depot locations, one per supplier", confirmed: false}
+  stock_per_supplier: {value: 2000, source: "our call: delivery units (cylinders, battery packs) each supplier can send; placeholder", confirmed: false}
+  delivery_backup_h: {value: 24, source: "our call: hours of backup one delivery adds; placeholder", confirmed: false}
+  destinations: {value: [[29.7069, -95.3972, "Texas Medical Center"], [29.7520, -95.3580, "George R. Brown Convention Center"], [29.6847, -95.4107, "NRG Center"]], source: "our call: approximate locations of a hospital campus and two large shelters; rides end at the nearest", confirmed: false}
+  candidates_per_free_crew: {value: 50, source: "our call (speed): only the top needs per free crew are offered each tick", confirmed: false}

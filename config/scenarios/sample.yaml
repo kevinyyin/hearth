@@ -1,0 +1,11 @@
+# 200 synthetic patients in two downtown Houston ZIPs over 48 hours, a synthetic outage curve and constant weather.
+# For tests and for building the map; not a replay of any real event.
+name: sample
+start: "2024-07-08T06:00:00Z"
+end: "2024-07-10T06:00:00Z"
+center: [29.75, -95.36]
+zcta_from: beryl_2024
+zips: [{zip: "77002", total: 120, o2: 50}, {zip: "77004", total: 80, o2: 30}]
+curve: [[0, 0.0], [3, 0.0], [6, 0.8], [24, 0.6], [40, 0.2], [48, 0.0]]   # [hours from start, fraction of customers out]
+weather: {temp_c: 34, rh: 55}
+snapshot_every_ticks: 1
