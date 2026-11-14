@@ -273,6 +273,36 @@ def vexcel_image(building_id: str, lat: float, lon: float) -> Path | None:
     return path
 
 
+ENTRANCE_QUESTION = (
+    "This top-down aerial image is 80 m across with north up, centred on one building. Where is that building's main "
+    "entrance for a crew arriving by road? Look for a canopy, a drop-off loop, or a walkway from the street or the parking. "
+    'Reply with JSON only: {"x": <0 to 1 from the left edge>, "y": <0 to 1 from the top edge>, "note": "<what is there, '
+    'under 15 words>"}.')
+
+
+def parse_entrance(answer: str) -> dict | None:
+    """A vision answer -> {x, y, note}, x and y as fractions of the tile. None when it names no point on the tile."""
+    m = re.search(r"\{.*\}", answer, re.S)
+    try:
+        j = json.loads(m.group()) if m else {}
+        x, y = float(j["x"]), float(j["y"])
+    except (ValueError, KeyError, TypeError):
+        return None
+    return {"x": x, "y": y, "note": str(j.get("note") or "")} if 0 <= x <= 1 and 0 <= y <= 1 else None
+
+
+def aerial_entrance(building_id: str, lat: float, lon: float) -> dict | None:
+    """Where the way in most likely is on the aerial tile: a vision model's reading, saved once. For a home whose resident
+    has marked no entrance. Vexcel's detector is not asked: it rarely finds a door from straight above."""
+    if _fixtures_on():
+        return None
+
+    def read():
+        img = vexcel_image(building_id, lat, lon)
+        return parse_entrance(look(img, ENTRANCE_QUESTION)) if img else None
+    return cached(building_id, "entrance", read)[0]
+
+
 # ---- Matterport: Model API (GraphQL, HTTP Basic token id:secret); model ids come from CoStar ----
 _MP_QUERY = """query($id: ID!) { model(id: $id) { name locations { id label floor { label } room { label tags }
   panos { skybox(resolution: "high") { children } } } } }"""

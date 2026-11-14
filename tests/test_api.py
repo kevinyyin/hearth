@@ -59,6 +59,7 @@ def test_building_detail_before_and_after_survey():
     d = client.get("/api/buildings/B-SAMPLE").json()
     assert d["profile"]["floors"]["source"] == "costar" and any("8 stories" in line for line in d["brief"]["to_door"]) and set(d["layer_effects"]) == {"costar", "vexcel", "matterport"}
     assert client.get("/api/buildings/B-SAMPLE/image").headers["content-type"] == "image/png"
+    assert client.get("/api/buildings/B-SAMPLE/entrance").status_code == 404  # fixtures ask no vision model
 
 
 def test_buildings_list_marks_scans_and_surveys():

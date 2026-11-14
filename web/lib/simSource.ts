@@ -192,9 +192,10 @@ export async function loadResident(signal: AbortSignal): Promise<ResidentFeed> {
   const p = patients[0];
   if (!p) throw new Error("the API has no demo patients");
 
-  const home = await get<HomeDoc | null>(`/api/patients/${p.patient_id}/home`, signal).catch(
-    () => null,
-  );
+  // the API answers { patient, home }; home is null until the resident saves one
+  const home = await get<{ home: HomeDoc | null }>(`/api/patients/${p.patient_id}/home`, signal)
+    .then((r) => r.home)
+    .catch(() => null);
 
   let floor = RESIDENT.floor;
   let elevator = RESIDENT.elevator;
@@ -309,6 +310,11 @@ export type BuildingBrief = {
   scan_sdk_key?: string | null;
   embed_url?: string | null;
 };
+
+/** Where a vision model reads the way in on a building's aerial tile, as fractions of the tile. */
+export function useEntranceFeed(buildingId: string | null): Feed<{ x: number; y: number; note: string }> {
+  return useFeed(buildingId ? `/api/buildings/${buildingId}/entrance` : null, (e) => e.note);
+}
 
 /** The replays the API, or the dev fixtures, can serve. */
 export function useRunsFeed(): Feed<ReplayRun[]> {
