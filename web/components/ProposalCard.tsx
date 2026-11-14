@@ -63,7 +63,9 @@ export default function ProposalCard({ proposal, onDecided }: { proposal: Refuge
       ) : (
         <p style={{ color: "var(--text-secondary)" }}>
           {proposal.status === "approved"
-            ? proposal.call_id ? `Approved. Consent call started (${proposal.call_id}).` : `Approved. ${proposal.call_error ? `Call not started: ${proposal.call_error}` : ""}`
+            ? proposal.call_id
+              ? `Approved. Consent call started (${proposal.call_id}).${proposal.phone_call ? " Ringing the patient's phone." : ""}${proposal.call_error ? ` Phone not rung: ${proposal.call_error}` : ""}`
+              : `Approved. ${proposal.call_error ? `Call not started: ${proposal.call_error}` : ""}`
             : `Rejected: ${proposal.reason}. The agent will remember this.`}
         </p>
       )}

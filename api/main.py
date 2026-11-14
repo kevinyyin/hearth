@@ -33,9 +33,9 @@ app = FastAPI(title="Hearth (simulated patients)")
 @app.middleware("http")
 async def guard(request: Request, call_next):
     """Hosted (HEARTH_PASSWORD set): every route needs the shared password, sent as a bearer token. Local: the API is for
-    this machine, so requests through a tunnel (forwarding headers) are refused. Either way /voice keeps its own secret
-    and CORS preflights pass."""
-    if request.method == "OPTIONS" or request.url.path.startswith("/voice/"):
+    this machine, so requests through a tunnel (forwarding headers) are refused. Either way /voice keeps its own secret,
+    /photon checks Photon's signature, and CORS preflights pass."""
+    if request.method == "OPTIONS" or request.url.path.startswith(("/voice/", "/photon/")):
         return await call_next(request)
     if password := os.environ.get("HEARTH_PASSWORD"):
         given = request.headers.get("authorization", "").removeprefix("Bearer ")
@@ -51,10 +51,12 @@ app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("HEARTH_WEB_ORIG
                    allow_origin_regex=os.environ.get("HEARTH_WEB_ORIGIN_REGEX"),  # preview deployments get new hostnames
                    allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)  # a full-county snapshot is megabytes of JSON; gzip keeps scrubbing smooth
-try:  # lane V's OpenAI-compatible endpoint that ElevenLabs calls as its model
+try:  # lane V: the OpenAI-compatible endpoint ElevenLabs calls as its model, and Photon's webhook
+    from hearth.messaging.photon import router as photon_router
     from hearth.messaging.voice import router as voice_router
 
     app.include_router(voice_router)
+    app.include_router(photon_router)
 except ImportError:
     pass
 
@@ -228,6 +230,7 @@ def decision(proposal_id: str, body: Decision):
     if prop.status == "approved":
         try:
             out["call_id"] = live.on_approved(prop)
+            out["phone_call"] = live.dial(out["call_id"])  # the patient's phone rings when a person entered one
         except Exception as e:  # the approval stands; the dispatcher sees the call did not start
             out["call_error"] = f"{type(e).__name__}: {e}"
     return out

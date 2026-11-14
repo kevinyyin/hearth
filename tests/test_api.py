@@ -73,6 +73,7 @@ def test_consent_call_blocked_without_approval():
 def test_reject_places_no_call(monkeypatch):
     calls = []
     monkeypatch.setattr(live, "start_call", lambda *a, **k: calls.append(a) or "c1")
+    monkeypatch.setattr(live, "dial", lambda call_id: calls.append(call_id))
     seed_pending_proposal("P1")
     r = client.post("/api/proposals/P1/decision", json={"decision": "reject", "reason": "too far"})
     assert r.status_code == 200 and r.json()["status"] == "rejected" and calls == []
@@ -81,9 +82,11 @@ def test_reject_places_no_call(monkeypatch):
 def test_approve_places_exactly_one_call(monkeypatch):
     calls = []
     monkeypatch.setattr(live, "start_call", lambda *a, **k: calls.append(a) or "c1")
+    monkeypatch.setattr(live, "dial", lambda call_id: calls.append(("dial", call_id)) or "conv1")
     seed_pending_proposal("P2")
     r = client.post("/api/proposals/P2/decision", json={"decision": "approve"})
-    assert r.status_code == 200 and r.json()["status"] == "approved" and len(calls) == 1 and calls[0][1] == "move_consent"
+    assert r.status_code == 200 and r.json()["status"] == "approved" and r.json()["phone_call"] == "conv1"
+    assert len(calls) == 2 and calls[0][1] == "move_consent" and calls[1] == ("dial", "c1")
     assert client.post("/api/calls", json={"patient_id": "p1", "kind": "move_consent"}).status_code == 200
 
 
@@ -172,6 +175,7 @@ def test_hosted_api_needs_the_shared_password(monkeypatch):
     assert client.get("/api/runs", headers={"Authorization": "Bearer open sesame", "x-forwarded-for": "203.0.113.7"}).status_code == 200
     assert client.options("/api/runs", headers=origin | {"Access-Control-Request-Method": "GET"}).status_code == 200
     assert client.post("/voice/v1/chat/completions", json={"messages": []}).status_code == 200  # its own secret
+    assert client.post("/photon/webhook", content=b"{}").json()["detail"] == "bad or missing webhook signature"  # its own check
 
 
 def test_county_patients_come_from_a_json_copy_in_storage(monkeypatch, tmp_path):

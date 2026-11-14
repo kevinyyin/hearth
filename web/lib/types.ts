@@ -150,4 +150,5 @@ export type RefugeProposal = {
   thread_id: string;
   call_id?: string;
   call_error?: string;
+  phone_call?: string | null;
 };
