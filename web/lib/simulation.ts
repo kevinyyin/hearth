@@ -69,20 +69,27 @@ export const ENROLMENT_CALL: TranscriptLine[] = [
   { at: 9200, from: "resident", text: "That's fine." },
   { at: 10400, from: "hearth", text: "Thank you. First, how many hours does your device run on its battery once the power stops?" },
   { at: 14200, from: "resident", text: "About four, if it's charged." },
-  { at: 16000, from: "hearth", text: "Four hours, noted. Is there anyone else in the home who would need help leaving?" },
-  { at: 20100, from: "resident", text: "No, just me. I use a walker though." },
-  { at: 22600, from: "hearth", text: "Noted, a walker. Last one: if a crew came to your door, which entrance should they use?" },
-  { at: 27300, from: "resident", text: "The north door. The front has three steps and the lift has been out since July." },
-  { at: 31000, from: "hearth", text: "North door, no lift, third floor. You're on the list. Nothing changes for you today, and no one is coming now. If the power goes out in your area, a dispatcher will see your name and this call. You can change any of this yourself from the link we're sending to this number." },
-  { at: 38500, from: "resident", text: "Alright. Thank you." },
+  { at: 16000, from: "hearth", text: "Four hours, noted. Where in your home is the concentrator kept?" },
+  { at: 20200, from: "resident", text: "In the back bedroom, to the left of the window." },
+  { at: 22400, from: "hearth", text: "Back bedroom, left of the window. Can it be moved, so that it could leave with you if a crew came?" },
+  { at: 27000, from: "resident", text: "It's on wheels, so it rolls, but it's too heavy for me to carry down the stairs. And it only runs plugged in." },
+  { at: 31500, from: "hearth", text: "Noted: it rolls, it cannot be carried down by you, and it needs mains power. Is there anyone else in the home who would need help leaving?" },
+  { at: 36200, from: "resident", text: "No, just me. I use a walker though." },
+  { at: 38700, from: "hearth", text: "Noted, a walker. Last one: if a crew came to your door, which entrance should they use?" },
+  { at: 43400, from: "resident", text: "The north door. The front has three steps and the lift has been out since July." },
+  { at: 47100, from: "hearth", text: "North door, no lift, third floor. You're on the list. Nothing changes for you today, and no one is coming now. If the power goes out in your area, a dispatcher will see your name and this call. You can change any of this yourself from the link we're sending to this number." },
+  { at: 54600, from: "resident", text: "Alright. Thank you." },
 ];
 
-export const ENROLMENT_FIELDS: { label: string; value: string }[] = [
-  { label: "Device", value: "Oxygen concentrator" },
-  { label: "Battery backup", value: "About 4 hours" },
-  { label: "Household", value: "Lives alone; uses a walker" },
-  { label: "Entrance", value: "North door, step-free" },
-  { label: "Floor", value: "3rd, no working lift" },
+/** What the call captures. `after` is the line of ENROLMENT_CALL whose answer fills the field in. */
+export const ENROLMENT_FIELDS: { label: string; value: string; after: number }[] = [
+  { label: "Device", value: "Oxygen concentrator", after: 1 },
+  { label: "Battery backup", value: "About 4 hours", after: 5 },
+  { label: "Where the device is", value: "Back bedroom, left of the window", after: 7 },
+  { label: "Can it be moved", value: "Rolls on wheels; too heavy to carry downstairs; mains only", after: 9 },
+  { label: "Household", value: "Lives alone; uses a walker", after: 11 },
+  { label: "Entrance", value: "North door, step-free", after: 13 },
+  { label: "Floor", value: "3rd, no working lift", after: 13 },
 ];
 
 // --- Stage 2: during the event ----------------------------------------------
