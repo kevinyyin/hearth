@@ -13,11 +13,13 @@ export type TraceView = {
   error: string | null;
   proposalId: string | null;
   done: boolean;
+  /** The run's closing line, e.g. "no eligible refuge found"; shown even when there is no error. */
+  message: string | null;
 };
 
 /** Folds a survey or refuge event stream into what the panel shows. Later events win. */
 export function reduceTrace(events: TraceEvent[]): TraceView {
-  const view: TraceView = { todos: [], subagents: [], files: [], conflicts: [], profile: null, error: null, proposalId: null, done: false };
+  const view: TraceView = { todos: [], subagents: [], files: [], conflicts: [], profile: null, error: null, proposalId: null, done: false, message: null };
   const row = (name: string) => view.subagents.find((s) => s.name === name);
   for (const e of events) {
     switch (e.kind) {
@@ -49,6 +51,7 @@ export function reduceTrace(events: TraceEvent[]): TraceView {
         break;
       case "done": {
         view.done = true;
+        view.message = e.text;
         view.profile = (e.data.profile as BuildingProfile) ?? null;
         view.error = (e.data.error as string) ?? view.profile?.error ?? null;
         break;

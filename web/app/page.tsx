@@ -226,7 +226,7 @@ export default function HomePage() {
               events={events}
               onClose={() => setSelectedId(null)}
             />
-            {selected.building_id && <BuildingPanel buildingId={selected.building_id} patientId={selected.id} />}
+            {selected.building_id && <BuildingPanel key={selected.id} buildingId={selected.building_id} patientId={selected.id} />}
           </aside>
         )}
       </div>

@@ -131,14 +131,20 @@ def _graph_once():
 
 def _options(patient: Patient, options_json: str) -> list[RefugeOption]:
     """The agent's options, re-checked by code: only buildings with a stored profile that passes `eligible` survive."""
+    dark = _ctx.get(patient.patient_id, (patient, {patient.zip}))[1]
     out = []
     for o in json.loads(options_json):
         rec, prof = tools.costar_record(o["building_id"]), store.get("profile", o["building_id"])
-        if rec is None or prof is None or not eligible(BuildingProfile.model_validate(prof), patient)[0]:
+        if rec is None or prof is None or rec["property_type"] not in ("hotel", "senior_housing"):
             continue
+        ok, why = eligible(BuildingProfile.model_validate(prof), patient)
+        if not ok or not outside_dark_area(rec.get("zip"), dark):
+            continue
+        km = tools._km((patient.lat, patient.lon), (rec["lat"], rec["lon"]))
         layers = sorted({v["source"] for k, v in prof.items() if isinstance(v, dict) and v.get("source") not in (None, "default")})
         out.append(RefugeOption(building_id=o["building_id"], name=rec.get("name") or rec["address"], lat=rec["lat"], lon=rec["lon"],
-                                reasons=[str(r) for r in o.get("reasons", [])], sources=layers, score=float(o.get("score", 0))))
+                                reasons=why + [f"{km:.1f} km away", "power at refuge not verified"], sources=layers,
+                                score=float(o.get("score", 0))))
     return out
 
 

@@ -106,3 +106,17 @@ def test_propose_for_unknown_patient_is_404():
 def test_snapshots_are_served_gzipped():
     r = client.get("/api/runs/sample__p3__c20__s1/snapshots/0", headers={"Accept-Encoding": "gzip"})
     assert r.headers.get("content-encoding") == "gzip"
+
+
+def test_stored_profile_is_labeled_cached_in_building_detail():
+    store.put("profile", "B-SAMPLE", profile("B-SAMPLE", floors=8))
+    assert client.get("/api/buildings/B-SAMPLE").json()["profile"]["cached"] is True
+
+
+def test_profiles_stored_before_new_fields_get_them_as_unknown():
+    old = profile("B-SAMPLE", floors=8).model_dump(mode="json")
+    for f in ("unit_type", "unit_rooms", "hallway_width_m", "interior_steps"):
+        old.pop(f)
+    store.put("profile", "B-SAMPLE", old)
+    d = client.get("/api/buildings/B-SAMPLE").json()
+    assert d["profile"]["unit_type"]["source"] == "default" and d["profile"]["cached"] is True

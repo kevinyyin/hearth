@@ -127,7 +127,8 @@ def building(building_id: str):
            "embed_url": tools.matterport_embed_url(building_id), "image_url": f"/api/buildings/{building_id}/image"}
     if doc := store.get("profile", building_id):
         p = BuildingProfile.model_validate(doc)
-        out.update(profile=doc, brief=access_brief(p).model_dump(), layer_effects=layer_effects(p),
+        # validated, so profiles stored before a contract field existed get it as unknown
+        out.update(profile=p.model_dump(mode="json") | {"cached": True}, brief=access_brief(p).model_dump(), layer_effects=layer_effects(p),
                    hours_to_unsafe=hours_to_unsafe(p.heat_time_constant_h))
     return out
 

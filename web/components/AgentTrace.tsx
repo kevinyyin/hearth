@@ -48,7 +48,7 @@ export default function AgentTrace({ view, running }: { view: TraceView; running
         </section>
       )}
       {running && !view.done && <p style={{ color: "var(--text-muted)" }}>Working…</p>}
-      {view.error && <p style={{ color: "#d03b3b" }}>{view.error}</p>}
+      {view.error ? <p style={{ color: "#d03b3b" }}>{view.error}</p> : view.done && view.message && <p style={{ color: "var(--text-secondary)" }}>{view.message}</p>}
     </div>
   );
 }

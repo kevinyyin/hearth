@@ -30,7 +30,7 @@ export default function ProposalCard({ proposal, onDecided }: { proposal: Refuge
 
   return (
     <section className="space-y-2 rounded-lg border p-3 text-xs" style={{ borderColor: "var(--border)" }}>
-      <h4 className="font-semibold">Refuge proposal · {proposal.status}</h4>
+      <h4 className="font-semibold">Refuge proposal for simulated patient {proposal.patient_id} · {proposal.status}</h4>
       <ol className="space-y-1.5">
         {proposal.options.map((o) => (
           <li key={o.building_id}>

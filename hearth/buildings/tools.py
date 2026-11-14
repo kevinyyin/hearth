@@ -370,7 +370,7 @@ def look(image: Path | list[Path], question: str) -> str:
 
     images = image if isinstance(image, list) else [image]
     media = lambda p: "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
-    client = anthropic.Anthropic(default_headers=anthropic_headers())
+    client = anthropic.Anthropic(default_headers=anthropic_headers(), timeout=30, max_retries=1)  # the survey has a 90 s budget
     msg = client.messages.create(
         model=a("models.vision"), max_tokens=2000, output_config={"effort": a("models.vision_effort")},
         messages=[{"role": "user", "content": [

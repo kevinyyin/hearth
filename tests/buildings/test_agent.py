@@ -65,3 +65,25 @@ def test_cached_profile_is_labeled_cached(monkeypatch):
     monkeypatch.setattr(agent, "build_surveyor", lambda model=None: ExplodingGraph())
     events = list(survey("B", "x", 0, 0))
     assert len(events) == 1 and events[0].data["profile"]["cached"] is True
+
+
+def test_a_failing_layer_is_reported_not_raised(monkeypatch, tmp_path):
+    from hearth.buildings import tools
+    monkeypatch.setattr(tools, "CACHE_ROOT", tmp_path)  # no cached layer files
+
+    def boom(*a, **k):
+        raise RuntimeError("429 Too Many Requests")
+    monkeypatch.setattr(tools, "vexcel_attributes", boom)
+    monkeypatch.setattr(tools, "matterport_rooms", boom)
+    assert "unavailable" in agent.vexcel_attributes.invoke({"building_id": "B-SAMPLE"})
+    assert "unavailable" in agent.matterport_rooms.invoke({"building_id": "B-SAMPLE"})
+
+
+def test_cached_survey_fills_fields_added_after_it_was_stored(monkeypatch):
+    from hearth.buildings.profile import default_profile, finalize
+    old = finalize(default_profile("B", "x", 0, 0)).model_dump(mode="json")
+    old.pop("unit_type")
+    store.put("profile", "B", old)
+    monkeypatch.setattr(agent, "build_surveyor", lambda model=None: ExplodingGraph())
+    [done] = list(survey("B", "x", 0, 0))
+    assert done.data["profile"]["unit_type"]["source"] == "default" and done.data["profile"]["cached"] is True

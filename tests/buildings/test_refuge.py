@@ -75,3 +75,17 @@ def test_option_sources_come_from_the_profile_not_the_model(monkeypatch):
     opts = refuge._options(patient(mobility="wheelchair_manual"), '[{"building_id": "H-LEVEL", "reasons": ["close"], "sources": ["guess"]}]')
     assert [o.sources for o in opts] == [["costar", "matterport"]] and opts[0].name == "Level Inn (fixture)"
     assert refuge._options(patient(mobility="wheelchair_manual"), '[{"building_id": "H-STEPS"}]') == []   # no stored profile
+
+
+def test_options_recheck_dark_area_and_type_and_build_reasons_in_code(monkeypatch):
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    store.put("profile", "H-LEVEL", profile("H-LEVEL", step_free=True, floors=1))
+    store.put("profile", "B-SAMPLE", profile("B-SAMPLE", step_free=True, floors=1))
+    pat = patient(mobility="wheelchair_manual")
+    refuge._ctx[pat.patient_id] = (pat, {"77030"})                       # H-LEVEL's ZIP is dark now
+    assert refuge._options(pat, '[{"building_id": "H-LEVEL"}]') == []
+    refuge._ctx[pat.patient_id] = (pat, {"77002"})
+    assert refuge._options(pat, '[{"building_id": "B-SAMPLE"}]') == []   # apartments are not refuges
+    [opt] = refuge._options(pat, '[{"building_id": "H-LEVEL", "reasons": ["model says: lovely lobby"]}]')
+    assert "power at refuge not verified" in opt.reasons and any("step-free" in r for r in opt.reasons)
+    assert any(r.endswith("km away") for r in opt.reasons) and not any("lovely" in r for r in opt.reasons)

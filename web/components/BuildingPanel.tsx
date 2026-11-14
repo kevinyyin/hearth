@@ -57,14 +57,16 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
     }
   }
 
-  const p = detail?.profile;
   const trace = reduceTrace(events);
+  // after a run, show what that run produced (a failed run shows its default-backed profile); otherwise the stored, cached one
+  const failed = trace.done && !!trace.error;
+  const p = failed ? trace.profile : detail?.profile;
   return (
     <div className="space-y-3 border-t p-4" style={{ borderColor: "var(--border)" }}>
       <div>
         <h3 className="text-sm font-semibold">{detail?.name ?? buildingId}</h3>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>{detail?.address}</p>
-        {p?.cached && <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "var(--grid)" }}>cached</span>}
+        {p?.cached && !trace.done && <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "var(--grid)" }}>cached</span>}
       </div>
       {detail && API && <img src={`${API}${detail.image_url}`} alt="Top-down aerial image of the building (Vexcel)" className="w-full rounded" />}
       {detail?.embed_url && (
@@ -77,7 +79,7 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
 
       {p && (
         <>
-          {detail?.hours_to_unsafe != null && (
+          {!failed && detail?.hours_to_unsafe != null && (
             <section className="text-xs">
               <h4 className="font-semibold" style={{ color: "var(--text-muted)" }}>Unsafe without power (at 35 °C outside, heuristic)</h4>
               <p className="tnum text-sm font-medium">in {detail.hours_to_unsafe.toFixed(1)} hours</p>
@@ -93,7 +95,7 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
           <table className="w-full text-xs">
             <thead><tr style={{ color: "var(--text-muted)" }}><th className="text-left font-normal">Field</th><th className="text-left font-normal">Value</th><th className="text-left font-normal">Source</th><th className="text-right font-normal">Conf.</th></tr></thead>
             <tbody>
-              {PROFILE_FIELDS.map((f) => (
+              {PROFILE_FIELDS.filter((f) => p[f]).map((f) => (
                 <tr key={f} style={{ color: p[f].source === "default" ? "var(--text-muted)" : "var(--text-primary)" }}>
                   <td>{f.replace(/_/g, " ")}</td><td>{show(p[f].value)}</td><td>{p[f].source}</td><td className="tnum text-right">{p[f].confidence.toFixed(1)}</td>
                 </tr>
@@ -106,7 +108,7 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
           {p.conflicts.length > 0 && events.length === 0 && (
             <ul className="list-disc pl-4 text-xs" style={{ color: "#b4541a" }}>{p.conflicts.map((c, i) => <li key={i}>{c}</li>)}</ul>
           )}
-          {detail?.brief && <AccessBrief brief={detail.brief} />}
+          {!failed && detail?.brief && <AccessBrief brief={detail.brief} />}
         </>
       )}
 

@@ -52,3 +52,11 @@ describe("parseSSE", () => {
     expect(rest).toBe('data: {"se');
   });
 });
+
+describe("refuge outcome", () => {
+  it("keeps the done message so 'no eligible refuge' is shown", () => {
+    const v = reduceTrace([ev(0, "done", "refuge", "no eligible refuge found; a dispatcher should decide", { error: null })]);
+    expect(v.message).toBe("no eligible refuge found; a dispatcher should decide");
+    expect(v.error).toBeNull();
+  });
+});

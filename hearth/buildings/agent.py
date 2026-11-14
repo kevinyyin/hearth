@@ -28,64 +28,85 @@ def _where(building_id: str) -> tuple[str, float, float]:
     return _context.get(building_id, ("", 0.0, 0.0))
 
 
+def _guard(layer: str, fn):
+    try:
+        return fn()
+    except Exception as e:  # one failing layer must not end the survey; the model records it as missing
+        return f"{layer} unavailable: {type(e).__name__}: {e}"[:300]
+
+
 # ---- tools the agents call ----
 @tool
 def costar_record(building_id: str) -> str:
     """The building's CoStar property record (floors, units, year built, construction, type, elevators)."""
-    rec = tools.costar_record(building_id)
-    return json.dumps(rec) if rec else "Not in CoStar: no record for this building."
+    def run():
+        rec = tools.costar_record(building_id)
+        return json.dumps(rec) if rec else "Not in CoStar: no record for this building."
+    return _guard("CoStar", run)
 
 
 @tool
 def vexcel_attributes(building_id: str) -> str:
     """Vexcel aerial attributes at the building: roof material, condition, shape, tree cover, capture date."""
-    _, lat, lon = _where(building_id)
-    attrs, _ = tools.cached(building_id, "vexcel", lambda: tools.vexcel_attributes(lat, lon))
-    return json.dumps(attrs) if attrs else "No Vexcel attributes at this point."
+    def run():
+        _, lat, lon = _where(building_id)
+        attrs, _ = tools.cached(building_id, "vexcel", lambda: tools.vexcel_attributes(lat, lon))
+        return json.dumps(attrs) if attrs else "No Vexcel attributes at this point."
+    return _guard("Vexcel", run)
 
 
 @tool
 def aerial_detect(building_id: str) -> str:
     """Find parking spaces, driveways, loading zones, ramps and building entrances in the aerial image, with the side of the
     building each sits on and how far from the building point."""
-    _, lat, lon = _where(building_id)
-    rows = tools.vexcel_detect(lat, lon)
-    return "; ".join(f"{r['label']}: {r['side']}, {r['distance_m']} m (conf {r['confidence']})" for r in rows) or "Nothing detected."
+    def run():
+        _, lat, lon = _where(building_id)
+        rows = tools.vexcel_detect(lat, lon)
+        return "; ".join(f"{r['label']}: {r['side']}, {r['distance_m']} m (conf {r['confidence']})" for r in rows) or "Nothing detected."
+    return _guard("Vexcel detection", run)
 
 
 @tool
 def aerial_look(building_id: str, question: str) -> str:
     """Ask a vision model one question about the building's top-down Vexcel image."""
-    _, lat, lon = _where(building_id)
-    img = tools.vexcel_image(building_id, lat, lon)
-    return f"[{img.name}] {tools.look(img, question)}" if img else "No aerial image for this building."
+    def run():
+        _, lat, lon = _where(building_id)
+        img = tools.vexcel_image(building_id, lat, lon)
+        return f"[{img.name}] {tools.look(img, question)}" if img else "No aerial image for this building."
+    return _guard("Aerial image", run)
 
 
 @tool
 def matterport_rooms(building_id: str) -> str:
     """The building's scans as unit types (e.g. "2BR, 2BA - 1,000SF") with their rooms and sizes in meters."""
-    units = tools.matterport_rooms(building_id)
-    return json.dumps(units) if units else "No Matterport scan for this building."
+    def run():
+        units = tools.matterport_rooms(building_id)
+        return json.dumps(units) if units else "No Matterport scan for this building."
+    return _guard("Matterport", run)
 
 
 @tool
 def matterport_panoramas(building_id: str) -> str:
     """List the building's Matterport scan panoramas as [{pano_id, label}]. Empty means no scan."""
-    panos = tools.matterport_panoramas(building_id)
-    return json.dumps([{"pano_id": p["pano_id"], "label": p["label"]} for p in panos]) if panos else "No Matterport scan for this building."
+    def run():
+        panos = tools.matterport_panoramas(building_id)
+        return json.dumps([{"pano_id": p["pano_id"], "label": p["label"]} for p in panos]) if panos else "No Matterport scan for this building."
+    return _guard("Matterport", run)
 
 
 @tool
 def scan_look(building_id: str, pano_id: str, question: str) -> str:
     """Ask a vision model one question about one Matterport panorama."""
-    pano = next((p for p in tools.matterport_panoramas(building_id) if p["pano_id"] == pano_id), None)
-    if pano is None:
-        return f"No panorama {pano_id}."
-    if pano.get("reading"):  # fixtures carry a written reading instead of an image
-        return pano["reading"]
-    if pano.get("faces"):  # four horizontal views of one sweep
-        return tools.look(tools.matterport_faces(building_id, pano), question + " The images are four directions from one spot.")
-    return tools.look(Path(pano["path"]), question) if pano.get("path") else "No image for this panorama."
+    def run():
+        pano = next((p for p in tools.matterport_panoramas(building_id) if p["pano_id"] == pano_id), None)
+        if pano is None:
+            return f"No panorama {pano_id}."
+        if pano.get("reading"):  # fixtures carry a written reading instead of an image
+            return pano["reading"]
+        if pano.get("faces"):  # four horizontal views of one sweep
+            return tools.look(tools.matterport_faces(building_id, pano), question + " The images are four directions from one spot.")
+        return tools.look(Path(pano["path"]), question) if pano.get("path") else "No image for this panorama."
+    return _guard("Matterport panorama", run)
 
 
 @tool
@@ -187,7 +208,8 @@ def survey(building_id: str, address: str, lat: float, lon: float, use_cache: bo
     """Stream the survey as TraceEvents. The last event is always kind="done" with a profile, even on failure."""
     t0, seq = time.time(), 0
     if use_cache and (hit := store.get("profile", building_id)):
-        yield TraceEvent(seq=0, t=0.0, kind="done", agent="surveyor", text="cached profile", data={"profile": hit | {"cached": True}})
+        cached = BuildingProfile.model_validate(hit).model_dump(mode="json") | {"cached": True}  # fills fields added since it was stored
+        yield TraceEvent(seq=0, t=0.0, kind="done", agent="surveyor", text="cached profile", data={"profile": cached})
         return
     _context[building_id] = (address, lat, lon)
     error = None
