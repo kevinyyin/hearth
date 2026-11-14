@@ -3,6 +3,7 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import HouseholdMap from "@/components/sim/HouseholdMap";
+import SourceBadge from "@/components/sim/SourceBadge";
 import { useCountyFeed } from "@/lib/simSource";
 import {
   CREW_COUNT,
@@ -197,22 +198,12 @@ export default function SideBySide() {
       </div>
 
       {/* which data answered, said plainly rather than left to be guessed */}
-      <p
-        className="mb-4 inline-flex flex-wrap items-center gap-2 rounded-full border px-3 py-1.5 text-xs"
-        style={{
-          borderColor: live ? "#0e7a54" : "var(--border)",
-          color: live ? "#0b5c3e" : "var(--text-secondary)",
-          background: live ? "#def0e6" : "transparent",
-        }}
-      >
-        <span
-          aria-hidden="true"
-          className="inline-block size-2 rounded-full"
-          style={{ background: live ? "#0e7a54" : "var(--text-muted)" }}
-        />
-        {live ? "Live from the Hearth API" : "Fixture"} · {feed.detail}
-        {feed.error && <span style={{ color: "#7a2e12" }}>· API unreachable: {feed.error}</span>}
-      </p>
+      <SourceBadge
+        source={feed.source}
+        detail={feed.detail}
+        error={feed.error}
+        className="mb-4"
+      />
 
       <div
         className="mb-5 h-1 w-full overflow-hidden rounded-full"

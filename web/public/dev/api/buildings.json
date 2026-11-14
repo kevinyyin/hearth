@@ -1,0 +1,13 @@
+[
+  {
+    "building_id": "B-SAMPLE",
+    "name": "Simulated mid-rise",
+    "address": "Simulated address, Harris County",
+    "lat": 29.76,
+    "lon": -95.37,
+    "property_type": "multifamily",
+    "has_scan": false,
+    "surveyed": false,
+    "records_only": true
+  }
+]

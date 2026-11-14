@@ -88,3 +88,34 @@ Both panels degrade rather than break: the fixture renders, and the badge says
 "Fixture" with the reason beside it. If the API answered but something was wrong
 with the data, the badge shows the error. So "did the integration work?" is a
 question you answer by looking at the page, not by reading a console.
+
+## Adopting this in the other lanes
+
+The pieces are shared, so a panel joins in without a rewrite.
+
+- `useBuildingFeed(id)`, `useRunsFeed()`, `useReplayMeta(runId)` and
+  `useSnapshotFeed(runId, i)` in `web/lib/simSource.ts` each return
+  `{ data, source, detail, error }`. They go through `getJson`, so they read the
+  API when one is configured and `web/public/dev/api/**` when one is not.
+- `<SourceBadge source={source} detail={detail} error={error} />` renders the
+  green "Live from the Hearth API" or grey "Fixture" chip. One line, no wiring.
+
+There are now dev fixtures for `/api/buildings` and `/api/buildings/B-SAMPLE`, so
+anything built on `getJson("/api/buildings/…")` draws on a laptop with no kit
+instead of showing an error.
+
+### The one place this does not reach
+
+`web/app/dispatch/page.tsx` returns early:
+
+```tsx
+if (!API) return <p>This page needs the Hearth API.</p>;
+```
+
+That check runs before any fetch, so no fixture can satisfy it. Swapping it for
+the hooks above is a few lines, but that file belongs to the voice-registration
+lane and is deliberately untouched here.
+
+`web/components/BuildingPanel.tsx` is the happier case: it already calls
+`getJson`, so the fixtures above are enough for it to render without the kit — no
+edit needed there, and none made.

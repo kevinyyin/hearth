@@ -15,7 +15,7 @@
 // than a blank screen.
 
 import { useEffect, useState } from "react";
-import { API } from "@/lib/api";
+import { API, getJson } from "@/lib/api";
 import {
   COUNTY_CENTER,
   FIXTURE_COUNTY,
@@ -217,4 +217,76 @@ export function useResidentFeed(): ResidentFeed & { error: string | null } {
   }, []);
 
   return { ...feed, error };
+}
+
+// --- Loaders any panel can use, on either source -----------------------------
+//
+// These go through getJson, which already falls back from `${API}${path}` to
+// `/dev${path}.json`. With the fixtures under web/public/dev/api that means a
+// panel built on them renders on a laptop with no API at all — which is the
+// difference between a demo that degrades and one that shows an error box.
+
+export type Feed<T> = { data: T | null; source: SourceKind; detail: string; error: string | null };
+
+function useFeed<T>(path: string | null, describe: (d: T) => string): Feed<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!path) return;
+    let live = true;
+    setData(null);
+    setError(null);
+    getJson<T>(path)
+      .then((d) => {
+        if (live) setData(d);
+      })
+      .catch((e: unknown) => {
+        if (live) setError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      live = false;
+    };
+  }, [path]);
+
+  return {
+    data,
+    source: API ? "api" : "fixture",
+    detail: data ? describe(data) : error ? "nothing answered" : "loading…",
+    error,
+  };
+}
+
+export type ReplayRun = { run_id: string; scenario?: string; policy?: string; crews?: number };
+export type ReplayMeta = { ticks: string[]; center: [number, number] };
+export type BuildingBrief = { building_id: string; name: string | null };
+
+/** The replays the API, or the dev fixtures, can serve. */
+export function useRunsFeed(): Feed<ReplayRun[]> {
+  return useFeed<ReplayRun[]>("/api/runs", (r) => `${r.length} run${r.length === 1 ? "" : "s"}`);
+}
+
+/** One replay's meta: its ticks, and the centre the map should open on. */
+export function useReplayMeta(runId: string | null): Feed<ReplayMeta> {
+  return useFeed<ReplayMeta>(
+    runId ? `/api/runs/${runId}/meta` : null,
+    (m) => `${m.ticks?.length ?? 0} ticks`,
+  );
+}
+
+/** One tick of a replay. */
+export function useSnapshotFeed(runId: string | null, i: number): Feed<unknown> {
+  return useFeed<unknown>(runId ? `/api/runs/${runId}/snapshots/${i}` : null, () => `tick ${i}`);
+}
+
+/**
+ * A building's detail: CoStar facts, the access brief once surveyed, scan ids.
+ * Falls back to web/public/dev/api/buildings/<id>.json, so a building panel has
+ * something to draw without the kit on the machine.
+ */
+export function useBuildingFeed(buildingId: string | null): Feed<BuildingBrief> {
+  return useFeed<BuildingBrief>(
+    buildingId ? `/api/buildings/${buildingId}` : null,
+    (b) => b.name ?? b.building_id,
+  );
 }
