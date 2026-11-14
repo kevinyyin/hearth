@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import AccessBrief from "@/components/AccessBrief";
 import AerialPins from "@/components/AerialPins";
+import { PeopleList } from "@/components/PeopleFields";
 import ScanPins from "@/components/ScanPins";
 import { API, getJson } from "@/lib/api";
 import { getPersona, SIZES } from "@/lib/home";
@@ -63,6 +64,11 @@ function JobCard({ row }: { row: HomeRow }) {
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>The resident did not match a scan to their home.</p>
         )}
       </Part>
+      {home.contacts.length > 0 && (
+        <Part title="People to contact">
+          <PeopleList people={home.contacts} />
+        </Part>
+      )}
       {detail?.brief && <AccessBrief brief={detail.brief} scanShown={!!home.scan_id} />}
     </article>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import AerialPins from "@/components/AerialPins";
 import { API, getJson, putJson } from "@/lib/api";
+import PeopleFields from "@/components/PeopleFields";
 import ScanPins from "@/components/ScanPins";
 import { emptyHome, getPersona, PIN_COLOR, PIN_LABEL, SIZES, withBuilding, withScan } from "@/lib/home";
 import type { BuildingDetail, Home, InsideKind, OutsideKind, Patient, SizeId } from "@/lib/types";
@@ -111,7 +112,8 @@ export default function ResidentPage() {
     if (!home) return;
     if (!home.building_id) return setStatus({ ok: false, text: "Choose your building first." });
     try {
-      setHome(await putJson<Home>(`/api/patients/${home.patient_id}/home`, home));
+      const named = { ...home, contacts: home.contacts.filter((p) => p.name.trim()) }; // a row left without a name is not a person
+      setHome(await putJson<Home>(`/api/patients/${home.patient_id}/home`, named));
       setStatus({ ok: true, text: "Saved." });
     } catch (e) {
       setStatus({ ok: false, text: e instanceof Error ? e.message : String(e) });
@@ -233,6 +235,13 @@ export default function ResidentPage() {
             </label>
           </>
         )}
+      </Section>
+
+      <Section title="People to contact">
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          Family or trusted people to reach as well. Simulated: do not enter a real person&apos;s details.
+        </p>
+        <PeopleFields people={home.contacts} onChange={(contacts) => set({ contacts })} addLabel="Add a contact" notePlaceholder="Note (has a key)" />
       </Section>
 
       <div className="flex items-center gap-3">
