@@ -1,56 +1,50 @@
 @import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
 
+/* The "paper" direction, now the app's default rather than one route's opt-in.
+   Every page reads these variables, so the dispatch, resident, responder and
+   start screens pick the look up without a line changing in them.
+
+   Series slots 1-5 are validated at light mode against both #f4f1ea and the
+   card surface #fbf9f4: lightness, chroma, CVD separation, the normal-vision
+   floor and 3:1 contrast all pass. Slot 4 is violet, not amber: amber cannot be
+   both dark enough for paper and far enough from slot 3's green. */
 :root {
   color-scheme: light;
 
-  --surface-0: #f6f6f4;
-  --surface-1: #fcfcfb;
-  --border: #e3e2dd;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #77756e;
+  --surface-0: #f4f1ea;
+  --surface-1: #fbf9f4;
+  --surface-2: #f1ede3;
+  --border: #dad4c6;
+  --text-primary: #14130f;
+  --text-secondary: #3d382e;
+  --text-muted: #6b6457;
+  --accent: #a8441a;
 
-  /* Categorical slots, fixed order, validated for the light surface. */
   --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --series-4: #eda100;
-  --series-5: #e87ba4;
+  --series-2: #c4461a;
+  --series-3: #0e7a54;
+  --series-4: #6b4fd1;
+  --series-5: #b0417a;
 
-  --grid: #ebeae5;
+  --grid: #dfd9cb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    --surface-0: #121211;
-    --surface-1: #1a1a19;
-    --border: #323130;
-    --text-primary: #f0efec;
-    --text-secondary: #c3c2b7;
-    --text-muted: #96948a;
-
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-
-    --grid: #2a2a28;
-  }
-}
-
+/* Dark is kept, but no longer follows the operating system. The paper direction
+   is a light design, and a demo machine set to dark would otherwise quietly show
+   a different one. Opt in with data-theme="dark" on <html>; restore the automatic
+   switch by wrapping this in @media (prefers-color-scheme: dark). */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
   --surface-0: #121211;
   --surface-1: #1a1a19;
+  --surface-2: #222221;
   --border: #323130;
   --text-primary: #f0efec;
   --text-secondary: #c3c2b7;
   --text-muted: #96948a;
+  --accent: #e0692f;
 
   --series-1: #3987e5;
   --series-2: #d95926;
@@ -72,38 +66,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------------------------------------------------------------------------
-   Direction 3A, "paper". Opt in per route with data-paper on a wrapper; it only
-   redefines tokens inside that wrapper, so pages that have not opted in (the
-   dispatch, resident and responder lanes) keep the :root values untouched.
-   Series slots 1-5 are re-snapped for this surface: validated at light mode
-   against #f4f1ea, all five pass lightness, chroma, CVD separation, the
-   normal-vision floor and 3:1 contrast. Slot 4 is violet, not amber: amber
-   cannot be both dark enough for paper and far enough from slot 3's green.
-   --------------------------------------------------------------------------- */
-[data-paper] {
-  color-scheme: light;
-
-  --surface-0: #f4f1ea;
-  --surface-1: #fbf9f4;
-  --surface-2: #f1ede3;
-  --border: #dad4c6;
-  --text-primary: #14130f;
-  --text-secondary: #3d382e;
-  --text-muted: #6b6457;
-  --accent: #a8441a;
-  --grid: #dfd9cb;
-
-  --series-1: #2a78d6;
-  --series-2: #c4461a;
-  --series-3: #0e7a54;
-  --series-4: #6b4fd1;
-  --series-5: #b0417a;
-
-  background: var(--surface-0);
-  color: var(--text-primary);
-}
-
+/** The display face, used for headlines and the one big number on a card. */
 .display {
   font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
   font-weight: 400;

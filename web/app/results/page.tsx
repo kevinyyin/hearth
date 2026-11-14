@@ -60,7 +60,7 @@ export default function ResultsPage() {
   const scaleMax = Math.max(hearth ?? 0, ...bars.map((b) => b.value ?? 0), 1);
 
   return (
-    <div data-paper className="min-h-full">
+    <div className="min-h-full">
       <div className="mx-auto max-w-[1400px] px-8 pb-24">
         {/* ---------- header ---------- */}
         <header

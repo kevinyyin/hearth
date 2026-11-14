@@ -225,7 +225,7 @@ export default function SimulationPage() {
   const entranceKnown = stage === "enrolled" || enrol.n >= 11;
 
   return (
-    <div data-paper className="min-h-full">
+    <div className="min-h-full">
       <div className="mx-auto max-w-[1500px] px-6 py-6 pb-24">
         {/* ---------- header ---------- */}
         <header className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3">
