@@ -36,7 +36,11 @@ export default function BuildingViews({
 }) {
   const { data, source, detail, error } = useBuildingFeed(buildingId);
 
-  const live = source === "api" && !!data;
+  // Three states, not two. "No API configured" and "an API answered badly" look
+  // the same to the render but are opposite problems, and saying the wrong one
+  // sends people to go fix something that is already right.
+  const configured = source === "api";
+  const live = configured && !!data;
   const listed = data?.scan_ids ?? [];
   const scanId =
     preferredScanId && listed.includes(preferredScanId)
@@ -74,9 +78,9 @@ export default function BuildingViews({
           className="rounded-lg border px-3 py-2 text-xs"
           style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
         >
-          No aerial tile here. Vexcel is fetched by the API with its own key; point
-          NEXT_PUBLIC_API at a Hearth API that has one and the real tile appears, with the
-          resident&rsquo;s parking and entrance pins on it.
+          {configured
+            ? "No aerial tile. The API is configured, so this is that API not returning this building — check the id above against what it serves, and whether the request carried the password."
+            : "No aerial tile here. Vexcel is fetched by the API with its own key; point NEXT_PUBLIC_API at a Hearth API that has one and the real tile appears, with the resident's parking and entrance pins on it."}
         </p>
       )}
 
@@ -108,8 +112,10 @@ export default function BuildingViews({
               </strong>{" "}
               The walkthrough is Matterport&rsquo;s, opened with a model id and a viewer key the API
               hands over — the same ones the resident screen uses, so where that screen shows a scan
-              this one will too. This build has no <code>NEXT_PUBLIC_API</code>, so there is nothing
-              to ask.
+              this one will too.{" "}
+              {configured
+                ? "An API is configured, so this is that API not returning this building rather than a missing setting."
+                : "This build has no NEXT_PUBLIC_API, so there is nothing to ask."}
             </>
           )}
         </div>
