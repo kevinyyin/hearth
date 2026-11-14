@@ -56,3 +56,41 @@ placeholders, `confirmed: false`). No patient has a phone number. Homes are unif
 polygon. A building resident (`population.costar_building_share`) moves into the nearest surveyed CoStar building
 within `population.building_match_km` (at most `population.patients_per_building` each), so a run uses that
 building's profile; with no surveyed buildings everybody uses the default time constants.
+
+## Engine (Task S3)
+
+Half-hour ticks over the scenario window. Per tick, for every patient (numpy arrays): power from the curve, backup
+drain, indoor temperature (true building time constants), hours at risk (`hearth.metrics.at_risk`), then plan states
+and crew assignment. The world is identical under every policy; policies differ in what they know and do:
+
+- **p0, manual phone tree**: staff call the list in a seeded order at `phone_tree.staff` x `calls_per_staff_hour`;
+  `phone_tree.unreachable_rate` of calls fail and go to a welfare-check queue; reached patients ask their supplier
+  for a delivery when backup falls below `decision.low_backup_h`, first come first served; nobody is moved.
+- **p3, Hearth**: dark patients with a verified phone are known at once; each tick `hearth.decision` rules run with
+  a rolling `sim.horizon_h` (no restoration foresight) and an indoor forecast over the next 12 h of observed weather;
+  hysteresis as in the spec. Unverified patients are UNREACHABLE until a crew checks (silence is never safe).
+  Crews go to the highest risk weight per hour left (welfare checks assume `decision.low_backup_h` left).
+- **Crews** belong to suppliers (split by `population.supplier_shares`), start at synthetic depots, and deliver only
+  for their own supplier unless mutual aid. A delivery adds `planner.delivery_backup_h`. A ride ends at the nearest
+  hospital or shelter in `planner.destinations` (plus surveyed hotels and senior housing when buildings are on). A
+  dispatcher's approval of each move is assumed in the simulation; the live app requires it.
+- **`--no-buildings`** gives the planner default time constants and no refuge buildings; the world keeps the true
+  ones. Building time constants come from surveyed profiles in the store (`HEARTH_DB`), else config defaults.
+
+## Sweep and replay (Task S4)
+
+`uv run python -m hearth.sim sweep --scenario beryl_2024 --crews 5,10,20,40,80 --seeds 10` (250 runs, about 2.5 min
+on 10 cores) writes `results/sweep_beryl_2024.json` and `results/sweep_beryl_2024.assumptions.yaml`. It ran with an
+empty profile store, so **`p3__nobld` equals `p3`**: no synthetic home sits in a surveyed building yet. The store in
+the main checkout holds hand-made fixtures (B-SAMPLE, H-*) that must not feed published results. Rerun the sweep
+after real season-sweep profiles are in the store to see a building effect (expect it to be small: a few residents
+per surveyed building).
+
+`results/case_jarrett__p3__c20__s1/` replays one documented case (Spring, TX, July 2024; sources in
+`config/scenarios/case_jarrett.yaml`) with a synthetic stand-in patient, labeled "replay of a documented case;
+outcome under Hearth is simulated". The home cooled to 22-26 C during the storm day, so OWN_BACKUP was right then;
+on day 2 the forecast turned unsafe and the patient was moved, two days before the documented date. The replay gives
+this one patient all 20 crews, so it is optimistic; the county run shows the contention.
+
+Regenerate the map's county run (about 7 s, about 350 MB, git-ignored) and the patients file the API reads:
+`uv run python -m hearth.sim run --scenario beryl_2024 --policy p3 --seed 1 --crews 20`.

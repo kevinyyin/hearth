@@ -7,6 +7,7 @@ The world is the same under every policy (outage, weather, buildings, crews). Po
       the rest are UNREACHABLE until a crew checks; crews go to the highest risk weight per hour left.
 use_buildings=False keeps the world but gives the planner default time constants and no refuge buildings.
 """
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -22,7 +23,7 @@ from hearth.devices import drain
 from hearth.metrics import at_risk, summarize
 from hearth.outage import dark_mask, fraction_out
 from hearth.planner import Crew, Flags, Need, assign
-from hearth.population import km, load_population
+from hearth.population import generate, km, load_population
 from hearth.scenario import load
 from hearth.sim.policies import MOVE, MOVED, NA, OWN, RES, RESTORED, STATES, UNR, WHY, decide_vec, hysteresis_vec
 from hearth.temperature import step_indoor, unsafe_temp
@@ -65,7 +66,7 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
     dt, horizon = a("sim.tick_minutes") / 60, a("sim.horizon_h")
     ticks = pd.date_range(sc["start"], sc["end"], freq=f"{a('sim.tick_minutes')}min")
     hours = np.arange(len(ticks)) * dt
-    ps = load_population(scenario, seed)
+    ps = (load_population if out_root is not None else generate)(scenario, seed)  # sweeps run in parallel: no parquet
     n, idx_of = len(ps), {p.patient_id: i for i, p in enumerate(ps)}
     rng = np.random.default_rng([seed, 1])  # its own stream, apart from the population's
 
@@ -236,7 +237,9 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
             snaps.append(_iso(t))
 
     rid = run_id(scenario, policy_label(policy, flags), crews, seed)
-    summary = {"run_id": rid, **{k: float(v) for k, v in summarize(risk, weight, dt).items()}}
+    summary = {"run_id": rid, **{k: float(v) for k, v in summarize(risk, weight, dt).items()},
+               "device_hours": float(device_h), "temp_hours": float(temp_h), "moves": moves,
+               "patients_reaching_zero": int(zeroed.sum()), "assumptions_sha256": hashlib.sha256(ASSUMPTIONS.read_bytes()).hexdigest()}
     if out is not None:
         (out / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
         meta = {"run_id": rid, "scenario": scenario, "policy": policy_label(policy, flags), "crews": crews, "seed": seed,

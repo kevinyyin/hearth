@@ -69,3 +69,36 @@ def test_silence_is_never_safe(tmp_path):
 
 def test_full_county_run_is_fast_enough(tmp_path):
     t = time.time(); run("beryl_2024", "p3", 1, 20, out_root=tmp_path); assert time.time() - t < 180
+
+
+def test_summary_has_published_keys(tmp_path):
+    from hearth.config import ASSUMPTIONS
+    s = run("sample", "p3", 1, 5, out_root=tmp_path); d = next(tmp_path.iterdir())
+    assert {"risk_hours_weighted", "risk_hours_unweighted", "device_hours", "temp_hours", "moves", "patients_reaching_zero",
+            "assumptions_sha256"} <= s.keys()
+    assert s["assumptions_sha256"] == hashlib.sha256(ASSUMPTIONS.read_bytes()).hexdigest()
+    assert s["moves"] == (d / "events.jsonl").read_text().count('"type": "moved"') > 0
+
+
+def test_sweep_rows_take_median_and_percentiles():
+    from hearth.metrics import sweep_rows
+    runs = [{"policy": "p3", "crews": 5, "risk_hours_weighted": float(w), "risk_hours_unweighted": float(w) / 2} for w in range(1, 12)]
+    assert sweep_rows(runs) == [{"policy": "p3", "crews": 5, "median": 6.0, "p5": 1.5, "p95": 10.5, "unweighted_median": 3.0}]
+
+
+def test_sweep_writes_one_row_per_policy_and_crew_count(tmp_path):
+    from hearth.sim.sweep import sweep
+    rows = sweep("sample", [5, 10], 2, out_root=tmp_path)
+    assert len(rows) == 10 and json.loads((tmp_path / "sweep_sample.json").read_text()) == rows
+    assert {r["policy"] for r in rows} == {"p0", "p3", "p3__nobld", "p3__nomove", "p3__aid"}
+
+
+def test_documented_case_replay_is_labeled_and_moves_once_the_home_turns_hot(tmp_path):
+    run("case_jarrett", "p3", 1, 20, out_root=tmp_path); d = next(tmp_path.iterdir())
+    meta = json.loads((d / "meta.json").read_text())
+    assert meta["patients"] == 1 and "replay of a documented case; outcome under Hearth is simulated" in meta["label"]
+    evs = [json.loads(l) for l in (d / "events.jsonl").read_text().splitlines()]
+    states = [e["data"]["to"] for e in evs if e["type"] == "state_change"]
+    # charged device, hot home: once the home is forecast unsafe she is never left on her own backup
+    assert "MOVE" in states and "OWN_BACKUP" not in states[states.index("MOVE"):]
+    assert any(e["type"] == "moved" and e["t"] < "2024-07-11" for e in evs)
