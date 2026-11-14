@@ -34,7 +34,7 @@ export function tapToFraction(
 
 export function emptyHome(patient: Patient): Home {
   return { patient_id: patient.patient_id, building_id: patient.building_id ?? "", ok_without_h: 0, backup_plan: "", size: "microwave",
-    size_cm: null, scan_id: null, note: "", outside: [], inside: [] };
+    size_cm: null, scan_id: null, note: "", outside: [], inside: [], contacts: [] };
 }
 
 /** Pins belong to the building they were placed on, so a new building starts with none. */

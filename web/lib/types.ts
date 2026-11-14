@@ -180,7 +180,12 @@ export type Home = {
   note: string;
   outside: OutsidePin[];
   inside: InsidePin[];
+  /** Family or trusted people to reach as well. Shown to the responder, never messaged. */
+  contacts: Person[];
 };
+
+/** Someone the resident names. Invented, like the resident. */
+export type Person = { name: string; relation: string; phone: string; note: string };
 
 export type HomeRow = { home: Home; patient: Patient; address: string };
 
