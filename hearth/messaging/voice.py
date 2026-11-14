@@ -20,7 +20,7 @@ from hearth import store
 from hearth.config import ROOT, a
 from hearth.contracts import PlanState
 from hearth.buildings import tools
-from hearth.messaging import guard, registry, scripts
+from hearth.messaging import guard, register, registry, scripts
 from hearth.messaging.interpreter import Turn, interpret_turn
 from hearth.messaging.templates import allowed, render
 
@@ -114,7 +114,9 @@ def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, script
         t = interpret_turn(text, keypad, call["ctx"], history)
     call["transcript"][-1]["read"] = t.model_dump(exclude_defaults=True)  # what the interpreter heard, for review
     if t.needs_help_now:
-        _end(call, "escalated", "escalation", "caller needs help now")
+        _end(call, "escalated", "escalation", "caller needs help now")  # a person sees the call, as before
+        if call["patient_id"] and call["kind"] != "building_check":  # and the request goes into the help queue at once
+            return None, ([("medical_handoff", {})] if t.medical_question else []) + register.help_now(call)
         return None, [("medical_handoff" if t.medical_question else "human_handoff", {})]
     if t.medical_question:
         call["events"].append({"type": "medical_question", "text": text, "t": time.time()})

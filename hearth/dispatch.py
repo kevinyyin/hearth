@@ -11,6 +11,7 @@ import threading
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Literal, NamedTuple
+from zoneinfo import ZoneInfo
 
 import anthropic
 from pydantic import BaseModel, ValidationError
@@ -397,3 +398,19 @@ def tracker(r: HelpRequest | None) -> dict:
                     step(f"On the way to {place}" if reached("riding") else "Ride to a place to stay", "riding", reached("riding")),
                     step(f"Dropped off at {place}" if reached("dropped_off") else "Dropped off", "dropped_off", reached("dropped_off"))]
     return out
+
+
+def tracker_lines(r: HelpRequest | None) -> list[str]:
+    """The tracker as sentences for a phone or a text: every step reached, plus where a waiting request stands, with the
+    arrival window written out in Houston time. Still nothing about a crew or a time before that crew has accepted."""
+    t = tracker(r)
+    lines = [s["text"] for s in t["steps"] if s["done"]] + ([t["steps"][1]["text"]] if r and r.state == "waiting" else [])
+    if t["window"]:
+        here = ZoneInfo("America/Chicago")
+        window = " and ".join(w.astimezone(here).strftime("%-I:%M %p") for w in t["window"])
+        lines = [s.replace("{window}", window) for s in lines]
+    return lines
+
+
+def latest_line(patient_id: str) -> str | None:
+    return (tracker_lines(request(patient_id)) or [None])[-1]

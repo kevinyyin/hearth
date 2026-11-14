@@ -36,6 +36,9 @@ FAKE = {
 def world(tmp_path, monkeypatch):
     monkeypatch.setenv("HEARTH_DB", str(tmp_path / "t.db"))
     monkeypatch.setattr(voice, "interpret_turn", lambda text, keypad, ctx, history: FAKE[text])
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    from hearth import dispatch
+    monkeypatch.setattr(dispatch, "_ask_model", lambda rows: (_ for _ in ()).throw(RuntimeError("no model in tests")))  # rule order
     store.put("patient", "p1", PATIENT)
     store.put("proposal", "P1", PROPOSAL)
 
@@ -217,7 +220,7 @@ def test_short_distress_at_the_opening_escalates(monkeypatch):
     FAKE["help me"] = Turn(needs_help_now=True, wants_human=True, confidence=0.9)
     c = start_call("p1", "impact")
     out = respond(c, "help me")
-    assert store.get("call", c)["status"] == "escalated" and render("human_handoff") in out
+    assert store.get("call", c)["status"] == "escalated" and render("help_opened") in out  # a person sees the call, and help is asked for
 
 
 def test_dialysis_patient_hears_about_their_next_treatment_not_backup():

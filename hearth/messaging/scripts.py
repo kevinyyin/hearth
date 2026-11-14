@@ -28,8 +28,10 @@ def opening(call: dict) -> Lines:
 
 def advance(call: dict, t: Turn) -> Lines:
     """Mutates call (step, pending, facts, status) and returns what to say next."""
-    if call["kind"] in ("register", "check", "menu"):
+    if call["kind"] in ("register", "check", "menu") or call["step"] in ("walk", "wheelchair"):
         return register.advance(call, t)
+    if t.intent == "help" and call["patient_id"]:  # asking for help on an impact or move call opens the same request
+        return register.help_branch(call)
     step, c, facts = call["step"], call["ctx"], call["facts"]
     # plain statements; only confident turns reach here. Never "safe": on a call, keypad 1 means "yes" to the question
     for k in ("device_running", "can_move"):

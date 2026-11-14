@@ -52,7 +52,7 @@ def opening(call: dict) -> Lines:
     c = call["ctx"]
     if call["kind"] == "menu":
         call["step"] = "menu"
-        return [("open_automated", {"county": c["county"]}), ("menu", {})]
+        return [("open_automated", {"county": c["county"]})] + _live_line(call["patient_id"]) + [("menu", {})]
     if call["kind"] == "check":
         call["facts"] = registry.facts_for(call["patient_id"])
         call["to_confirm"] = ["address", "hours", "home"]
@@ -64,7 +64,25 @@ def opening(call: dict) -> Lines:
 def advance(call: dict, t: Turn) -> Lines:
     """Mutates the call (step, facts, answers, status) and returns what to say next."""
     step, f, ans = call["step"], call["facts"], call.setdefault("answers", {})
-    if step == "equipment":
+    if step == "menu":
+        if t.intent == "help":
+            return help_branch(call)
+        if t.intent == "safe":
+            return _safe(call)
+        if t.intent == "details":
+            call["kind"] = "check"
+            return opening(call)
+        return [("menu", {})]  # anything else, keypad 1 included, hears the menu again: nothing records safe without the words
+    elif step == "walk":
+        if t.mobility in ("wheelchair", "bed"):
+            return _open_help(call, "wheelchair_power" if t.mobility == "wheelchair" else "bedbound")
+        if t.confirms or t.mobility == "walks":
+            return _open_help(call, "walks_with_help")
+        if t.confirms is False:
+            return _go(call, "wheelchair", "ask_wheelchair")
+    elif step == "wheelchair":  # any answer counts; unclear is the more careful one
+        return _open_help(call, "wheelchair_power" if t.mobility == "wheelchair" else "walks_with_help" if t.mobility == "walks" else "bedbound")
+    elif step == "equipment":
         if t.confirms is False:
             return _done(call, "reg_no_equipment")
         if t.confirms or t.device:
@@ -155,6 +173,63 @@ def advance(call: dict, t: Turn) -> Lines:
     elif step == "close":
         return [("close_no_promise", {})]
     return [tuple(call["last"])] if call.get("last") else _next(call)  # not an answer to the question: ask it again
+
+
+# ---- help by phone: the same queue the resident page's button opens ----
+def help_branch(call: dict) -> Lines:
+    """Asks how a phone registrant moves (once), then opens a help request. A live request is read back instead."""
+    from hearth import dispatch  # late: dispatch pulls in the refuge code, which the voice endpoint needs only here
+
+    pid = call["patient_id"]
+    if (r := dispatch.request(pid)) and r.state in dispatch.LIVE:
+        return _end_help(call, [("help_already", {})] + _live_line(pid))
+    home = store.get("home", pid) or {}
+    if home.get("source") == "phone" and not home.get("mobility_asked"):
+        return _go(call, "walk", "ask_walk")
+    return _open_help(call, None)
+
+
+def help_now(call: dict) -> Lines:
+    """"Needs help now": the request opens at once with the mobility on record, no questions."""
+    return _open_help(call, None)
+
+
+def _open_help(call: dict, mobility: str | None) -> Lines:
+    from hearth import dispatch
+
+    pid = call["patient_id"]
+    if mobility:
+        store.put("patient", pid, store.get("patient", pid) | {"mobility": mobility})
+        store.put("home", pid, store.get("home", pid) | {"mobility_asked": True})
+    try:
+        dispatch.open_request(pid)
+    except ValueError:  # a request is already open
+        return _end_help(call, [("help_already", {})] + _live_line(pid))
+    return _end_help(call, [("help_opened", {})])
+
+
+def _safe(call: dict) -> Lines:
+    from hearth import dispatch
+
+    try:
+        dispatch.mark_safe(call["patient_id"])
+    except ValueError:  # already riding with a crew: the drop-off holds the refuge place
+        return _end_help(call, _live_line(call["patient_id"]) or [("menu", {})])
+    return _end_help(call, [("safe_noted", {})])
+
+
+def _end_help(call: dict, lines: Lines) -> Lines:
+    if call["status"] == "active":  # an escalated call stays escalated
+        call["status"], call["step"] = "done", "close"
+    return lines
+
+
+def _live_line(patient_id: str) -> Lines:
+    from hearth import dispatch
+
+    r = dispatch.request(patient_id)
+    line = dispatch.latest_line(patient_id) if r and r.state in dispatch.LIVE else None
+    return [("tracker_now", {"line": line})] if line else []
 
 
 # ---- what to ask next: the first thing still missing ----
