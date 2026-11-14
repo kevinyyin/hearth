@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import BuildingPanel from "@/components/BuildingPanel";
 import PatientPanel from "@/components/PatientPanel";
 import TimeSlider from "@/components/TimeSlider";
 import { getJson } from "@/lib/api";
@@ -217,7 +218,7 @@ export default function HomePage() {
 
         {selected && (
           <aside
-            className="w-[340px] shrink-0 overflow-hidden border-l"
+            className="w-[380px] shrink-0 overflow-y-auto border-l"
             style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
           >
             <PatientPanel
@@ -225,6 +226,7 @@ export default function HomePage() {
               events={events}
               onClose={() => setSelectedId(null)}
             />
+            {selected.building_id && <BuildingPanel buildingId={selected.building_id} patientId={selected.id} />}
           </aside>
         )}
       </div>
