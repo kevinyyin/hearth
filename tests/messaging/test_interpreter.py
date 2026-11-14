@@ -66,3 +66,15 @@ def test_guard_allows_plain_acknowledgments(line):
 def test_live_minutes_become_hours():
     t = interpret_turn("about forty minutes", None, ctx, [{"role": "agent", "text": "About how many hours of backup do you have?"}])
     assert t.backup_hours == pytest.approx(0.67, abs=0.05) and not t.wants_human
+
+
+def test_eval_scoring_counts_hours_within_ten_percent_and_escalations():
+    from evals.run_interpreter import score
+    rows = [
+        ({"expected": {"backup_hours": 0.67}, "must_escalate": False}, interpreter.Turn(backup_hours=0.7, confidence=0.9)),
+        ({"expected": {"backup_hours": 6}, "must_escalate": True}, interpreter.Turn(backup_hours=4, confidence=0.9)),
+        ({"expected": {"needs_help_now": True}, "must_escalate": True}, interpreter.Turn(needs_help_now=True, confidence=0.9)),
+    ]
+    s = score(rows)
+    assert s["backup_hours"] == (1, 2) and s["needs_help_now"] == (1, 1)
+    assert s["escalation_tp"] == 1 and s["escalation_fn"] == 1 and s["escalation_fp"] == 0
