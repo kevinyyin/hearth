@@ -40,3 +40,11 @@ def test_not_configured_is_none(monkeypatch):
 def test_paths_cannot_escape_the_cache():
     with pytest.raises(ValueError):
         remote.fetch("../../etc/passwd")
+
+
+def test_new_secret_keys_go_only_in_the_apikey_header(monkeypatch):
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "sb_secret_abc")
+    seen = {}
+    monkeypatch.setattr(remote.httpx, "get", lambda url, headers, **k: seen.update(headers) or Resp(200, b"x"))
+    remote.fetch("a.json")
+    assert seen == {"apikey": "sb_secret_abc"}

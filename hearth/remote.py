@@ -17,7 +17,10 @@ CACHE = DATA / "remote"
 
 def _cfg() -> tuple[str, dict] | None:
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-    return (url.rstrip("/") + "/storage/v1", {"Authorization": f"Bearer {key}", "apikey": key}) if url and key else None
+    if not (url and key):
+        return None
+    # new secret keys (sb_secret_...) are not JWTs and go only in apikey; legacy service_role JWTs also go as a bearer
+    return url.rstrip("/") + "/storage/v1", ({"apikey": key} if key.startswith("sb_") else {"Authorization": f"Bearer {key}", "apikey": key})
 
 
 def _local(path: str) -> Path:
