@@ -9,6 +9,7 @@ import {
   RUN_HOURS,
   STATIONS,
   count,
+  outNow,
   tallyAt,
   toursBy,
   vehiclesAt,
@@ -33,7 +34,7 @@ const STATE_LABEL: Record<HouseholdState, string> = {
 function Tally({ which, hour, time }: { which: SideKey; hour: number; time: number }) {
   const t = tallyAt(hour, which);
   return (
-    <dl className="mt-3 grid grid-cols-3 gap-3">
+    <dl className="mt-3 grid grid-cols-4 gap-3">
       <div>
         <dt className="text-xs" style={{ color: "var(--text-muted)" }}>
           Reached
@@ -44,7 +45,7 @@ function Tally({ which, hour, time }: { which: SideKey; hour: number; time: numb
       </div>
       <div>
         <dt className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Still waiting
+          Waiting
         </dt>
         <dd className="tnum m-0 text-2xl font-semibold" style={{ color: "#c4461a" }}>
           {count.format(t.waiting)}
@@ -55,6 +56,17 @@ function Tally({ which, hour, time }: { which: SideKey; hour: number; time: numb
           Deployments
         </dt>
         <dd className="tnum m-0 text-2xl font-semibold">{count.format(toursBy(time, which))}</dd>
+      </div>
+      <div>
+        <dt className="text-xs" style={{ color: "var(--text-muted)" }}>
+          Crews out
+        </dt>
+        <dd className="tnum m-0 text-2xl font-semibold">
+          {count.format(outNow(time, which))}
+          <span className="text-sm font-normal" style={{ color: "var(--text-muted)" }}>
+            /{CREW_COUNT}
+          </span>
+        </dd>
       </div>
     </dl>
   );
@@ -234,12 +246,25 @@ export default function SideBySide() {
         style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
       >
         <p className="m-0">
-          <strong style={{ color: "var(--text-primary)" }}>Same crews, same stations.</strong> Both
-          sides run {CREW_COUNT} crews out of {STATIONS.length} stations and two hours per round.
-          Hearth gets to {endHearth.reached} households in {toursHearth} deployments; today reaches{" "}
-          {endToday.reached} in {toursToday}. More trips, fewer people. Hearth knows who needs help
-          before they call, so a crew loads for four nearby stops and works a round; today each
-          call surfaces on its own, so a crew is back at the station after two.
+          <strong style={{ color: "var(--text-primary)" }}>
+            Same vans, same speed, same time at the door.
+          </strong>{" "}
+          Both sides run {CREW_COUNT} crews out of {STATIONS.length} stations, and a van covers the
+          same ground per hour on either map. One thing differs: whether the dispatcher already
+          knows who needs help. With the registry every crew has somewhere useful to be and can
+          chain four nearby stops into a round — {toursHearth} deployments, {endHearth.reached}{" "}
+          households. Without it most vans have nowhere to go, and the one that moves drives out to
+          a single address and straight back — {toursToday} deployments, {endToday.reached}{" "}
+          households.
+        </p>
+        <p className="m-0">
+          <strong style={{ color: "var(--text-primary)" }}>The lever, stated plainly:</strong> the
+          right-hand side learns of about two households an hour, because a call has to reach the
+          front of a queue; the left-hand side knows all {HOUSEHOLDS.length} the moment their power
+          goes. That rate is an assumption, not a measurement, and almost the whole gap above rests
+          on it — argue with that number and you are arguing with the panel. It is also why the
+          right-hand crews are idle rather than slow: they are not being outrun, they are waiting to
+          be told where to go.
         </p>
         <p className="m-0">
           <strong style={{ color: "var(--text-primary)" }}>
