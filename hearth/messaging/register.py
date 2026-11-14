@@ -50,6 +50,9 @@ def questions(rec: dict | None, facts: dict) -> list[str]:
 
 def opening(call: dict) -> Lines:
     c = call["ctx"]
+    if call["kind"] == "menu":
+        call["step"] = "menu"
+        return [("open_automated", {"county": c["county"]}), ("menu", {})]
     if call["kind"] == "check":
         call["facts"] = registry.facts_for(call["patient_id"])
         call["to_confirm"] = ["address", "hours", "home"]

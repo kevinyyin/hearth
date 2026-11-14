@@ -48,6 +48,8 @@ def send_text(patient_id: str, key: str, **vars) -> str:
 def after_call(call_id: str) -> str | None:
     """The follow-up text: only what the caller confirmed. Nothing when nothing was confirmed or no person entered a phone."""
     call = store.get("call", call_id)
+    if not call.get("patient_id"):  # a registration that ended before anyone was registered
+        return None
     said = _facts_text(confirmed_facts(call_id), call["ctx"])
     if not (said and phone_of(call["patient_id"])):
         return None
@@ -59,6 +61,10 @@ def _facts_text(facts: dict, ctx: dict) -> str:
     if (h := facts.get("backup_hours")) is not None:
         amount = f"{h:g} hour{'' if h == 1 else 's'}" if h >= 1 else f"{round(h * 60)} minutes"
         parts.append(f"{amount} of {ctx.get('supply') or 'backup'}")
+    if address := facts.get("address"):
+        parts.append(f"your address {address}")
+    if (floor := facts.get("floor")) is not None:
+        parts.append(f"floor {floor}")
     if (hot := facts.get("home_too_hot_or_cold")) is not None:
         parts.append(f"your home is {'' if hot else 'not '}too hot or too cold")
     if (move := facts.get("consents_to_move")) is not None:

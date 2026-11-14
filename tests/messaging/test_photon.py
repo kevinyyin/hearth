@@ -77,3 +77,9 @@ def test_webhook_keeps_signed_events_and_refuses_the_rest(monkeypatch):
     assert store.get("photon_event", "msg_1")["type"] == "message.received"
     monkeypatch.delenv("PHOTON_WEBHOOK_SECRET")
     assert c.post("/photon/webhook", content=body, headers=signed(body)).status_code == 401  # no secret: nothing is trusted
+
+
+def test_the_follow_up_lists_a_confirmed_address_and_floor():
+    from hearth.messaging.photon import _facts_text
+    said = _facts_text({"backup_hours": 4.0, "address": "1200 Fixture St, Houston, TX 77002", "floor": 3}, {})
+    assert said == "4 hours of backup, your address 1200 Fixture St, Houston, TX 77002 and floor 3"

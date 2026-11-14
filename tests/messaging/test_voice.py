@@ -231,13 +231,69 @@ def system(caller, conversation="conv-1"):
     return {"role": "system", "content": f"Every reply comes from the Hearth custom model endpoint. caller={caller} conversation={conversation}"}
 
 
-def test_an_inbound_call_from_a_number_a_person_entered_gets_one_impact_check():
+def post_turn(caller, turn, conversation="conv-1"):
+    return sse_text(client().post("/voice/v1/chat/completions", json={
+        "stream": True, "messages": [system(caller, conversation), {"role": "user", "content": turn}]}))
+
+
+FULL = {"device": "oxygen", "device_words": "oxygen", "building_id": "B-SAMPLE", "address": "1200 Fixture St, Houston, TX 77002",
+        "backup_hours": 4.0, "floor": 3}
+
+
+def test_a_number_on_the_demo_list_gets_the_registration_call(monkeypatch):
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
+    assert "powered medical equipment" in post_turn("+15550100002", "hello?")
+    assert [(c["patient_id"], c["kind"], c["ctx"]["phone"]) for c in store.all("call")] == [(None, "register", "+15550100002")]
+
+
+def test_a_registered_number_gets_the_menu(monkeypatch):
+    from hearth.messaging import registry
+    monkeypatch.setenv("HEARTH_FIXTURES", "1")
+    registry.save({"patient_id": None, "ctx": {"phone": "+15550100002"}, "facts": dict(FULL)})
+    line = post_turn("+15550100002", "hello?")
+    assert line.endswith(render("menu")) and store.all("call")[0]["kind"] == "menu"
+
+
+def test_a_demo_patients_contact_is_not_routed_to_an_impact_call():
     store.put("contact", "p1", {"patient_id": "p1", "phone": "+15550100002"})
-    lines = [sse_text(client().post("/voice/v1/chat/completions", json={
-        "stream": True, "messages": [system("+15550100002"), {"role": "user", "content": turn}]})) for turn in ("hello?", "yes")]
-    calls = store.all("call")
-    assert "automated" in lines[0] and lines[1] == render("ask_temperature")
-    assert [(c["patient_id"], c["kind"]) for c in calls] == [("p1", "impact")]
+    assert post_turn("+15550100002", "hello?") == render("human_handoff") and store.all("call") == []
+
+
+def test_a_caller_who_hung_up_registers_again(monkeypatch):
+    from hearth.messaging import registry
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
+    for turn in ("hello?", "...", "...", "..."):  # three silent turns in a row end the first call
+        post_turn("+15550100002", turn, "conv-1")
+    assert [r["call_id"] for r in registry.registrations()["needs_person"]] == [store.all("call")[0]["call_id"]]
+    assert "powered medical equipment" in post_turn("+15550100002", "hello?", "conv-2")
+
+
+def test_a_bare_number_answers_the_question_asked(monkeypatch):
+    monkeypatch.setattr(voice, "interpret_turn", lambda *a: pytest.fail("a bare number at these questions needs no model"))
+    c = start_call(None, "register", phone="+15550100002")
+    call = store.get("call", c)
+    call |= {"step": "hours", "last": ["reg_ask_hours", {"device": "oxygen"}], "facts": dict(FULL, backup_hours=None)}
+    store.put("call", c, call)
+    assert "three hours" in respond(c, "3")  # not keypad 3 ("it's different")
+    call = store.get("call", c) | {"step": "floor", "last": ["ask_floor", {}]}
+    store.put("call", c, call)
+    respond(c, "1")  # not keypad 1 ("yes")
+    assert store.get("call", c)["answers"]["floor"] == 1
+
+
+def test_dial_rings_the_caller_back_for_a_registration(monkeypatch):
+    import httpx
+    posts = []
+    for k, v in {"ELEVENLABS_API_KEY": "k", "ELEVENLABS_AGENT_ID": "agent1", "ELEVENLABS_PHONE_NUMBER_ID": "line1"}.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(voice.httpx, "post", lambda url, **kw: posts.append(kw["json"]) or httpx.Response(
+        200, json={"success": True, "conversation_id": "conv9"}, request=httpx.Request("POST", url)))
+    assert voice.dial(start_call(None, "register", phone="+15550100003")) == "conv9" and posts[0]["to_number"] == "+15550100003"
+
+
+def test_no_follow_up_text_for_a_call_that_registered_no_one():
+    from hearth.messaging import photon
+    assert photon.after_call(start_call(None, "register", phone="+15550100003")) is None
 
 
 def test_an_inbound_call_from_any_other_number_goes_to_a_person():

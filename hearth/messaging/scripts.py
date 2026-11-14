@@ -12,7 +12,7 @@ Lines = list[tuple[str, dict]]
 
 
 def opening(call: dict) -> Lines:
-    if call["kind"] in ("register", "check"):
+    if call["kind"] in ("register", "check", "menu"):
         return register.opening(call)
     c = call["ctx"]
     if call["kind"] == "move_consent":
@@ -28,7 +28,7 @@ def opening(call: dict) -> Lines:
 
 def advance(call: dict, t: Turn) -> Lines:
     """Mutates call (step, pending, facts, status) and returns what to say next."""
-    if call["kind"] in ("register", "check"):
+    if call["kind"] in ("register", "check", "menu"):
         return register.advance(call, t)
     step, c, facts = call["step"], call["ctx"], call["facts"]
     # plain statements; only confident turns reach here. Never "safe": on a call, keypad 1 means "yes" to the question
