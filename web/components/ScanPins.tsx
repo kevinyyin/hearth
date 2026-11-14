@@ -179,10 +179,16 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
     const a = sdk.Mode.current.subscribe(setMode);
     const b = sdk.Sweep.data.subscribe({ onCollectionUpdated: (all) => { sweeps.current = all; draw(); } });
     const c = sdk.Camera.pose.subscribe((p) => { pose = p; draw(); });
+    // a scan that named no spot while it opened still gets its route from the first one it names
+    const d = sdk.Sweep.current.subscribe((sweep) => {
+      const id = sweep.id || sweep.sid;
+      if (id && !start.current) { start.current = id; draw(); }
+    });
     return () => {
       a.cancel();
       b.cancel();
       c.cancel();
+      d.cancel();
     };
   }, [sdk, route, pins]);
 
@@ -283,12 +289,35 @@ export default function ScanPins({ scanId, sdkKey, pins, kind, onChange, view = 
         )}
       </div>
       {state === "failed" && <p className="text-xs" style={{ color: "#d03b3b" }}>The 3D scan did not open.</p>}
-      {walk && (
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          The dotted line is the walk from the entrance to the machine. It is planned over the spots the scanner stood at, so
-          every step of it is somewhere a person can stand. The entrance is where the scan starts
-          {pins.some((p) => p.kind === "machine") ? "." : "; nobody has pinned the machine yet, so the simulation places it in the farthest room from the door."}
-        </p>
+      {walk && sdk && mode === sdk.Mode.Mode.FLOORPLAN && (
+        <>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <svg width="22" height="6" aria-hidden="true">
+                <line x1="2" y1="3" x2="20" y2="3" stroke={PIN_COLOR.route} strokeWidth="3.5" strokeDasharray="0.1 6" strokeLinecap="round" />
+              </svg>
+              Recommended path
+            </span>
+            {(["entrance", "machine"] as const).map((k) => (
+              <span key={k} className="flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: PIN_COLOR[k] }} />
+                {PIN_LABEL[k]}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            The recommended path is the walk from the entrance to the machine. It is planned over the spots the scanner stood
+            at, so every step of it is somewhere a person can stand. The entrance is where the scan starts
+            {pins.some((p) => p.kind === "machine") ? "." : "; nobody has pinned the machine yet, so the simulation places it in the farthest room from the door."}
+          </p>
+        </>
+      )}
+      {route && sdk && mode !== null && mode !== sdk.Mode.Mode.FLOORPLAN && (
+        // the route is drawn on the floor plan only, and a double-click there walks the viewer inside
+        <button type="button" className="rounded border px-2.5 py-1 text-xs font-semibold" style={{ borderColor: "var(--border)" }}
+          onClick={() => sdk.Mode.moveTo(sdk.Mode.Mode.FLOORPLAN).catch(() => {})}>
+          Show the recommended path on the floor plan
+        </button>
       )}
       {editable && state !== "failed" && (
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
