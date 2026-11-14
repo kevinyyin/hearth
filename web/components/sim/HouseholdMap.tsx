@@ -77,7 +77,7 @@ const CREW_LAYOUT = {
 function homes(
   county: CountySim,
   which: SideKey,
-  hour: number,
+  time: number,
 ): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: "FeatureCollection",
@@ -85,7 +85,7 @@ function homes(
       type: "Feature",
       id: i,
       geometry: { type: "Point", coordinates: [h.lon, h.lat] },
-      properties: { state: county.stateAt(i, hour, which) },
+      properties: { state: county.stateAt(i, time, which) },
     })),
   };
 }
@@ -120,7 +120,7 @@ export default function HouseholdMap({
   county,
   center,
   which,
-  hour,
+  time,
   vehicles = [],
   interactive = true,
   height = 320,
@@ -131,7 +131,8 @@ export default function HouseholdMap({
   county: CountySim;
   center: [number, number];
   which: SideKey;
-  hour: number;
+  /** Continuous hours, so a dot turns green the moment its van arrives. */
+  time: number;
   /** Crew positions this frame; empty when nothing is moving. */
   vehicles?: Vehicle[];
   /** False for the small panel on the simulation page: same picture, no controls. */
@@ -193,16 +194,20 @@ export default function HouseholdMap({
     };
   }, [which, interactive]);
 
-  // repaint the dots as the hour advances, or when a real population replaces the fixture
+  // Repaint on a 0.05h quantum rather than every animation frame: that is fine
+  // enough that a dot flips as its van pulls up, and about twenty rebuilds a
+  // simulated hour instead of sixty a second.
+  const tick = Math.round(time * 20) / 20;
+
   useEffect(() => {
     const m = map.current;
     if (!m) return;
     const apply = () => {
-      (m.getSource(HOMES) as GeoJSONSource | undefined)?.setData(homes(county, which, hour));
+      (m.getSource(HOMES) as GeoJSONSource | undefined)?.setData(homes(county, which, tick));
     };
     if (ready.current) apply();
     else m.once("load", apply);
-  }, [county, which, hour]);
+  }, [county, which, tick]);
 
   // the real replay recentres the map on the county the run actually covers
   useEffect(() => {

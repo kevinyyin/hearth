@@ -505,14 +505,13 @@ export default function SimulationPage() {
                 <div className="mt-6">
                   <h3 className="mb-1 text-sm font-semibold">Where the call put the markers</h3>
                   <p className="mb-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                    Third floor, from the building records. The route is planned across the layout,
-                    not written down.
+                    The aerial tile and the scan for this building, with what the call captured on
+                    them.
                   </p>
-                  <FloorPlan
-                    showEntrance
-                    showMachine={stage === "enrolled"}
-                    showBlocked={false}
-                    showPath={stage === "enrolled"}
+                  <BuildingViews
+                    buildingId={residentFeed.buildingId ?? "B-SAMPLE"}
+                    outside={residentFeed.outside}
+                    inside={residentFeed.inside}
                   />
                 </div>
               )}

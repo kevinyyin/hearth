@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { toChartRows, toSeries } from "@/lib/results";
+import { formatHours, toChartRows, toSeries } from "@/lib/results";
 import {
   DEFAULT_POLICIES,
   OPTIONAL_POLICIES,
@@ -35,7 +35,6 @@ function seriesColor(policy: string): string {
 }
 
 
-const fmt = new Intl.NumberFormat("en-US");
 
 type TooltipPayload = { dataKey?: string | number; value?: number; color?: string };
 
@@ -86,7 +85,7 @@ function ChartTooltip({
                 </td>
                 <td style={{ color: "var(--text-secondary)" }}>{policyLabel(String(p.dataKey))}</td>
                 <td className="tnum text-right font-medium">
-                  {p.value == null ? "—" : fmt.format(p.value)}
+                  {p.value == null ? "—" : formatHours(p.value)}
                 </td>
               </tr>
             ))}
@@ -182,7 +181,7 @@ export default function CrewsChart({
               axisLine={false}
               width={96}
               tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-              tickFormatter={(v: number) => fmt.format(v)}
+              tickFormatter={(v: number) => formatHours(v)}
               label={{
                 value: weighted
                   ? "Median patient-hours at risk"
@@ -326,10 +325,10 @@ export default function CrewsChart({
                           "—"
                         ) : (
                           <>
-                            {fmt.format(point.y)}
+                            {formatHours(point.y)}
                             {point.lo !== undefined && point.hi !== undefined && (
                               <span className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                                ({fmt.format(point.lo)}–{fmt.format(point.hi)})
+                                ({formatHours(point.lo)}–{formatHours(point.hi)})
                               </span>
                             )}
                           </>

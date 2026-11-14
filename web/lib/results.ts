@@ -63,3 +63,18 @@ export function toChartRows(series: Series[]): Record<string, number | null>[] {
     return row;
   });
 }
+
+/**
+ * Patient-hours run from a few thousand on the sample file to a few million on a
+ * real county sweep, so one fixed format cannot serve both. Fractions are dropped
+ * — a risk weight makes them non-integer, and nobody reads a quarter of an hour at
+ * this scale — and anything past a million is compacted so a headline number does
+ * not run off its card.
+ */
+export function formatHours(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(2).replace(/\.?0+$/, "")}M`;
+  if (abs >= 10_000) return `${(v / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v);
+}

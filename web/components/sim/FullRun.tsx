@@ -162,7 +162,7 @@ function Side({
   const [callsOpen, setCallsOpen] = useState(true);
   const [dispatchOpen, setDispatchOpen] = useState(true);
 
-  const t = county.tallyAt(hour, which);
+  const t = county.tallyAt(time, which);
   const backlog = county.backlogAt(time, which);
   const chained = Math.round(county.chainedShare(which) * 100);
 
@@ -180,7 +180,7 @@ function Side({
           county={county}
           center={center}
           which={which}
-          hour={hour}
+          time={time}
           vehicles={running ? county.vehiclesAt(time, which) : []}
           height="min(62vh, 620px)"
           onMap={onMap}
@@ -211,8 +211,8 @@ function Side({
         {[
           ["Reached", count.format(t.reached), "#0e7a54"],
           ["Waiting", count.format(t.waiting), "#c4461a"],
-          ["Restock", count.format(t.resupply), "#2a6fd6"],
-          ["Rounds", count.format(county.toursBy(time, which)), undefined],
+          ["Need restock", count.format(t.resupply), "#2a6fd6"],
+          ["Restocked", count.format(county.restocksBy(time, which)), undefined],
           ["Out now", `${county.outNow(time, which)}/${CREW_COUNT}`, undefined],
         ].map(([label, value, color]) => (
           <div key={label as string}>
