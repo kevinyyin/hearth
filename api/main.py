@@ -11,7 +11,7 @@ from fastapi import Body, FastAPI, HTTPException, Path as PathParam, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from api import live
 from hearth import dispatch, remote, store
@@ -169,10 +169,17 @@ class _DayHousehold(BaseModel):
 
 class _DayStation(BaseModel):
     name: str = Field(max_length=40)
-    at: tuple[float, float]
+    at: tuple[float, float]  # [lon, lat], as the page writes it
+
+    @field_validator("at")
+    @classmethod
+    def _on_earth(cls, at):
+        if not (-180 <= at[0] <= 180 and -90 <= at[1] <= 90):
+            raise ValueError("a station must be [lon, lat]")
+        return at
 
 
-class _DayConstants(BaseModel):  # the bounds keep one request from planning for minutes
+class _DayConstants(BaseModel):  # each field is bounded, and so is the work: the page sends 15 vans and 96 steps
     stations: list[_DayStation] = Field(min_length=1, max_length=10)
     crewsPerStation: int = Field(ge=1, le=10)
     cruise: float = Field(gt=0, le=10)
@@ -181,6 +188,14 @@ class _DayConstants(BaseModel):  # the bounds keep one request from planning for
     runHours: float = Field(ge=1, le=48)
     refillH: float = Field(ge=0.5, le=48)
     capacity: int = Field(ge=1, le=10)
+
+    @model_validator(mode="after")
+    def _bounded_work(self):
+        if len(self.stations) * self.crewsPerStation > 30:
+            raise ValueError("at most 30 vans in all")
+        if self.runHours / self.dt > 200:
+            raise ValueError("at most 200 steps: a longer day needs a larger dt")
+        return self
 
 
 class DayIn(BaseModel):

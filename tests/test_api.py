@@ -266,3 +266,17 @@ def test_sim_day_returns_a_side_and_refuses_runaway_requests():
     odd = {**fx["households"][0], "needsAt": float("1e9")}
     assert client.post("/api/sim/day", json={"households": [odd], "constants": fx["constants"]}).status_code == 422
     assert client.post("/api/sim/day", json={"households": [{"lon": "x"}], "constants": fx["constants"]}).status_code == 422
+
+
+def test_sim_day_bounds_the_work_not_only_each_field():
+    import json
+    from hearth.config import ROOT
+    fx = json.loads((ROOT / "tests/fixtures/sim_day.json").read_text())
+    post = lambda **k: client.post("/api/sim/day", json={"households": [], "constants": {**fx["constants"], **k}}).status_code  # noqa: E731
+    assert post() == 200
+    ten = [{"name": f"S{i}", "at": [-95.37, 29.76]} for i in range(10)]
+    assert post(stations=ten, crewsPerStation=10) == 422  # 100 vans: each field is legal, the fleet is not
+    assert post(stations=ten, crewsPerStation=3) == 200  # 30 vans is the most
+    assert post(dt=0.05, runHours=48) == 422  # 960 steps
+    assert post(dt=0.25, runHours=48) == 200  # 192 steps
+    assert post(stations=[{"name": "far", "at": [1e308, 29.76]}]) == 422  # not a place on Earth

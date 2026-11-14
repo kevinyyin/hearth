@@ -299,3 +299,13 @@ The design above is as approved. These are the places the build departed from it
 - **`/api/sim/day` accepts any backup length** for `needsAt`: real patients have more than 48 hours, and a need after
   the day ends is simply never dispatched.
 - **Modules**: `hearth/routing.py` (score, pairing, `routes`, `plan`) and `hearth/alns.py` (the search).
+- **The live help loop keeps the model's order** (changed after the branch review). The design made the model's order
+  a weight in the pairing, so a closer request could go first. A review measured that with weights N..1 the order
+  dissolves as the queue grows (with 20 waiting, a request under two minutes closer overtakes the first), and that
+  holding refuge places for requests without a crew could block a resident who had both a crew and a place. As built:
+  the order decides who is served; one assignment over all served requests then picks the crews (most equipment
+  matches, then least driving, each place in the order counting twice the next); a place is taken only with a crew.
+  Letting closeness reorder the queue is still open for the user to choose.
+- **The day endpoint bounds the work**, not only each field: at most 30 vans and 200 steps.
+- **Where pairing loses**: on the small `sample` scenario it is 11% worse than greedy at 2 crews and 27% worse at 5.
+  `docs/spec.md` says so next to the county result.

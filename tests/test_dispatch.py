@@ -335,24 +335,45 @@ def test_one_crew_goes_to_the_models_first_request_when_both_are_as_near(monkeyp
     assert dispatch.request("p2").job.org_id == "A" and dispatch.request("p4").state == "waiting"
 
 
-def test_a_much_closer_request_can_go_before_a_higher_ranked_one(monkeypatch):
+def test_the_models_first_request_gets_the_only_crew_even_when_another_is_closer(monkeypatch):
     order(monkeypatch, "demo-2", "p4")  # demo-2 is 12 km from the crew; p4 is in the building the crew stands in
     dispatch.open_request("demo-2"), dispatch.open_request("p4")
-    assert dispatch.request("demo-2").rank == 1
     crew("A", base="B-SAMPLE")
-    assert dispatch.request("p4").job.org_id == "A"
-    first = dispatch.request("demo-2")
-    assert (first.state, first.blocked, first.job) == ("waiting", "", None)  # still first in line for the next free crew
+    assert dispatch.request("demo-2").job.org_id == "A"
+    assert (dispatch.request("p4").state, dispatch.request("p4").blocked) == ("waiting", "")
 
 
-def test_a_request_still_waiting_for_a_crew_holds_its_refuge_place_only_while_the_pass_runs(monkeypatch):
+def test_crews_are_chosen_for_all_requests_together_not_one_request_at_a_time(monkeypatch):
+    order(monkeypatch, "demo-2", "p4")
+    with monkeypatch.context() as hold:  # both requests and both crews are in place before anything is dispatched
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("demo-2"), dispatch.open_request("p4")
+        crew("Here", base="B-SAMPLE"), crew("Near")  # Here stands in p4's building; both are about 12.5 km from demo-2
+    dispatch.run()
+    # one at a time, demo-2 (first) would take Here, the nearer by 140 m, and p4 would wait for Near to drive over
+    assert {r.patient_id: r.job.org_id for r in dispatch.requests()} == {"demo-2": "Near", "p4": "Here"}
+
+
+def test_a_request_still_waiting_for_a_crew_takes_no_refuge_place_from_one_a_crew_can_reach(monkeypatch):
     monkeypatch.setattr(dispatch, "capacity", lambda rec: 1)
-    order(monkeypatch, "p4", "p2", "demo-2")
-    crew("A")
-    assert dispatch.open_request("p4").refuge.building_id == "H-STEPS"  # offered: the place is held for real
-    waiting = dispatch.open_request("p2")  # no free crew; H-LEVEL is the place it would take
+    order(monkeypatch, "p4", "p3", "demo-2")
+    crew("Amb", vehicle="ambulance", equipment=["stretcher"])
+    assert dispatch.open_request("p4").job.org_id == "Amb"  # p4 holds H-STEPS
+    crew("Car")
+    waiting = dispatch.open_request("p3")  # bedbound: only the ambulance fits, and it is out
     assert (waiting.state, waiting.blocked, waiting.refuge) == ("waiting", "", None)
-    behind = dispatch.open_request("demo-2")  # only H-LEVEL passes for a wheelchair, and p2 is ahead of it there
-    assert behind.blocked.startswith("no refuge within 15 km")
-    dispatch.mark_safe("p2")  # p2 no longer needs the place
-    assert dispatch.request("demo-2").blocked == ""
+    got = dispatch.open_request("demo-2")  # a wheelchair passes only at H-LEVEL, where p3 would also go, but p3 has no crew
+    assert (got.state, got.job.org_id, got.refuge.building_id, got.blocked) == ("offered", "Car", "H-LEVEL", "")
+
+
+def test_two_requests_for_the_last_place_the_first_in_line_gets_it(monkeypatch):
+    monkeypatch.setattr(dispatch, "capacity", lambda rec: 1)
+    order(monkeypatch, "p1", "demo-1", "p4")
+    with monkeypatch.context() as hold:
+        hold.setattr(dispatch, "run", lambda: None)
+        dispatch.open_request("p1"), dispatch.open_request("demo-1")  # both power wheelchairs: only H-LEVEL passes
+        crew("L1", vehicle="wheelchair_van", equipment=["wheelchair_lift"]), crew("L2", vehicle="wheelchair_van", equipment=["wheelchair_lift"])
+    dispatch.run()
+    first, second = dispatch.request("p1"), dispatch.request("demo-1")
+    assert (first.state, first.refuge.building_id) == ("offered", "H-LEVEL")
+    assert second.state == "waiting" and second.job is None and second.blocked.startswith("no refuge within 15 km")
