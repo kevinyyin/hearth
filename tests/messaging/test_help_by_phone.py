@@ -51,6 +51,7 @@ def talk(call, *turns):
         lines = register.advance(call, t)
         said += [render(k, **v) for k, v in lines]
         call["last"] = list(lines[-1])
+        register.do_help(call["patient_id"], register.take_help(call))  # what the voice endpoint runs after the line
     return said
 
 
@@ -68,7 +69,8 @@ def test_help_asks_how_they_move_then_opens_a_request():
 
 
 @pytest.mark.parametrize("answer,want", [(Turn(mobility="wheelchair", confidence=0.9), "wheelchair_power"),
-                                         (Turn(mobility="bed", confidence=0.9), "bedbound"), (Turn(confidence=0.9), "bedbound")])
+                                         (Turn(mobility="bed", confidence=0.9), "bedbound"), (Turn(confidence=0.9), "bedbound"),
+                                         (Turn(mobility="walks", confidence=0.9), "bedbound")])  # said they cannot walk to a car
 def test_the_more_careful_mobility_is_recorded(answer, want):
     pid = registrant()
     said = talk(menu_call(pid), HELP, NO, answer)
@@ -134,3 +136,17 @@ def test_tracker_lines_fill_the_window_in_houston_time():
     lines = dispatch.tracker_lines(dispatch.request("p4"))
     assert "{window}" not in lines[-1] and " between " in lines[-1] and ("AM" in lines[-1] or "PM" in lines[-1])
     assert dispatch.latest_line("p4") == lines[-1]
+
+
+def test_help_opens_the_request_before_asking_how_they_move():
+    pid = registrant()
+    said = talk(menu_call(pid), HELP)  # the call could drop right here
+    assert said[-1] == render("ask_walk") and dispatch.request(pid).state in ("waiting", "offered") and mobility(pid) == "bedbound"
+
+
+def test_the_voice_turn_answers_before_opening_the_request(monkeypatch):
+    monkeypatch.setattr(voice, "interpret_turn", lambda text, *a: {"": Turn(), "I need help": HELP}[text])
+    c = voice.start_call("p4", "menu", phone=PHONE)
+    voice.respond(c, "")
+    assert voice.respond(c, "I need help", defer=True) == render("help_opened")
+    assert dispatch.request("p4") is None and store.get("call", c)["help_action"] == "open"  # the endpoint opens it after the line

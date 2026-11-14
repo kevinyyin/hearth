@@ -133,3 +133,13 @@ def test_a_failed_text_does_not_stop_the_help_loop(sent, monkeypatch):
     dispatch.open_request("p4")
     assert dispatch.crew_action("A", "accept").state == "accepted"
     assert {m["status"] for m in store.all("message") if m["key"] == "tracker"} == {"failed"}
+
+
+def test_old_requests_are_not_texted_when_someone_else_asks(sent, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from hearth.contracts import HelpRequest
+    dispatch = help_world(monkeypatch)
+    then = datetime.now(timezone.utc) - timedelta(hours=8)
+    store.put("help", "p4", HelpRequest(patient_id="p4", state="accepted", times={"waiting": then, "offered": then, "accepted": then}))
+    dispatch.open_request("p2")  # a rehearsal leftover must not start texting a teammate's phone
+    assert [t for p, t in sent if p == "+15550100004"] == []

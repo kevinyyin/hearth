@@ -4,6 +4,7 @@ Only numbers in HEARTH_DEMO_CALLERS may register (a stranger's real details neve
 comes from the environment; a phone number in the CoStar kit is fake and is never dialed.
 """
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -43,13 +44,17 @@ def save(call: dict) -> str | None:
     patient = Patient(**(d | {"mobility": old.get("mobility", d["mobility"])}), patient_id=pid, lat=rec["lat"], lon=rec["lon"],
                       zip=rec.get("zip") or "", floor=f["floor"], device=f["device"], backup_hours_on_hand=f["backup_hours"],
                       building_id=f["building_id"], phone_status="unverified", profile_status="complete")
+    cut = lambda v, n: v[:n] if isinstance(v, str) else v  # noqa: E731  a long answer is cut to fit, never a reason to lose the call
     home = Home(**(store.get("home", pid) or {}) | {
-        "patient_id": pid, "building_id": f["building_id"], "ok_without_h": f["backup_hours"], "device_name": f.get("device_words") or "",
-        "source": "phone", "unit": f.get("unit"), "complex_building": f.get("complex_building"), "scan_id": f.get("scan_id"),
-        "door": f.get("door") or "", "door_from_aerial": bool(f.get("door_from_aerial")), "room": f.get("room") or "",
-        "scan_room": f.get("scan_room"), "has_elevator": f.get("has_elevator"), "said_at": datetime.now(timezone.utc)})
+        "patient_id": pid, "building_id": f["building_id"], "ok_without_h": f["backup_hours"], "device_name": cut(f.get("device_words") or "", 120),
+        "source": "phone", "unit": cut(f.get("unit"), 20), "complex_building": cut(f.get("complex_building"), 40), "scan_id": f.get("scan_id"),
+        "door": cut(f.get("door") or "", 200), "door_from_aerial": bool(f.get("door_from_aerial")), "room": cut(f.get("room") or "", 120),
+        "scan_room": cut(f.get("scan_room"), 80), "has_elevator": f.get("has_elevator"), "said_at": datetime.now(timezone.utc)})
+    # a check call placed by the storm button carries no phone in its context: the registration's own contact stands
+    phone = call["ctx"].get("phone") or (store.get("contact", pid) or {}).get("phone")
     store.put("patient", pid, patient)
-    store.put("contact", pid, {"patient_id": pid, "phone": call["ctx"]["phone"]})
+    if phone:
+        store.put("contact", pid, {"patient_id": pid, "phone": phone})
     store.put("home", pid, home)
     call["patient_id"] = pid
     return pid
@@ -78,8 +83,11 @@ def registrations() -> dict:
         registered.append({"patient": Patient(**p), "home": home, "address": (tools.costar_record(home.building_id) or {}).get("address"),
                            "call_id": c and c["call_id"], "call_status": c and c["status"]})
     registered.sort(key=lambda r: r["home"].said_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-    needs = [{"call_id": c["call_id"], "phone": c["ctx"].get("phone"), "facts": c["facts"], "status": c["status"], "started_at": c.get("started_at")}
-             for c in calls if not c.get("patient_id") and c["status"] in ("handoff", "escalated")]
+    quiet = time.time() - a("voice.unfinished_after_min") * 60  # the server is not told about a hang-up: a call that went quiet counts
+    last = lambda c: max([m.get("t", 0) for m in c.get("transcript") or []] + [c.get("started_at") or 0])  # noqa: E731
+    needs = [{"call_id": c["call_id"], "phone": c["ctx"].get("phone"), "facts": c["facts"], "started_at": c.get("started_at"),
+              "status": "unfinished" if c["status"] == "active" else c["status"]}
+             for c in calls if not c.get("patient_id") and (c["status"] in ("handoff", "escalated") or (c["status"] == "active" and last(c) < quiet))]
     needs.sort(key=lambda r: r["started_at"] or 0, reverse=True)
     return {"registered": registered, "needs_person": needs}
 

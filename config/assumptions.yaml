@@ -86,6 +86,7 @@ voice:
   silences_to_escalate: {value: 3, source: "plan Task V2: three empty turns in a row end the call", confirmed: false}
   turn_timeout_s: {value: 7, source: "ElevenLabs default turn_timeout; seconds of caller silence before a turn counts as empty", confirmed: false}
   tts_streaming_optimization: {value: 1, source: "ElevenLabs optimize_streaming_latency 0-4; 3 sounded robotic on the first real call while speech started 0.07 s after text, so quality wins", confirmed: false}
+  unfinished_after_min: {value: 5, source: "our call: a registration call with no turn for this long has been hung up (the server is not told), so it is listed for a person", confirmed: false}
   room_lookup_timeout_s: {value: 3, source: "our call: longest wait for the scan's room names when the address is confirmed; after it the room question uses the bedroom wording", confirmed: false}
 
 # ---- lane S (simulation) ----
@@ -117,6 +118,7 @@ dispatch:
   refuge_capacity_share: {value: 0.05, source: "user decision Nov 14: a refuge takes this share of its CoStar unit count, at least 1; placeholder", confirmed: false}
   eta_window_min: {value: 15, source: "our call: width of the arrival window shown to a resident; placeholder", confirmed: false}
   offer_timeout_s: {value: 90, source: "our call: an offer a crew does not answer in this time passes to the next crew; placeholder", confirmed: false}
+  text_max_age_h: {value: 6, source: "our call: an open help request untouched for this long is not texted when someone else's request changes (keeps rehearsal leftovers quiet)", confirmed: false}
   vehicle_max_item_cm: {value: {car: 60, van: 150, wheelchair_van: 150, ambulance: 100}, source: "our call: longest side of a device each vehicle can carry beside a passenger; placeholder", confirmed: false}
 
 # ---- voice registration: residents register and ask for help by phone ----

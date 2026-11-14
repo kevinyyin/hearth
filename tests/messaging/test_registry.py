@@ -62,7 +62,7 @@ def test_registrations_lists_homes_and_calls_that_need_a_person():
     pid = registry.save(call(**FULL))
     store.put("call", "C-1", call(**FULL) | {"patient_id": pid, "status": "done", "started_at": 2.0})
     store.put("call", "C-9", call(device="oxygen") | {"call_id": "C-9", "status": "handoff", "started_at": 1.0})
-    store.put("call", "C-8", call() | {"call_id": "C-8", "status": "active", "started_at": 3.0})  # still talking: not listed
+    store.put("call", "C-8", call() | {"call_id": "C-8", "status": "active", "started_at": __import__("time").time()})  # still talking: not listed
     out = registry.registrations()
     assert [r["patient"].patient_id for r in out["registered"]] == [pid] and out["registered"][0]["call_status"] == "done"
     assert [r["call_id"] for r in out["needs_person"]] == ["C-9"] and out["needs_person"][0]["phone"] == PHONE
@@ -101,3 +101,25 @@ def test_a_storm_call_that_cannot_ring_is_reported(monkeypatch):
     monkeypatch.setattr(voice, "dial", lambda call_id: None)  # no phone line set up
     pid = registry.save(call(**FULL))
     assert registry.storm()["failed"] == [f"{pid}: not dialed (the phone line is not set up)"]
+
+
+def test_a_check_call_without_a_phone_in_its_context_saves_a_correction():
+    pid = registry.save(call(**FULL))
+    c = {"call_id": "C-2", "kind": "check", "patient_id": pid, "ctx": {"storm": True}, "facts": dict(FULL, backup_hours=2.0), "status": "active"}
+    assert registry.save(c) == pid and Home(**store.get("home", pid)).ok_without_h == 2.0 and store.get("contact", pid)["phone"] == PHONE
+
+
+def test_a_long_answer_is_cut_to_fit_not_lost():
+    pid = registry.save(call(**FULL | {"complex_building": "the building closest to the pool, past the second gate on the left",
+                                       "door": "x" * 300, "room": "y" * 200, "unit": "z" * 30}))
+    h = Home(**store.get("home", pid))
+    assert (len(h.complex_building), len(h.door), len(h.room), len(h.unit)) == (40, 200, 120, 20)
+
+
+def test_a_registration_call_that_went_quiet_needs_a_person():
+    import time
+    long_ago = time.time() - 600
+    store.put("call", "C-7", call(device="oxygen") | {"call_id": "C-7", "status": "active", "started_at": long_ago,
+                                                      "transcript": [{"role": "caller", "text": "oxygen", "t": long_ago}]})
+    store.put("call", "C-8", call() | {"call_id": "C-8", "status": "active", "started_at": time.time(), "transcript": []})
+    assert [(r["call_id"], r["status"]) for r in registry.registrations()["needs_person"]] == [("C-7", "unfinished")]

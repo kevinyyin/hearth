@@ -43,7 +43,7 @@ class Turn(BaseModel):
     elevator_working: Literal["yes", "no", "unknown"] | None = None
     intent: Literal["help", "safe", "details"] | None = None  # never set by a keypad digit
     mobility: Literal["walks", "wheelchair", "bed"] | None = None
-    which_part: Literal["building", "floor", "door", "room"] | None = None
+    which_part: Literal["unit", "building", "floor", "door", "room"] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -56,7 +56,7 @@ class Turn(BaseModel):
 
 TEXT_FIELDS = ("house_number", "street", "unit", "zip", "building", "door", "room", "room_label")
 CHOICES = {"device": ["oxygen", "ventilator", "home_dialysis", "feeding_pump", "other"], "elevator_working": ["yes", "no", "unknown"],
-           "intent": ["help", "safe", "details"], "mobility": ["walks", "wheelchair", "bed"], "which_part": ["building", "floor", "door", "room"]}
+           "intent": ["help", "safe", "details"], "mobility": ["walks", "wheelchair", "bed"], "which_part": ["unit", "building", "floor", "door", "room"]}
 EMPTY_IS_NONE = set(TEXT_FIELDS) | set(CHOICES)
 
 KEYPAD = {
@@ -113,7 +113,7 @@ other field below is an empty string "" unless this turn says it:
 - intent: "help" when they ask for help or a crew; "safe" only when they say in words that they are safe or OK and need
   nothing; "details" when they want to check or change their details.
 - mobility: how they move: "walks" (on their own or with someone helping), "wheelchair", or "bed" (they stay in bed).
-- which_part: after "Which part is wrong?", the part they name: building, floor, door, or room.
+- which_part: after "Which part is wrong?", the part they name: unit (the apartment number), building, floor, door, or room.
 
 A question that assumes help is coming ("a tank is already on its way, right?") confirms nothing: leave every field
 null except wants_human (true) and confidence. Never infer a value the person did not say."""

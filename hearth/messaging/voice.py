@@ -30,7 +30,9 @@ DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
 # answering the phone, not answering a question: skips the model on the first turn. Anything else is interpreted,
 # so a short "help me" at the opening still escalates
 # a bare number answers the question just asked ("3" hours, floor "1"), not the keypad menu ("1" yes, "3" it's different)
-BARE_NUMBER = {"ask_hours": "backup_hours", "reg_ask_hours": "backup_hours", "ask_floor": "floor", "ask_floor_building": "floor", "ask_unit": "unit"}
+BARE_NUMBER = {"ask_hours": "backup_hours", "reg_ask_hours": "backup_hours", "ask_floor": "floor", "ask_floor_building": "floor",
+               "ask_unit": "unit", "ask_building": "building"}
+BARE_TEXT = {"ask_unit", "ask_building"}  # their answer is a name, kept as said
 GREETINGS = {"hello", "hi", "hey", "yes", "yeah", "speaking", "this is she", "this is he", "who is this", "who's this"}
 
 
@@ -64,8 +66,9 @@ def start_call(patient_id: str | None, kind: Kind, proposal_id: str | None = Non
     return call_id
 
 
-def respond(call_id: str, caller_text: str, keypad: str | None = None) -> str:
-    """The agent's next line. Updates the call doc."""
+def respond(call_id: str, caller_text: str, keypad: str | None = None, defer: bool = False) -> str:
+    """The agent's next line. Updates the call doc. Help work the turn left (opening a request asks a model and sends
+    texts) runs here, unless `defer`: the voice endpoint runs it after the caller has the line."""
     call = store.get("call", call_id)
     if call is None:
         raise KeyError(call_id)
@@ -84,7 +87,17 @@ def respond(call_id: str, caller_text: str, keypad: str | None = None) -> str:
     out = " ".join(([ack] if ack else []) + said)
     call["transcript"].append({"role": "agent", "text": out, "t": time.time()})
     store.put("call", call_id, call)
+    if not defer:
+        run_help(call_id)
     return out
+
+
+def run_help(call_id: str) -> None:
+    """The help work a turn left: taken off the call doc first, so a turn arriving meanwhile cannot run it twice."""
+    call = store.get("call", call_id)
+    if action := register.take_help(call):
+        store.put("call", call_id, call)
+        register.do_help(call["patient_id"], action)
 
 
 def confirmed_facts(call_id: str) -> dict:
@@ -108,7 +121,7 @@ def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, script
     if active and call["step"] == "open" and " ".join(re.sub(r"[^a-z' ]", " ", text.lower()).split()) in GREETINGS:
         return None, _script(call, scripts.opening(call))
     if active and call["last"] and call["last"][0] in BARE_NUMBER and text.isdigit() and len(text) <= 3:
-        t = Turn(**{BARE_NUMBER[call["last"][0]]: text if call["last"][0] == "ask_unit" else int(text)}, confidence=1.0)
+        t = Turn(**{BARE_NUMBER[call["last"][0]]: text if call["last"][0] in BARE_TEXT else int(text)}, confidence=1.0)
     else:
         history = [{"role": m["role"], "text": m["text"]} for m in call["transcript"][:-1]]  # [-1] is this turn
         t = interpret_turn(text, keypad, call["ctx"], history)
@@ -225,11 +238,14 @@ def chat_completions(body: dict = Body(...), authorization: str | None = Header(
         line = render("human_handoff")
     else:
         try:
-            line = respond(call_id, text)  # keypad digits arrive as a bare user turn; the interpreter reads them
-            if call["status"] == "active" and store.get("call", call_id)["status"] == "done":
+            line = respond(call_id, text, defer=True)  # keypad digits arrive as a bare user turn; the interpreter reads them
+            now = store.get("call", call_id)
+            steps = [lambda: run_help(call_id)] if now.get("help_action") else []  # a help request opens after the line
+            if call["status"] == "active" and now["status"] == "done":
                 from hearth.messaging.photon import after_call
 
-                then = lambda: after_call(call_id)  # noqa: E731
+                steps.append(lambda: after_call(call_id))
+            then = (lambda: [step() for step in steps]) if steps else None
         except Exception as e:  # a bug must not leave the caller with a dead line: a person takes over
             log.exception("voice turn failed for %s", call_id)
             call = store.get("call", call_id)

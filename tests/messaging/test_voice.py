@@ -283,6 +283,10 @@ def test_a_bare_number_answers_the_question_asked(monkeypatch):
     store.put("call", c, call)
     respond(c, "1")  # not keypad 1 ("yes")
     assert store.get("call", c)["answers"]["floor"] == 1
+    call = store.get("call", c) | {"step": "building", "last": ["ask_building", {"n": 3}]}
+    store.put("call", c, call)
+    respond(c, "2")  # building 2, not keypad 2 ("I need help now")
+    assert store.get("call", c)["answers"]["complex_building"] == "2" and store.get("call", c)["status"] == "active"
 
 
 def test_dial_rings_the_caller_back_for_a_registration(monkeypatch):
@@ -391,3 +395,13 @@ def test_the_impact_call_asks_about_the_elevator_above_floor_1():
 def test_no_elevator_question_on_floor_1():
     store.put("patient", "p1", PATIENT | {"floor": 1})
     assert respond(call_at_ask(), "yes") == render("ask_temperature")
+
+
+def test_the_endpoint_opens_the_help_request_after_the_line():
+    from hearth import dispatch
+    FAKE["I need help"] = Turn(intent="help", confidence=0.9)
+    c = start_call("p1", "menu", phone="+15550100002")
+    respond(c, "hello?")
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "messages": [{"role": "user", "content": "I need help"}], "elevenlabs_extra_body": {"call_id": c}})
+    assert sse_text(r) == render("help_opened") and dispatch.request("p1") is not None and "help_action" not in store.get("call", c)

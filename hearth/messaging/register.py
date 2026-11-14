@@ -23,7 +23,8 @@ log = logging.getLogger(__name__)
 Lines = list[tuple[str, dict]]
 ADDRESS_FACTS = ("building_id", "address", "unit", "plan", "scan_id", "complex_building", "floor", "has_elevator", "door",
                  "door_from_aerial", "room", "scan_room", "home_confirmed")  # a new address makes every home answer stale
-PART = {"building": ("complex_building",), "floor": ("floor", "has_elevator"), "door": ("door", "door_from_aerial"), "room": ("room", "scan_room")}
+PART = {"unit": ("unit", "plan", "scan_id"), "building": ("complex_building",), "floor": ("floor", "has_elevator"),
+        "door": ("door", "door_from_aerial"), "room": ("room", "scan_room")}
 _SIDE = re.compile(r"\b(north|south|east|west)\b", re.I)
 
 
@@ -56,7 +57,8 @@ def opening(call: dict) -> Lines:
     if call["kind"] == "check":
         call["facts"] = registry.facts_for(call["patient_id"])
         call["to_confirm"] = ["address", "hours", "home"]
-        return [("check_open_storm" if c.get("storm") else "check_open", {})] + _next(call)
+        opener = [("open_automated", {"county": c["county"]}), ("check_open_storm", {})] if c.get("storm") else [("check_open", {})]
+        return opener + _next(call)  # an outbound storm call says who is calling before it reads back anyone's address
     call["step"] = "equipment"
     return [("reg_open", {"county": c["county"]})]
 
@@ -80,8 +82,8 @@ def advance(call: dict, t: Turn) -> Lines:
             return _open_help(call, "walks_with_help")
         if t.confirms is False:
             return _go(call, "wheelchair", "ask_wheelchair")
-    elif step == "wheelchair":  # any answer counts; unclear is the more careful one
-        return _open_help(call, "wheelchair_power" if t.mobility == "wheelchair" else "walks_with_help" if t.mobility == "walks" else "bedbound")
+    elif step == "wheelchair":  # any answer counts: they said they cannot walk to a car, so anything but a wheelchair is bedbound
+        return _open_help(call, "wheelchair_power" if t.mobility == "wheelchair" else "bedbound")
     elif step == "equipment":
         if t.confirms is False:
             return _done(call, "reg_no_equipment")
@@ -177,35 +179,62 @@ def advance(call: dict, t: Turn) -> Lines:
 
 # ---- help by phone: the same queue the resident page's button opens ----
 def help_branch(call: dict) -> Lines:
-    """Asks how a phone registrant moves (once), then opens a help request. A live request is read back instead."""
+    """Opens a help request (after this line is spoken: see take_help) and, for a phone registrant never asked, asks how
+    they move, so a call that drops after "help" still leaves a request. A live request is read back instead."""
     from hearth import dispatch  # late: dispatch pulls in the refuge code, which the voice endpoint needs only here
 
     pid = call["patient_id"]
     if (r := dispatch.request(pid)) and r.state in dispatch.LIVE:
         return _end_help(call, [("help_already", {})] + _live_line(pid))
+    _pending(call, "open")  # with the mobility on record: bedbound, the most careful, until they answer
     home = store.get("home", pid) or {}
     if home.get("source") == "phone" and not home.get("mobility_asked"):
         return _go(call, "walk", "ask_walk")
-    return _open_help(call, None)
+    return _end_help(call, [("help_opened", {})])
 
 
 def help_now(call: dict) -> Lines:
     """"Needs help now": the request opens at once with the mobility on record, no questions."""
-    return _open_help(call, None)
-
-
-def _open_help(call: dict, mobility: str | None) -> Lines:
     from hearth import dispatch
 
-    pid = call["patient_id"]
-    if mobility:
-        store.put("patient", pid, store.get("patient", pid) | {"mobility": mobility})
-        store.put("home", pid, store.get("home", pid) | {"mobility_asked": True})
-    try:
-        dispatch.open_request(pid)
-    except ValueError:  # a request is already open
-        return _end_help(call, [("help_already", {})] + _live_line(pid))
+    if (r := dispatch.request(call["patient_id"])) and r.state in dispatch.LIVE:
+        return _end_help(call, [("help_already", {})] + _live_line(call["patient_id"]))
+    _pending(call, "open")
     return _end_help(call, [("help_opened", {})])
+
+
+def _open_help(call: dict, mobility: str) -> Lines:
+    """The caller answered how they move: stored, and the open request is placed again with it."""
+    pid = call["patient_id"]
+    store.put("patient", pid, store.get("patient", pid) | {"mobility": mobility})
+    store.put("home", pid, store.get("home", pid) | {"mobility_asked": True})
+    _pending(call, "place")
+    return _end_help(call, [("help_opened", {})])
+
+
+def _pending(call: dict, action: str) -> None:
+    if call.get("help_action") != "open":  # an open still to run will use the new mobility anyway
+        call["help_action"] = action
+
+
+def take_help(call: dict) -> str | None:
+    """The help work this turn left for after its line: "open" a request, or "place" it again. Removed from the call."""
+    return call.pop("help_action", None)
+
+
+def do_help(patient_id: str | None, action: str | None) -> None:
+    """Runs after the caller has heard the line: ordering the queue asks a model and texts go out, which takes seconds."""
+    from hearth import dispatch
+
+    if not (patient_id and action):
+        return
+    try:
+        if action == "open":
+            dispatch.open_request(patient_id)
+        else:
+            dispatch.place_again(patient_id)
+    except ValueError:  # already open: the line said so, or the caller's earlier turn opened it
+        log.info("help request for %s was already open", patient_id)
 
 
 def _safe(call: dict) -> Lines:
@@ -351,8 +380,10 @@ def _which_part(call: dict, part: str | None) -> Lines:
     for k in PART[part] + ("home_confirmed",):
         call["facts"].pop(k, None)
         call["answers"].pop(k, None)
-    if part == "building":
+    if part in ("unit", "building"):
         call["unit_building"] = None
+    if part == "unit":
+        call.pop("unit_tries", None)
     return _next(call)
 
 

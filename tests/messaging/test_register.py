@@ -155,7 +155,8 @@ def test_a_check_call_reads_back_what_is_known():
     pid = registered()["patient_id"]
     c = new_call("check", pid, storm=True)
     said = talk(c)
-    assert said[0] == render("check_open_storm") and said[1].startswith("We have you at 1200 Fixture St") and said[1].endswith("Is that still right?")
+    assert said[:2] == [render("open_automated", county="Harris County"), render("check_open_storm")]  # an outbound call says who is calling
+    assert said[2].startswith("We have you at 1200 Fixture St") and said[2].endswith("Is that still right?")
     said = talk(new_call("check", pid, storm=True), YES, YES, YES)
     assert said[-1] == render("reg_close")
 
@@ -165,3 +166,10 @@ def test_a_check_call_correction_asks_again():
     said = talk(new_call("check", pid), YES, NO, Turn(backup_hours=2, confidence=0.9), YES, YES)
     assert said[0] == render("check_open") and said[-1] == render("reg_close")
     assert Home(**store.get("home", pid)).ok_without_h == 2
+
+
+def test_an_apartment_asked_on_its_own_can_be_corrected():
+    said = talk(new_call(), YES, Turn(device="oxygen", confidence=0.9), Turn(house_number="1200", street="Fixture Street", confidence=0.9), YES,
+                Turn(backup_hours=4, confidence=0.9), YES, Turn(unit="310", confidence=0.9), YES, Turn(floor=3, confidence=0.9),
+                Turn(door="side", confidence=0.9), Turn(room="bedroom", confidence=0.9), NO, Turn(which_part="unit", confidence=0.9))
+    assert render("ask_unit") in said[:-1] and "in apartment 310" in said[-3] and said[-2:] == [render("ask_which_part"), render("ask_unit")]

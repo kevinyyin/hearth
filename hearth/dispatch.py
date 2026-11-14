@@ -285,11 +285,16 @@ def run() -> None:
             _save(r)
 
 
-def _notify() -> None:
-    """Texts each phone resident the tracker lines they have not had yet. Outside the lock: a text is a network call."""
+def _notify(*changed: str) -> None:
+    """Texts phone residents the tracker lines they have not had yet: the requests this change touched, and open requests
+    touched recently (a placement run can offer someone else's). Old rehearsal leftovers stay quiet. Outside the lock: a
+    text is a network call."""
     from hearth.messaging.photon import text_tracker  # late: photon -> voice -> scripts -> register -> dispatch
 
+    recent = _now() - timedelta(hours=a("dispatch.text_max_age_h"))
     for r in requests():
+        if r.patient_id not in changed and not (r.state in LIVE and r.times and max(r.times.values()) >= recent):
+            continue
         try:
             text_tracker(r.patient_id)
         except Exception:  # a text never blocks the help loop
@@ -297,6 +302,13 @@ def _notify() -> None:
 
 
 # ---- what residents, crews and dispatchers do ----
+def place_again(patient_id: str) -> None:
+    """Something about this resident changed (how they move, said on the phone): place the waiting requests again."""
+    with _lock:
+        run()
+    _notify(patient_id)
+
+
 def open_request(patient_id: str) -> HelpRequest:
     with _lock:
         if (old := request(patient_id)) and old.state in LIVE:
@@ -313,7 +325,7 @@ def open_request(patient_id: str) -> HelpRequest:
                 _save(r)
         run()
         out = request(patient_id)
-    _notify()
+    _notify(patient_id)
     return out
 
 
@@ -330,7 +342,7 @@ def mark_safe(patient_id: str) -> HelpRequest:
         _enter(r, "safe")
         _save(r)
         run()  # the crew, if there was one, is free again
-    _notify()
+    _notify(patient_id)
     return r
 
 
@@ -355,7 +367,7 @@ def crew_action(crew_id: str, action: Action, patient_id: str | None = None) -> 
         if action in ("decline", "dropped_off"):
             run()
         out = request(r.patient_id)
-    _notify()
+    _notify(r.patient_id)
     return out
 
 
@@ -372,7 +384,7 @@ def expire() -> None:
         if stale:
             run()
     if stale:
-        _notify()
+        _notify(*(r.patient_id for r in stale))
 
 
 def mark_handled(patient_id: str) -> HelpRequest:
@@ -386,7 +398,7 @@ def mark_handled(patient_id: str) -> HelpRequest:
         _enter(r, "handled")
         _save(r)
         run()  # its crew, if it had one, is free again
-    _notify()
+    _notify(patient_id)
     return r
 
 

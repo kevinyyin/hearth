@@ -231,6 +231,10 @@ Field names and coverage are in `docs/toolkit-notes.md`.
   floor are confirmed. A registered caller gets a menu: "help" opens the same help request the resident page's button
   opens (asking once how they move), "I'm safe" closes one, "details" reads back what is registered. Each new tracker
   line goes to them as a text. `python -m hearth.messaging.voice reset <phone>` clears a number for rehearsals.
+  **Texts need a one-time setup per number**: Photon delivers only to a phone with an iMessage assignment that has texted
+  the line. For every number in `HEARTH_DEMO_CALLERS` and `HEARTH_ALERT_PHONES`, run
+  `python -m hearth.messaging.photon contact demo-1 <+E.164 phone>` and text the line it prints once from that phone;
+  otherwise tracker, follow-up and alert texts fail (logged, never blocking a call).
 - **Storm and building calls.** "Storm forecast (simulated)" on `/dispatch` texts the county alert to
   `HEARTH_ALERT_PHONES` and calls every phone registrant in `storm.forecast_zips` to check their details. The impact
   call asks a registrant above floor 1 whether the elevator works right now; the answer adds stair minutes to their
