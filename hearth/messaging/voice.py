@@ -159,7 +159,7 @@ def setup(public_url: str) -> str:
     api, h = "https://api.elevenlabs.io/v1/convai", {"xi-api-key": os.environ["ELEVENLABS_API_KEY"]}
     custom = {"url": public_url.rstrip("/") + "/voice/v1", "model_id": "hearth-voice"}
     if secret := os.environ.get("HEARTH_VOICE_SECRET"):
-        r = httpx.post(f"{api}/secrets", headers=h, json={"type": "new", "name": "hearth-voice-secret", "value": secret})
+        r = httpx.post(f"{api}/secrets", headers=h, json={"type": "new", "name": f"hearth-voice-{int(time.time())}", "value": secret})
         r.raise_for_status()
         custom["api_key"] = {"secret_id": r.json()["secret_id"]}
     config = {
@@ -170,7 +170,8 @@ def setup(public_url: str) -> str:
             "turn": {"turn_timeout": a("voice.turn_timeout_s"), "turn_eagerness": "patient"},
             "conversation": {"dtmf_input_settings": {"dtmf_input_timeout": 2, "hash_terminator": True}},
         },
-        "platform_settings": {"overrides": {"custom_llm_extra_body": True}},
+        "platform_settings": {"overrides": {"custom_llm_extra_body": True,  # carries call_id to our endpoint
+                                            "conversation_config_override": {"conversation": {"text_only": True}}}},
     }
     agent_id = os.environ.get("ELEVENLABS_AGENT_ID")
     r = (httpx.patch(f"{api}/agents/{agent_id}", headers=h, json=config, timeout=30) if agent_id
