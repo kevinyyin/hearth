@@ -6,6 +6,7 @@ import CallTranscript from "@/components/sim/CallTranscript";
 import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
 import FloorPlan from "@/components/sim/FloorPlan";
+import FullRun from "@/components/sim/FullRun";
 import { useResidentFeed } from "@/lib/simSource";
 import {
   ENROLMENT_CALL,
@@ -25,7 +26,7 @@ const SPEED = 0.4;
 /** How long an automatic step sits on screen before it takes itself. */
 const AUTO_MS = 1100;
 
-type Stage = "intro" | "enrol" | "enrolled" | "event";
+type Stage = "intro" | "enrol" | "enrolled" | "event" | "full";
 type CallMode = "simulated" | "real";
 
 /** Reveals transcript lines on their own timings, and can be cut short. */
@@ -237,8 +238,10 @@ export default function SimulationPage() {
               {stage === "event"
                 ? `During the event · ${current.clock}`
                 : stage === "intro"
-                  ? "Two stages, one click at a time"
-                  : "Before the event · enrolment"}
+                  ? "Three ways in: one household, step by step, or the whole county"
+                  : stage === "full"
+                    ? "The whole county, both ways at once"
+                    : "Before the event · enrolment"}
             </p>
           </div>
 
@@ -305,6 +308,16 @@ export default function SimulationPage() {
                     <strong style={{ color: "var(--text-primary)" }}>During the event.</strong> The
                     outage starts, Hearth calls them on its own, and a responder gets a job with the
                     access details already attached.
+                  </span>
+                </li>
+                <li className="flex gap-4">
+                  <span className="display shrink-0 text-3xl leading-none" style={{ color: "var(--accent)" }}>
+                    3
+                  </span>
+                  <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                    <strong style={{ color: "var(--text-primary)" }}>The whole county.</strong> Both
+                    ways at once, with the call logs and the vans, so you can see where the
+                    difference actually comes from.
                   </span>
                 </li>
               </ol>
@@ -404,14 +417,24 @@ export default function SimulationPage() {
                 whoever would really take it.
               </p>
 
-              <button
-                type="button"
-                onClick={() => setStage("enrol")}
-                className="mt-4 rounded-lg px-6 py-3.5 text-base font-semibold"
-                style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
-              >
-                Start stage 1 — the enrolment call
-              </button>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStage("enrol")}
+                  className="rounded-lg px-6 py-3.5 text-base font-semibold"
+                  style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
+                >
+                  Start stage 1 — the enrolment call
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStage("full")}
+                  className="rounded-lg border px-6 py-3.5 text-base font-semibold"
+                  style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)" }}
+                >
+                  3. Run a full simulation
+                </button>
+              </div>
             </section>
 
             <div className="space-y-4">
@@ -427,6 +450,9 @@ export default function SimulationPage() {
             </div>
           </div>
         )}
+
+        {/* ---------- stage 3: the whole county ---------- */}
+        {stage === "full" && <FullRun />}
 
         {/* ---------- stage 1 ---------- */}
         {(stage === "enrol" || stage === "enrolled") && (

@@ -288,8 +288,8 @@ export default function SideBySide() {
           knows who needs help. With the registry every crew has somewhere useful to be and can
           chain four nearby stops into a round — {toursHearth} deployments, {endHearth.reached}{" "}
           households. Without it most vans have nowhere to go, and the one that moves drives out to
-          a single address and straight back — {toursToday} deployments, {endToday.reached}{" "}
-          households.
+          a single address and almost always straight back — {toursToday} deployments,{" "}
+          {endToday.reached} households.
         </p>
         <p className="m-0">
           <strong style={{ color: "var(--text-primary)" }}>The lever, stated plainly:</strong> the

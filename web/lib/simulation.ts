@@ -288,7 +288,14 @@ const DT = 0.25;
  * already knows who needs help; today a crew is sent to the one address that
  * just came through, and goes home after it.
  */
-const CAPACITY = { hearthAt: 4, todayAt: 1 } as const;
+const CAPACITY = { hearthAt: 4, todayAt: 2 } as const;
+/**
+ * How far a crew will go for the *next* stop on a round it is already out on.
+ * Hearth plans the round up front, so distance is no object. Today a crew only
+ * picks up a second address if it has practically tripped over it — which is why
+ * a van on the right almost always goes straight back.
+ */
+const CHAIN_RADIUS = { hearthAt: Infinity, todayAt: 0.1 } as const;
 /**
  * Households that become visible per hour. Hearth has the registry, so everyone
  * is visible the moment their power goes. Today a household is only visible once
@@ -353,12 +360,24 @@ export type Leg = {
   departure: boolean;
 };
 
+/** A line for the running logs: who was heard from, who was sent, who was reached. */
+export type SimEvent = {
+  t: number;
+  kind: "call" | "dispatch" | "arrive";
+  text: string;
+  /** Stops on this round. Chaining is the thing the two sides differ in, so it is on the event. */
+  stops?: number;
+};
+
 export type SideSim = {
   reachAt: (number | null)[];
+  /** When the dispatcher first learned of each household; null if never, inside the window. */
+  knownAt: (number | null)[];
   legs: Leg[][];
   station: number[];
   tours: number;
   stops: number;
+  events: SimEvent[];
 };
 
 const dist = (a: [number, number], b: [number, number]) =>
@@ -373,9 +392,14 @@ function runSide(households: Household[], which: SideKey): SideSim {
   const capacity = CAPACITY[which];
   const perHour = DISCOVERY[which];
 
+  const chainRadius = CHAIN_RADIUS[which];
+  const outbound = which === "hearthAt";
+
   const reachAt: (number | null)[] = households.map(() => null);
+  const knownAt: (number | null)[] = households.map(() => null);
   const taken = households.map(() => false);
   const known = households.map(() => false);
+  const events: SimEvent[] = [];
   let discoveredThisHour = 0;
   let hourMark = 0;
 
@@ -401,6 +425,14 @@ function runSide(households: Household[], which: SideKey): SideSim {
       if (known[i] || households[i].needsAt > t) continue;
       if (discoveredThisHour >= perHour) break;
       known[i] = true;
+      knownAt[i] = t;
+      events.push({
+        t,
+        kind: "call",
+        text: outbound
+          ? `Called household ${i + 1} — on the registry, device down`
+          : `Household ${i + 1} got through — after holding`,
+      });
       if (perHour !== Infinity) discoveredThisHour += 1;
     }
 
@@ -424,11 +456,23 @@ function runSide(households: Household[], which: SideKey): SideSim {
           }
         }
         if (best === -1) break;
+        // after the first stop, a crew only chains on if the next one is near enough
+        if (route.length > 0 && bestD > chainRadius) break;
         route.push(best);
         at = [households[best].lon, households[best].lat];
       }
 
       if (route.length === 0) continue;
+
+      events.push({
+        t,
+        kind: "dispatch",
+        stops: route.length,
+        text:
+          route.length > 1
+            ? `Crew ${c + 1} out of ${STATIONS[station[c]].name} — ${route.length} stops chained`
+            : `Crew ${c + 1} out of ${STATIONS[station[c]].name} — 1 stop, then back`,
+      });
 
       let clock = t;
       let from: [number, number] = base;
@@ -442,6 +486,11 @@ function runSide(households: Household[], which: SideKey): SideSim {
         taken[i] = true;
         reachAt[i] = Math.min(RUN_HOURS, Math.ceil(clock));
         stops += 1;
+        events.push({
+          t: clock,
+          kind: "arrive",
+          text: `Crew ${c + 1} reached household ${i + 1}`,
+        });
 
         clock += SERVICE_H;
         from = to;
@@ -456,7 +505,8 @@ function runSide(households: Household[], which: SideKey): SideSim {
     }
   }
 
-  return { reachAt, legs, station, tours, stops };
+  events.sort((a, b) => a.t - b.t);
+  return { reachAt, knownAt, legs, station, tours, stops, events };
 }
 
 /** A population plus the two runs over it, and the readings the panel needs. */
@@ -468,6 +518,12 @@ export type CountySim = {
   vehiclesAt(time: number, which: SideKey): [number, number][];
   toursBy(time: number, which: SideKey): number;
   outNow(time: number, which: SideKey): number;
+  /** The last `n` log lines at this moment, oldest first, optionally of certain kinds. */
+  logAt(time: number, which: SideKey, n?: number, kinds?: SimEvent["kind"][]): SimEvent[];
+  /** Households that need help and have not been heard from yet: the queue. */
+  backlogAt(time: number, which: SideKey): number;
+  /** Share of rounds that carried more than one stop. */
+  chainedShare(which: SideKey): number;
 };
 
 export function buildCounty(households: Household[]): CountySim {
@@ -516,6 +572,28 @@ export function buildCounty(households: Household[]): CountySim {
     },
     outNow(time, which) {
       return vehiclesAt(time, which).length;
+    },
+    logAt(time, which, n = 7, kinds) {
+      // filter by kind before taking the tail, or a quiet channel shows empty
+      // just because the other one has been busy
+      const upto = sides[which].events.filter(
+        (e) => e.t <= time && (!kinds || kinds.includes(e.kind)),
+      );
+      return upto.slice(Math.max(0, upto.length - n));
+    },
+    backlogAt(time, which) {
+      const { knownAt } = sides[which];
+      let n = 0;
+      for (let i = 0; i < households.length; i++) {
+        if (households[i].needsAt > time) continue;
+        if (knownAt[i] == null || (knownAt[i] as number) > time) n += 1;
+      }
+      return n;
+    },
+    chainedShare(which) {
+      const rounds = sides[which].events.filter((e) => e.kind === "dispatch");
+      if (!rounds.length) return 0;
+      return rounds.filter((e) => (e.stops ?? 1) > 1).length / rounds.length;
     },
   };
 }
