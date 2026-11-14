@@ -26,6 +26,9 @@ FAKE = {
     "should I turn my oxygen down?": Turn(medical_question=True, wants_human=True, confidence=0.9),
     "it's forty minutes, sorry": Turn(backup_hours=0.67, confidence=0.9, ack="I hear you."),
     "they said forty minutes": Turn(backup_hours=0.67, confidence=0.9, ack="Help is on the way."),
+    "I can't breathe, should I turn it up?": Turn(needs_help_now=True, medical_question=True, confidence=0.9),
+    "my oxygen stopped, I can't breathe": Turn(needs_help_now=True, wants_human=True, confidence=0.9),
+    "thanks, bye": Turn(confidence=0.9),
 }
 
 
@@ -70,8 +73,9 @@ def test_vague_turn_does_not_overwrite_confirmed_fact():
     c = call_with_confirmed(can_move=False); respond(c, "maybe, I guess"); assert confirmed_facts(c)["can_move"] is False
 
 
-def test_medical_question_gets_the_fixed_handoff():
-    c = call_at_ask(); assert respond(c, "should I turn my oxygen down?") == render("medical_handoff")
+def test_medical_question_gets_the_fixed_handoff_then_the_question_again():
+    c = call_at_readback(0.67); out = respond(c, "should I turn my oxygen down?")
+    assert out.startswith(render("medical_handoff")) and out.endswith("Is that right?") and "backup_hours" not in confirmed_facts(c)
 
 
 def test_no_promise_without_an_accepted_job():
@@ -125,16 +129,19 @@ def test_endpoint_streams_the_next_line():
     assert r.status_code == 200 and "automated" in sse_text(r)
 
 
-def test_inbound_from_an_unknown_number_goes_to_a_person():
+def test_a_request_without_a_call_id_goes_to_a_person():
     r = client().post("/voice/v1/chat/completions", json={
         "stream": True, "messages": [{"role": "user", "content": "hello?"}], "elevenlabs_extra_body": {"caller_number": "+15559999999"}})
     assert sse_text(r) == render("human_handoff")
 
 
-def test_inbound_from_a_known_number_starts_an_impact_call():
-    r = client().post("/voice/v1/chat/completions", json={
-        "stream": True, "messages": [{"role": "user", "content": "hello?"}], "elevenlabs_extra_body": {"caller_number": "+15550100001"}})
-    assert "automated" in sse_text(r) and [c["kind"] for c in store.all("call")] == ["impact"]
+def test_a_caller_number_from_the_request_never_attaches_to_a_call():
+    c = call_at_move_offer()
+    for turn in ("hello?", "yes", "yes"):
+        r = client().post("/voice/v1/chat/completions", json={
+            "stream": True, "messages": [{"role": "user", "content": turn}], "elevenlabs_extra_body": {"caller_number": PATIENT["phone"]}})
+        assert sse_text(r) == render("human_handoff")
+    assert "consents_to_move" not in confirmed_facts(c) and [d["call_id"] for d in store.all("call")] == [c]
 
 
 def test_demo_patient_profile_is_read_back_in_plain_words():
@@ -161,3 +168,46 @@ def test_keypad_yes_on_a_call_never_records_the_caller_as_safe(monkeypatch):
     monkeypatch.setattr(voice, "interpret_turn", interpreter.interpret_turn)  # real keypad path, no model needed
     c = call_at_move_offer(); respond(c, "1"); respond(c, "1")
     assert confirmed_facts(c) == {"consents_to_move": True}
+
+
+@pytest.mark.parametrize("answer", ["yes", "1"])
+def test_yes_to_the_impact_question_confirms_the_profile_hours(monkeypatch, answer):
+    from hearth.messaging import interpreter
+    monkeypatch.setattr(voice, "interpret_turn", interpreter.interpret_turn)  # yes and keypad are read by code
+    c = call_at_ask(); assert respond(c, answer) == render("ask_temperature") and confirmed_facts(c)["backup_hours"] == 6.0
+
+
+@pytest.mark.parametrize("answer", ["no", "3"])
+def test_no_to_the_impact_question_asks_for_hours(monkeypatch, answer):
+    from hearth.messaging import interpreter
+    monkeypatch.setattr(voice, "interpret_turn", interpreter.interpret_turn)
+    c = call_at_ask(); assert respond(c, answer) == render("ask_hours") and "backup_hours" not in confirmed_facts(c)
+
+
+def test_an_urgent_medical_turn_escalates():
+    c = call_at_ask(); out = respond(c, "I can't breathe, should I turn it up?")
+    assert out.startswith(render("medical_handoff")) and store.get("call", c)["status"] == "escalated"
+
+
+def test_a_bare_number_after_ask_hours_is_hours_not_a_keypad_choice():
+    c = call_at_ask(); respond(c, "no")  # -> ask_hours
+    assert "three hours" in respond(c, "3") and store.get("call", c)["step"] == "readback"
+
+
+def test_a_closed_call_says_nothing_to_silence_but_still_hears_an_emergency():
+    c = call_at_move_offer(); respond(c, "yes"); respond(c, "yes")  # consent recorded, call done
+    assert respond(c, "...") == ""
+    respond(c, "my oxygen stopped, I can't breathe"); assert store.get("call", c)["status"] == "escalated"
+
+
+def test_an_urgent_first_turn_escalates():
+    c = start_call("p1", "impact"); respond(c, "my oxygen stopped, I can't breathe")
+    assert store.get("call", c)["status"] == "escalated"
+
+
+def test_an_internal_error_hands_off_instead_of_failing(monkeypatch):
+    c = call_at_ask()
+    monkeypatch.setattr(voice, "interpret_turn", lambda *a: (_ for _ in ()).throw(RuntimeError("bug")))
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "messages": [{"role": "user", "content": "about forty minutes"}], "elevenlabs_extra_body": {"call_id": c}})
+    assert sse_text(r) == render("human_handoff") and store.get("call", c)["status"] == "handoff"
