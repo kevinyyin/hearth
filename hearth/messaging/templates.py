@@ -13,7 +13,7 @@ TEMPLATES: dict[str, str] = {
     "move_confirmed_ride": "A driver from {org} has accepted your ride. They expect to arrive between {window}.",
     "delivery_confirmed": "{org} has accepted your delivery of {item}. They expect to arrive between {window}.",
     "medical_handoff": "I can't give medical advice. I'm passing your question to a person at the health department. If this is an emergency, call 911.",
-    "human_handoff": "I'm connecting you with a person at the health department.",
+    "human_handoff": "I've flagged this call for a person at the health department. If this is an emergency, hang up and call 911.",
     "scam_reassure": "I understand. We will never ask for payment, Social Security numbers, passwords or bank details. You can hang up and call the health department at {callback_number}.",
     "voicemail": "This is Hearth calling for the {county} health department. We will send you a text.",
     "text_fallback": "Hearth: Power is out at your address. Based on your profile, your {device} backup should last about {hours}. Reply 1 if you're OK, 2 if you need help now, or a number if your hours are different.",

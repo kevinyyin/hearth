@@ -62,6 +62,8 @@ def respond(call_id: str, caller_text: str, keypad: str | None = None) -> str:
     call["ctx"]["ride"] = ({"org": job["data"].get("org_name", job["org_id"]), "window": job["data"]["window"]}
                            if job_status == "accepted" and "window" in job["data"] else None)
     ack, lines = _turn(call, text, keypad)
+    if refused := [k for k, _ in lines if not allowed(k, state, job_status)]:
+        _end(call, "handoff", "handoff", f"line not allowed for this plan: {refused}")  # so the hand-off line is true
     said = [render(k, **v) if allowed(k, state, job_status) else render("human_handoff") for k, v in lines]
     out = " ".join(([ack] if ack else []) + said)
     call["transcript"].append({"role": "agent", "text": out, "t": time.time()})
@@ -191,6 +193,7 @@ def chat_completions(body: dict = Body(...), authorization: str | None = Header(
         if last.get("role") == "user" else ""  # no new caller message: a silent turn
     call_id = extra.get("call_id") or _inbound_call(msgs)  # a caller number in the extra body is never trusted
     then = None
+    can_hang_up = any((t.get("function") or {}).get("name") == "end_call" for t in body.get("tools") or [])
     if not (call_id and (call := store.get("call", call_id))):
         line = render("human_handoff")
     else:
@@ -206,13 +209,23 @@ def chat_completions(body: dict = Body(...), authorization: str | None = Header(
             _end(call, "handoff", "error", f"{type(e).__name__}: {e}")
             store.put("call", call_id, call)
             line = render("human_handoff")
-    return StreamingResponse(_sse(line, body.get("model", "hearth-voice"), then), media_type="text/event-stream")
+    # a person has the call now (or no one matched the caller): after the hand-off line, end it rather than loop on it
+    now = store.get("call", call_id) if can_hang_up and call_id else None
+    hang_up = can_hang_up and (now is None or now["status"] in ("handoff", "escalated"))
+    return StreamingResponse(_sse(line, body.get("model", "hearth-voice"), then, hang_up), media_type="text/event-stream")
 
 
-def _sse(line: str, model: str, then=None):
+def _sse(line: str, model: str, then=None, hang_up: bool = False):
     base = {"id": f"chatcmpl-{uuid.uuid4().hex[:12]}", "object": "chat.completion.chunk", "created": int(time.time()), "model": model}
-    yield "data: " + json.dumps(base | {"choices": [{"index": 0, "delta": {"role": "assistant", "content": line}, "finish_reason": None}]}) + "\n\n"
-    yield "data: " + json.dumps(base | {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}) + "\n\n"
+
+    def chunk(delta: dict, finish: str | None) -> str:
+        return "data: " + json.dumps(base | {"choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}) + "\n\n"
+
+    yield chunk({"role": "assistant", "content": line}, None)
+    if hang_up:  # ElevenLabs' end_call system tool: the line above is spoken, then the call ends
+        yield chunk({"tool_calls": [{"index": 0, "id": f"call_{uuid.uuid4().hex[:12]}", "type": "function",
+                                     "function": {"name": "end_call", "arguments": json.dumps({"reason": "handed to a person"})}}]}, None)
+    yield chunk({}, "tool_calls" if hang_up else "stop")
     yield "data: [DONE]\n\n"
     if then:  # after the caller has the line, so the follow-up text adds no delay to the call
         try:
@@ -234,7 +247,9 @@ def setup(public_url: str) -> str:
         "conversation_config": {
             "agent": {"first_message": "", "language": "en", "prompt": {
                 "prompt": "Every reply comes from the Hearth custom model endpoint. "
-                          "caller={{system__caller_id}} conversation={{system__conversation_id}}", "llm": "custom-llm", "custom_llm": custom}},
+                          "caller={{system__caller_id}} conversation={{system__conversation_id}}", "llm": "custom-llm", "custom_llm": custom,
+                "built_in_tools": {"end_call": {"type": "system", "name": "end_call", "description": "Ends the call after a hand-off.",
+                                                "params": {"system_tool_type": "end_call"}}}}},
             "turn": {"turn_timeout": a("voice.turn_timeout_s"), "turn_eagerness": "patient"},
             "tts": {"optimize_streaming_latency": a("voice.tts_streaming_optimization")},
             "conversation": {"dtmf_input_settings": {"dtmf_input_timeout": 2, "hash_terminator": True}},

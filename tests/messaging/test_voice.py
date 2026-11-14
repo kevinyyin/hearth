@@ -268,3 +268,41 @@ def test_the_follow_up_text_goes_after_the_closing_line(monkeypatch):
     r = client().post("/voice/v1/chat/completions", json={
         "stream": True, "messages": [{"role": "user", "content": "yes"}], "elevenlabs_extra_body": {"call_id": c}})
     assert render("close_no_promise") in sse_text(r) and sent == [c]
+
+
+END_CALL = [{"type": "function", "function": {"name": "end_call", "parameters": {"type": "object", "properties": {"reason": {"type": "string"}}}}}]
+
+
+def chunks(r):
+    import json
+    return [json.loads(line[6:]) for line in r.text.splitlines() if line.startswith("data: {")]
+
+
+def test_a_handed_off_call_says_so_honestly_then_hangs_up():
+    c = call_at_ask()
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "tools": END_CALL, "messages": [{"role": "user", "content": "maybe, I guess"}], "elevenlabs_extra_body": {"call_id": c}})
+    said, calls = sse_text(r), [t for ch in chunks(r) for t in ch["choices"][0]["delta"].get("tool_calls", [])]
+    assert said == render("human_handoff") and "connecting" not in said and "911" in said
+    assert [t["function"]["name"] for t in calls] == ["end_call"] and chunks(r)[-1]["choices"][0]["finish_reason"] == "tool_calls"
+
+
+def test_an_active_call_and_a_browser_without_end_call_stay_up():
+    c = call_at_ask()
+    for tools, turn in ((END_CALL, "about forty minutes"), ([], "maybe, I guess")):
+        r = client().post("/voice/v1/chat/completions", json={
+            "stream": True, "tools": tools, "messages": [{"role": "user", "content": turn}], "elevenlabs_extra_body": {"call_id": c}})
+        assert not any(ch["choices"][0]["delta"].get("tool_calls") for ch in chunks(r))
+
+
+def test_an_unknown_inbound_caller_is_told_and_the_call_ends():
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "tools": END_CALL, "messages": [system("+15550109999"), {"role": "user", "content": "hello?"}]})
+    assert sse_text(r) == render("human_handoff") and chunks(r)[-1]["choices"][0]["finish_reason"] == "tool_calls"
+
+
+def test_a_line_the_plan_does_not_allow_hands_the_call_to_a_person(monkeypatch):
+    from hearth.messaging import scripts
+    c = call_at_ask()
+    monkeypatch.setattr(scripts, "advance", lambda call, t: [("delivery_confirmed", {"org": "x", "item": "y", "window": "z"})])
+    assert respond(c, "yes") == render("human_handoff") and store.get("call", c)["status"] == "handoff"
