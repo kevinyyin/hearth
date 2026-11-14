@@ -55,9 +55,11 @@ export default function BuildingViews({
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
           {data
             ? `${data.building_id} · ${live ? "CoStar record" : "fixture record"}`
-            : error
-              ? `no record: ${error}`
-              : "looking up the record…"}
+            : !buildingId
+              ? "this resident has not picked a building yet"
+              : error
+                ? `no record: ${error}`
+                : "looking up the record…"}
         </p>
       </div>
 

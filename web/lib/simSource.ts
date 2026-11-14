@@ -15,7 +15,7 @@
 // than a blank screen.
 
 import { useEffect, useState } from "react";
-import { API, getJson } from "@/lib/api";
+import { API, authHeaders, getJson, onUnauthorized } from "@/lib/api";
 import {
   COUNTY_CENTER,
   FIXTURE_COUNTY,
@@ -50,8 +50,19 @@ type Snap = {
   patients: { lon: number; lat: number; backup_hours: number; unpowered: boolean }[];
 };
 
+/**
+ * The API is behind the shared password, so every read has to carry it — the same
+ * header getJson sends. Without it each call here came back 401, fell quietly
+ * back to the fixture, and the fixture's building id was then fetched against the
+ * real API, which is where the 404 came from.
+ */
 async function get<T>(path: string, signal: AbortSignal): Promise<T> {
-  const res = await fetch(`${API}${path}`, { cache: "no-store", signal });
+  const res = await fetch(`${API}${path}`, {
+    cache: "no-store",
+    signal,
+    headers: authHeaders(),
+  });
+  if (res.status === 401) onUnauthorized();
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${path}`);
   return (await res.json()) as T;
 }
@@ -161,8 +172,9 @@ const FIXTURE_RESIDENT: ResidentFeed = {
   resident: RESIDENT,
   source: "fixture",
   detail: "Placeholder record — no API configured",
-  // the dev fixture under public/dev/api/buildings, so the panels draw something
-  buildingId: "B-SAMPLE",
+  // The dev fixture under public/dev/api/buildings, but only when there is no API:
+  // asking a real API for a fixture id is a guaranteed 404 dressed up as a finding.
+  buildingId: API ? null : "B-SAMPLE",
   scanId: null,
   outside: [],
   inside: [],
