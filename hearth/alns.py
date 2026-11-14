@@ -39,7 +39,24 @@ def reach_times(c: Crew, route: list[Need], now_h: float, travel: Travel) -> lis
 
 
 def _route_cost(c: Crew, route: list[Need], now_h: float, travel: Travel, early: float) -> float:
-    return sum(TIE * t if n is None else _cost(n, t - now_h, early) for n, t in _walk(c, route, now_h, travel))
+    """`_walk`, summed. Written out because the search spends nearly all its time here."""
+    t = start = max(now_h, c.free_at_h)
+    pos, held, total, capacity = (c.lat, c.lon), 0, 0.0, c.capacity
+    for n in route:
+        if capacity and held == capacity:
+            t, pos, held = t + travel(pos, c.base), c.base, 0
+        at = (n.lat, n.lon)
+        t += travel(pos, at)
+        wait, h = t - now_h, n.hours_until_empty
+        total += n.weight * ((wait - h if wait > h else 0.0) + early / (h if h > 0.1 else 0.1) * wait)
+        t += n.service_h
+        if n.dest:
+            t += travel(at, n.dest)
+            pos = n.dest
+        else:
+            pos = at
+        held += 1
+    return total + TIE * (t - start)
 
 
 def plan_cost(routes: Routes, pool: list[Need], crews: list[Crew], now_h: float, travel: Travel) -> float:
@@ -67,11 +84,11 @@ def search(start: Routes, pool: list[Need], crews: list[Crew], can: Callable[[Ne
 
     def places(routes: Routes, costs: dict, n: Need) -> list[tuple[float, str, int]]:
         """Every (change in the score, crew, position) for putting this need into a route, best first."""
-        out = []
+        out, skip = [], left_out[id(n)]
         for c in near[id(n)]:
             route = routes.get(c.crew_id, [])
-            base = costs.get(c.crew_id, 0.0)
-            out += [(rcost(c.crew_id, route[:i] + [n] + route[i:]) - base - left_out[id(n)], c.crew_id, i) for i in range(len(route) + 1)]
+            base = costs.get(c.crew_id, 0.0) + skip
+            out += [(_route_cost(c, route[:i] + [n] + route[i:], now_h, travel, early) - base, c.crew_id, i) for i in range(len(route) + 1)]
         return sorted(out)
 
     def put(routes: Routes, costs: dict, n: Need) -> None:
