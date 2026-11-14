@@ -42,82 +42,82 @@
  {
   "policy": "p3",
   "crews": 20,
-  "median": 3881297.5,
-  "p5": 3836887.875,
-  "p95": 3910702.975,
-  "unweighted_median": 1305829.75
+  "median": 3871103.75,
+  "p5": 3831205.8,
+  "p95": 3899906.075,
+  "unweighted_median": 1301514.0
  },
  {
   "policy": "p3",
   "crews": 40,
-  "median": 3495143.5,
-  "p5": 3455924.5,
-  "p95": 3528179.5,
-  "unweighted_median": 1190649.5
+  "median": 3472336.25,
+  "p5": 3437587.425,
+  "p95": 3506354.525,
+  "unweighted_median": 1183381.75
  },
  {
   "policy": "p3",
   "crews": 80,
-  "median": 2824664.25,
-  "p5": 2778534.45,
-  "p95": 2856606.45,
-  "unweighted_median": 979504.5
+  "median": 2803377.75,
+  "p5": 2761641.975,
+  "p95": 2836119.0,
+  "unweighted_median": 972546.5
  },
  {
   "policy": "p3",
   "crews": 160,
-  "median": 1679131.25,
-  "p5": 1648865.7,
-  "p95": 1715240.475,
-  "unweighted_median": 595289.25
+  "median": 1641663.75,
+  "p5": 1608744.45,
+  "p95": 1669437.325,
+  "unweighted_median": 583027.25
  },
  {
   "policy": "p3",
   "crews": 320,
-  "median": 537694.5,
-  "p5": 504741.3,
-  "p95": 573165.275,
-  "unweighted_median": 191570.25
+  "median": 530358.75,
+  "p5": 495245.525,
+  "p95": 563699.35,
+  "unweighted_median": 189377.25
  },
  {
   "policy": "p3__nobld",
   "crews": 20,
-  "median": 3932773.5,
-  "p5": 3899228.4,
-  "p95": 3960875.6,
-  "unweighted_median": 1320164.5
+  "median": 3927596.0,
+  "p5": 3890831.125,
+  "p95": 3955613.325,
+  "unweighted_median": 1317929.0
  },
  {
   "policy": "p3__nobld",
   "crews": 40,
-  "median": 3580598.5,
-  "p5": 3542483.1,
-  "p95": 3604434.675,
-  "unweighted_median": 1215962.0
+  "median": 3563791.0,
+  "p5": 3532991.45,
+  "p95": 3597621.9,
+  "unweighted_median": 1211514.25
  },
  {
   "policy": "p3__nobld",
   "crews": 80,
-  "median": 3002815.25,
-  "p5": 2968590.975,
-  "p95": 3022172.6,
-  "unweighted_median": 1037925.5
+  "median": 2982924.5,
+  "p5": 2943964.525,
+  "p95": 2999351.725,
+  "unweighted_median": 1031507.5
  },
  {
   "policy": "p3__nobld",
   "crews": 160,
-  "median": 2077798.0,
-  "p5": 2049294.85,
-  "p95": 2098700.4,
-  "unweighted_median": 731948.25
+  "median": 2041071.5,
+  "p5": 2015955.875,
+  "p95": 2062209.075,
+  "unweighted_median": 720412.75
  },
  {
   "policy": "p3__nobld",
   "crews": 320,
-  "median": 952879.5,
-  "p5": 945054.525,
-  "p95": 976530.575,
-  "unweighted_median": 337991.75
+  "median": 948099.25,
+  "p5": 939238.675,
+  "p95": 967122.725,
+  "unweighted_median": 335042.25
  },
  {
   "policy": "p3__nomove",
@@ -130,18 +130,18 @@
  {
   "policy": "p3__nomove",
   "crews": 40,
-  "median": 3948978.75,
-  "p5": 3901401.15,
-  "p95": 3978606.725,
-  "unweighted_median": 1324090.75
+  "median": 3948326.75,
+  "p5": 3900899.675,
+  "p95": 3976285.025,
+  "unweighted_median": 1323959.0
  },
  {
   "policy": "p3__nomove",
   "crews": 80,
-  "median": 3941224.0,
-  "p5": 3897013.325,
-  "p95": 3972281.6,
-  "unweighted_median": 1314612.25
+  "median": 3941268.75,
+  "p5": 3896999.025,
+  "p95": 3972226.2,
+  "unweighted_median": 1314659.0
  },
  {
   "policy": "p3__nomove",
@@ -162,41 +162,41 @@
  {
   "policy": "p3__aid",
   "crews": 20,
-  "median": 3853826.5,
-  "p5": 3810180.225,
-  "p95": 3880745.1,
-  "unweighted_median": 1297172.75
+  "median": 3852613.25,
+  "p5": 3808844.125,
+  "p95": 3879862.375,
+  "unweighted_median": 1296457.75
  },
  {
   "policy": "p3__aid",
   "crews": 40,
-  "median": 3455007.75,
-  "p5": 3414683.025,
-  "p95": 3484122.0,
-  "unweighted_median": 1177801.75
+  "median": 3439672.0,
+  "p5": 3397445.7,
+  "p95": 3470330.475,
+  "unweighted_median": 1173330.75
  },
  {
   "policy": "p3__aid",
   "crews": 80,
-  "median": 2786810.0,
-  "p5": 2744374.65,
-  "p95": 2824736.425,
-  "unweighted_median": 963155.0
+  "median": 2727673.5,
+  "p5": 2689909.925,
+  "p95": 2769589.075,
+  "unweighted_median": 948363.25
  },
  {
   "policy": "p3__aid",
   "crews": 160,
-  "median": 1609581.5,
-  "p5": 1568334.15,
-  "p95": 1634389.0,
-  "unweighted_median": 570675.25
+  "median": 1570946.25,
+  "p5": 1542960.05,
+  "p95": 1601558.3,
+  "unweighted_median": 557841.0
  },
  {
   "policy": "p3__aid",
   "crews": 320,
-  "median": 668370.5,
-  "p5": 627375.3,
-  "p95": 705269.5249999999,
-  "unweighted_median": 240408.75
+  "median": 534500.0,
+  "p5": 499223.4,
+  "p95": 561595.95,
+  "unweighted_median": 191223.0
  }
 ]
