@@ -6,7 +6,7 @@ import re
 import anthropic
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from hearth.config import a, anthropic_headers
 from hearth.messaging.guard import ACKS
@@ -45,6 +45,19 @@ class Turn(BaseModel):
     mobility: Literal["walks", "wheelchair", "bed"] | None = None
     which_part: Literal["building", "floor", "door", "room"] | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _empty_means_unsaid(cls, data):
+        """The schema gives these fields "" for "not said" (the API caps nullable fields at 16); here that is None."""
+        if isinstance(data, dict):
+            return {k: None if k in EMPTY_IS_NONE and v == "" else v for k, v in data.items()}
+        return data
+
+
+TEXT_FIELDS = ("house_number", "street", "unit", "zip", "building", "door", "room", "room_label")
+CHOICES = {"device": ["oxygen", "ventilator", "home_dialysis", "feeding_pump", "other"], "elevator_working": ["yes", "no", "unknown"],
+           "intent": ["help", "safe", "details"], "mobility": ["walks", "wheelchair", "bed"], "which_part": ["building", "floor", "door", "room"]}
+EMPTY_IS_NONE = set(TEXT_FIELDS) | set(CHOICES)
 
 KEYPAD = {
     "1": Turn(safe=True, confirms=True, confidence=1.0),
@@ -85,7 +98,8 @@ Fields (null when the turn does not say):
 - confidence: 0 to 1, how sure you are of the fields you set.
 - ack: null, or one of the plain acknowledgments the schema allows, when it fits what they said.
 
-Fields for registration, help and building calls (null unless this turn says them):
+Fields for registration, help and building calls. floor and has_elevator are null unless this turn says them; every
+other field below is an empty string "" unless this turn says it:
 - device: which powered equipment: oxygen, ventilator, home_dialysis, feeding_pump, or other for anything else.
 - house_number, street, unit, zip: a street address as spoken. house_number is the digits only ("twelve hundred" =
   "1200"); unit is the apartment number in digits and letters ("fourteen ten" = "1410", "B twelve" = "B12").
@@ -110,13 +124,11 @@ _SCHEMA = {
         **{k: {"type": ["boolean", "null"]} for k in
            ("safe", "needs_help_now", "device_running", "can_move", "consents_to_move", "confirms")},
         "backup_hours": {"type": ["number", "null"]},
-        **{k: {"type": ["string", "null"]} for k in ("house_number", "street", "unit", "zip", "building", "door", "room", "room_label")},
+        # "" means "not said" for these: the API refuses a schema with more than 16 nullable (union-typed) fields
+        **{k: {"type": "string"} for k in TEXT_FIELDS},
+        **{k: {"type": "string", "enum": v + [""]} for k, v in CHOICES.items()},
         "floor": {"type": ["integer", "null"]},
         "has_elevator": {"type": ["boolean", "null"]},
-        **{k: {"anyOf": [{"type": "string", "enum": v}, {"type": "null"}]} for k, v in {
-            "device": ["oxygen", "ventilator", "home_dialysis", "feeding_pump", "other"], "elevator_working": ["yes", "no", "unknown"],
-            "intent": ["help", "safe", "details"], "mobility": ["walks", "wheelchair", "bed"],
-            "which_part": ["building", "floor", "door", "room"]}.items()},
         "destination_offered": {"type": ["string", "null"]},
         "ack": {"anyOf": [{"type": "string", "enum": list(ACKS)}, {"type": "null"}]},
         "wants_human": {"type": "boolean"},

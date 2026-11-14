@@ -154,7 +154,10 @@ the agent trace and approval, Photon the call and the text.
 - A move Hearth starts on its own is not messaged, called or dispatched before a dispatcher approves it. Help a
   resident asks for themselves is dispatched without one (there are not enough dispatchers to approve every job); a
   dispatcher is asked only when code cannot place the request.
-- No reply is never treated as safe.
+- No reply is never treated as safe. Keypad 1 never records anyone as safe; only the words "I'm safe" do.
+- Only numbers in `HEARTH_DEMO_CALLERS` can register by phone, so a stranger's real details never reach the store.
+  Every phone number in the CoStar kit is fake (area code 555) and is never dialed; a building's office is called only
+  at a number in `HEARTH_BUILDING_PHONES`.
 - Same seed, same output bytes.
 - Every default number is in `config/assumptions.yaml` with a source and a `confirmed` flag. Each run copies the
   file next to its results.
@@ -219,8 +222,21 @@ Field names and coverage are in `docs/toolkit-notes.md`.
 
 ## Voice and text
 
-- **Call logic** (`voice.py`, `scripts.py`): two scripts, the impact call and the move-consent call, plus inbound
-  calls matched by caller number. A backup number counts only after the caller confirms the read-back. A vague
+- **The phone is the resident's way in** (`register.py`, `registry.py`; design in
+  `docs/superpowers/specs/2026-11-14-voice-registration-design.md`). A demo caller with no registration gets the
+  registration call: equipment, device, address with apartment number (read back, matched to one CoStar building and
+  its unit list), hours, then home questions chosen from that building's record (apartment, which building, floor,
+  elevator, door, machine room), each skipped when the record answers it, and one read-back of the home answers. The
+  records (`patient` `R-…`, `contact`, `home` with `source: "phone"`) are written only once device, address, hours and
+  floor are confirmed. A registered caller gets a menu: "help" opens the same help request the resident page's button
+  opens (asking once how they move), "I'm safe" closes one, "details" reads back what is registered. Each new tracker
+  line goes to them as a text. `python -m hearth.messaging.voice reset <phone>` clears a number for rehearsals.
+- **Storm and building calls.** "Storm forecast (simulated)" on `/dispatch` texts the county alert to
+  `HEARTH_ALERT_PHONES` and calls every phone registrant in `storm.forecast_zips` to check their details. The impact
+  call asks a registrant above floor 1 whether the elevator works right now; the answer adds stair minutes to their
+  queue row. "Call the building" asks a refuge's office about power and the elevator; a fresh answer replaces the
+  simulated refuge call.
+- **Call logic** (`voice.py`, `scripts.py`): the impact call and the move-consent call, plus the calls above. A backup number counts only after the caller confirms the read-back. A vague
   later turn never overwrites a confirmed fact. Three silences end the call and escalate. A consent call is
   refused unless a dispatcher-approved proposal exists for that patient.
 - **Interpreter** (`interpreter.py`): Claude Haiku turns each caller turn into structured fields; one retry on bad
@@ -238,9 +254,10 @@ Field names and coverage are in `docs/toolkit-notes.md`.
 
 ## Help loop (resident and responder sides)
 
-- **Personas, not logins** (`/start`): a resident picks a demo patient, a responder types a crew name; the choice
-  lives in the browser. `/resident` holds the home markup and the help panel, `/responder` the crew's setup and
-  jobs, `/dispatch` the queue.
+- **Personas, not logins** (`/start`): a responder types a crew name; the choice lives in the browser. Residents use
+  the phone; `/resident` (home markup and help panel) still works by its address as a backup. `/responder` holds the
+  crew's setup and jobs (a phone home shows "Said by phone"), `/dispatch` the queue, phone registrations and the storm
+  button.
 - **A resident's request is the go-ahead** (`hearth/dispatch.py`). "I need help" opens a request; "I'm safe" closes
   one that no crew has picked up. Silence is never read as safe.
 - **A model orders, code places.** One Claude Sonnet call per new request orders the waiting requests and gives each
@@ -298,7 +315,10 @@ Sources, corrections and the two oddities we investigated are in `docs/sim-notes
 | `PUT /api/patients/{id}/home` | Save the home markup: device answers, the matching scan, outside and inside pins, people at home, people to contact |
 | `GET /api/homes` | Every saved home markup with its patient and address, for the responder's job list |
 | `GET /api/proposals`, `POST /api/proposals/{id}/decision` | Approve or reject, with a reason on reject |
-| `POST /api/calls`, `GET /api/calls/{id}` | Start a call (refused without an approved proposal); read its transcript and confirmed facts |
+| `POST /api/calls`, `GET /api/calls/{id}` | Start a call (refused without an approved proposal; kind `register` needs a listed demo phone); read its transcript and confirmed facts |
+| `GET /api/registrations` | Phone registrations, and registration calls that ended before anyone was registered |
+| `POST /api/storm` | The simulated storm: alert texts and check calls |
+| `POST /api/buildings/{id}/call` | Ring a building's office about power and the elevator (only a number in `HEARTH_BUILDING_PHONES`) |
 | `POST /voice/v1/chat/completions` | The model endpoint ElevenLabs calls |
 | `GET`, `PUT /api/patients/{id}/home`, `GET /api/homes`, `GET /api/demo-patients` | The resident's home markup |
 | `GET`, `POST /api/patients/{id}/help`, `POST /api/patients/{id}/safe` | A resident asks for help or says they are safe; the tracker's fixed lines |
@@ -336,6 +356,11 @@ List these beside the results, every time.
 - Every ZIP gets the same device mix, and the Medicare-only count misses children and younger adults.
 
 ## Change log
+
+**v7 (November 14, 2026).** The phone becomes the resident's way in: registration, home details chosen from the
+CoStar record, help and "I'm safe" by phone, tracker texts, a simulated storm alert with check calls, a live elevator
+question that moves the queue, a call to a building's office, closed hotels left out of refuges, and a layer table
+(`evals/layers.md`).
 
 **v6 (November 14, 2026).** Rewritten as built. Scenarios cut to Beryl; policies to five; sourced device mix;
 dialysis as a deadline; records-only building profiles; elevators from CoStar and unit layouts from scans;
