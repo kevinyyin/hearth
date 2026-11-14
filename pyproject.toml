@@ -9,15 +9,15 @@ dependencies = [
     "httpx>=0.28.1",
     "langchain-anthropic>=1.7.10",
     "langgraph-checkpoint-postgres>=3.2.1",
-    "numpy>=2.5.4",
-    "pandas>=3.1.1",
     "psycopg[binary]>=3.3.9",
-    "pyarrow>=26.0.1",
     "pydantic>=2.14.3",
     "python-dotenv>=1.2.4",
     "pyyaml>=6.0.3",
     "uvicorn>=0.54.0",
 ]
+
+[tool.uv]
+default-groups = ["dev", "sim"]  # local installs get the simulation; the hosted API (project deps only) does not
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -29,3 +29,11 @@ markers = ["live: calls the real model or network; run only where the plan says"
 dev = [
     "pytest>=9.2.0",
 ]
+sim = [
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "pyarrow>=26.0.1",
+]
+
+[tool.vercel]
+entrypoint = "api.main:app"  # the hosted API (Vercel project hearth-api); the web app is a separate project rooted at web/

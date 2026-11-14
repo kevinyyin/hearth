@@ -169,3 +169,15 @@ def test_hosted_api_needs_the_shared_password(monkeypatch):
     assert client.get("/api/runs", headers={"Authorization": "Bearer open sesame", "x-forwarded-for": "203.0.113.7"}).status_code == 200
     assert client.options("/api/runs", headers=origin | {"Access-Control-Request-Method": "GET"}).status_code == 200
     assert client.post("/voice/v1/chat/completions", json={"messages": []}).status_code == 200  # its own secret
+
+
+def test_county_patients_come_from_a_json_copy_in_storage(monkeypatch, tmp_path):
+    import json
+    import api.main as m
+    from bhelpers import patient as make_patient
+    from hearth import remote
+    copy = tmp_path / "patients.json"
+    copy.write_text(json.dumps([make_patient(patient_id="SIM-77002-0001").model_dump(mode="json")]))
+    monkeypatch.setattr(m, "PATIENTS_FILE", tmp_path / "absent.parquet")
+    monkeypatch.setattr(remote, "fetch", lambda path: copy if path == "processed/patients_beryl_2024_s1.json" else None)
+    assert m._patient("SIM-77002-0001").patient_id == "SIM-77002-0001"

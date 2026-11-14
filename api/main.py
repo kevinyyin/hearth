@@ -25,6 +25,7 @@ from hearth.contracts import BuildingProfile, Patient, TraceEvent
 RESULTS = ROOT / "results"
 DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
 PATIENTS_FILE = ROOT / "data" / "processed" / "patients_beryl_2024_s1.parquet"
+PATIENTS_JSON = "processed/patients_beryl_2024_s1.json"  # the same patients, in private storage for the hosted API
 
 app = FastAPI(title="Hearth (simulated patients)")
 
@@ -95,14 +96,15 @@ def _patient(patient_id: str) -> Patient:
     found = None
     if DEMO_PATIENTS.exists():
         found = next((Patient(**r) for r in json.loads(DEMO_PATIENTS.read_text()) if r["patient_id"] == patient_id), None)
-    parquet = PATIENTS_FILE if PATIENTS_FILE.exists() else remote.fetch(f"processed/{PATIENTS_FILE.name}")
-    if found is None and parquet is not None:
+    if found is None and PATIENTS_FILE.exists():  # local: the simulation's parquet (pandas is a sim-only dependency)
         import pandas as pd
 
-        df = pd.read_parquet(parquet)
+        df = pd.read_parquet(PATIENTS_FILE)
         hit = df[df["patient_id"] == patient_id]
         if len(hit):
             found = Patient(**json.loads(hit.iloc[[0]].to_json(orient="records"))[0])
+    elif found is None and (copy := remote.fetch(PATIENTS_JSON)):  # hosted: a JSON copy
+        found = next((Patient(**r) for r in json.loads(copy.read_text()) if r["patient_id"] == patient_id), None)
     if found is None:
         raise HTTPException(404, "no such patient")
     store.put("patient", patient_id, found)

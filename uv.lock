@@ -496,10 +496,7 @@ dependencies = [
     { name = "httpx" },
     { name = "langchain-anthropic" },
     { name = "langgraph-checkpoint-postgres" },
-    { name = "numpy" },
-    { name = "pandas" },
     { name = "psycopg", extra = ["binary"] },
-    { name = "pyarrow" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -510,6 +507,11 @@ dependencies = [
 dev = [
     { name = "pytest" },
 ]
+sim = [
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -518,10 +520,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain-anthropic", specifier = ">=1.7.10" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.2.1" },
-    { name = "numpy", specifier = ">=2.5.4" },
-    { name = "pandas", specifier = ">=3.1.1" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.9" },
-    { name = "pyarrow", specifier = ">=26.0.1" },
     { name = "pydantic", specifier = ">=2.14.3" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -530,6 +529,11 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.2.0" }]
+sim = [
+    { name = "numpy", specifier = ">=2.5.4" },
+    { name = "pandas", specifier = ">=3.1.1" },
+    { name = "pyarrow", specifier = ">=26.0.1" },
+]
 
 [[package]]
 name = "httpcore"

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSUMPTIONS = ROOT / "config" / "assumptions.yaml"
 load_dotenv(ROOT / ".env")
 # writable data (caches, agent notes, downloaded files); data/ locally, a temp folder on a host with a read-only bundle
-DATA = Path(os.environ.get("HEARTH_DATA_DIR", ROOT / "data"))
+DATA = Path(os.environ.get("HEARTH_DATA_DIR") or ("/tmp/hearth" if os.environ.get("VERCEL") else ROOT / "data"))
 
 
 @cache
