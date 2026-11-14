@@ -126,3 +126,10 @@ def test_loaded_patients_are_stored_for_the_voice_lane():
     from api.main import _patient
     _patient("demo-1")
     assert store.get("patient", "demo-1")["mobility"] == "wheelchair_power"
+
+
+def test_records_only_profiles_do_not_count_as_surveyed():
+    store.put("profile", "B-SAMPLE", profile("B-SAMPLE", floors=8).model_copy(update={"method": "fields"}))
+    rows = {r["building_id"]: r for r in client.get("/api/buildings").json()}
+    assert rows["B-SAMPLE"]["surveyed"] is False and rows["B-SAMPLE"]["records_only"] is True
+    assert client.get("/api/buildings/B-SAMPLE").json()["profile"]["method"] == "fields"

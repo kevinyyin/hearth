@@ -111,9 +111,10 @@ def results():
 # ---- buildings ----
 @app.get("/api/buildings")
 def buildings():
-    surveyed = {p["building_id"] for p in store.all("profile")}
+    method = {p["building_id"]: p.get("method", "agent") for p in store.all("profile")}
     return [{"building_id": r["building_id"], "name": r.get("name"), "address": r["address"], "lat": r["lat"], "lon": r["lon"],
-             "property_type": r["property_type"], "has_scan": bool(r.get("matterport_model_ids")), "surveyed": r["building_id"] in surveyed}
+             "property_type": r["property_type"], "has_scan": bool(r.get("matterport_model_ids")),
+             "surveyed": method.get(r["building_id"]) == "agent", "records_only": method.get(r["building_id"]) == "fields"}
             for r in tools.costar_all()]
 
 

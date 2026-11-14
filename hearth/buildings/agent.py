@@ -207,7 +207,8 @@ def build_surveyor(model=None):
 def survey(building_id: str, address: str, lat: float, lon: float, use_cache: bool = True) -> Iterator[TraceEvent]:
     """Stream the survey as TraceEvents. The last event is always kind="done" with a profile, even on failure."""
     t0, seq = time.time(), 0
-    if use_cache and (hit := store.get("profile", building_id)):
+    hit = store.get("profile", building_id)
+    if use_cache and hit and hit.get("method", "agent") == "agent":  # a records-only ("fields") profile is no survey
         cached = BuildingProfile.model_validate(hit).model_dump(mode="json") | {"cached": True}  # fills fields added since it was stored
         yield TraceEvent(seq=0, t=0.0, kind="done", agent="surveyor", text="cached profile", data={"profile": cached})
         return

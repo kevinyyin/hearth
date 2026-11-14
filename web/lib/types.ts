@@ -105,6 +105,8 @@ export type BuildingProfile = { [K in (typeof PROFILE_FIELDS)[number]]: Sourced 
   conflicts: string[];
   cached: boolean;
   error: string | null;
+  /** "fields": built from CoStar and Vexcel records with no agent survey; "agent": a live survey. */
+  method?: "agent" | "fields";
 };
 
 /** Two parts (design amendment Nov 13): getting to the door, and inside the scanned unit type. */

@@ -97,6 +97,7 @@ class BuildingProfile(BaseModel):
     conflicts: list[str]
     cached: bool = False
     error: str | None = None
+    method: Literal["agent", "fields"] = "agent"  # "fields": built from CoStar and Vexcel records with no agent survey
 
 
 class PatientSnap(BaseModel):

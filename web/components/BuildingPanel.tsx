@@ -66,14 +66,18 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
       <div>
         <h3 className="text-sm font-semibold">{detail?.name ?? buildingId}</h3>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>{detail?.address}</p>
-        {p?.cached && !trace.done && <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "var(--grid)" }}>cached</span>}
+        {p?.method === "fields" && !trace.done ? (
+          <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "#fdf0c4", color: "#5c4300" }}>
+            records only: CoStar + Vexcel fields, no agent survey yet
+          </span>
+        ) : p?.cached && !trace.done && <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "var(--grid)" }}>cached agent survey</span>}
       </div>
       {detail && API && <img src={`${API}${detail.image_url}`} alt="Top-down aerial image of the building (Vexcel)" className="w-full rounded" />}
       {detail?.embed_url && (
         <iframe src={detail.embed_url} title="Matterport scan" className="h-48 w-full rounded border-0" allow="xr-spatial-tracking; fullscreen" />
       )}
       <button type="button" disabled={!!running} onClick={() => run("survey")} className="rounded border px-3 py-1 text-xs font-medium" style={{ borderColor: "var(--border)" }}>
-        {running === "survey" ? "Surveying…" : p ? "Survey again" : "Survey building"}
+        {running === "survey" ? "Surveying…" : p?.method === "agent" ? "Survey again" : "Survey building with the agent"}
       </button>
       <AgentTrace view={trace} running={running === "survey"} />
 

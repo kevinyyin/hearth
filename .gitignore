@@ -14,3 +14,4 @@ data/processed/*.parquet
 # CoStar addresses are sponsor data
 data/processed/building_ranking.json
 .claude/
+data/*.db

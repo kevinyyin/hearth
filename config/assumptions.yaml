@@ -94,3 +94,9 @@ planner:
   delivery_backup_h: {value: 24, source: "our call: hours of backup one delivery adds; placeholder", confirmed: false}
   destinations: {value: [[29.7069, -95.3972, "Texas Medical Center"], [29.7520, -95.3580, "George R. Brown Convention Center"], [29.6847, -95.4107, "NRG Center"]], source: "our call: approximate locations of a hospital campus and two large shelters; rides end at the nearest", confirmed: false}
   candidates_per_free_crew: {value: 50, source: "our call (speed): only the top needs per free crew are offered each tick", confirmed: false}
+
+# records-only building profiles (hearth/buildings/bulk.py); Vexcel gives roof material, not color
+building_records:
+  roof_tone_by_material: {value: {membrane: light, metal: light, shingle: medium, tile: medium, gravel: dark, built-up: dark, asphalt: dark}, source: "our call: typical colors; most Houston flat membrane roofs are white TPO", confirmed: false}
+  costar_confidence: {value: 0.8, source: "our call: CoStar research fields, not verified on site", confirmed: false}
+  roof_tone_confidence: {value: 0.4, source: "our call: color inferred from material class, no image read", confirmed: false}
