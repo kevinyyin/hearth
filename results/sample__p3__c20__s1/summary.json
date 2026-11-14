@@ -1,0 +1,11 @@
+{
+  "run_id": "sample__p3__c20__s1",
+  "risk_hours_weighted": 41.5,
+  "risk_hours_unweighted": 14.0,
+  "device_hours": 6.0,
+  "temp_hours": 8.0,
+  "moves": 1,
+  "patients_reaching_zero": 1,
+  "assumptions_sha256": null,
+  "note": "hand-written sample; not a simulation result"
+}

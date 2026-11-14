@@ -1,0 +1,6 @@
+{"t": "2024-07-08T12:00:00Z", "type": "power_lost", "patient_id": "p7", "data": {"zip": "77002"}}
+{"t": "2024-07-08T12:00:00Z", "type": "state_change", "patient_id": "p8", "data": {"from": "RESUPPLY", "to": "MOVE", "why": "home forecast unsafe before restoration"}}
+{"t": "2024-07-08T12:00:00Z", "type": "job_created", "patient_id": "p11", "data": {"job_id": "j1", "kind": "delivery", "org_id": "s2"}}
+{"t": "2024-07-08T12:30:00Z", "type": "job_accepted", "patient_id": "p11", "data": {"job_id": "j1", "crew_id": "c1"}}
+{"t": "2024-07-08T12:30:00Z", "type": "state_change", "patient_id": "p2", "data": {"from": "OWN_BACKUP", "to": "RESUPPLY", "why": "backup below restoration plus margin"}}
+{"t": "2024-07-08T12:30:00Z", "type": "escalation", "patient_id": "p7", "data": {"why": "no reply after two calls; silence is not safe"}}

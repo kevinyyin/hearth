@@ -1,0 +1,9 @@
+# Hurricane Beryl, Harris County TX. Landfall 2024-07-08 ~09:00 UTC.
+name: beryl_2024
+fips: "48201"
+start: "2024-07-08T06:00:00Z"
+end: "2024-07-19T00:00:00Z"
+customer_total: 1827686          # MCC.csv, not the EAGLE-I file's total_customers
+empower_month: Jul_2024
+weather_station: IAH
+center: [29.76, -95.37]

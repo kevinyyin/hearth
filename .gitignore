@@ -2,3 +2,12 @@
 .env.*
 !.env.example
 data/raw/
+# sponsor data (CoStar, Matterport, Vexcel) must never reach the public repo; only hand-made fixtures are committed
+data/buildings/*
+!data/buildings/_fixtures/
+.venv/
+__pycache__/
+.pytest_cache/
+.DS_Store
+data/hearth.db
+data/processed/*.parquet

@@ -1,0 +1,32 @@
+{
+  "model_id": "fixture-B-SAMPLE",
+  "embed_url": null,
+  "fixture": true,
+  "note": "no elevator appears anywhere in this scan although CoStar lists one (deliberate conflict)",
+  "panoramas": [
+    {
+      "pano_id": "pano-entrance",
+      "label": "Main entrance, street side",
+      "path": null,
+      "reading": "Three concrete steps up to a single glass door, about 0.85 m clear width. No ramp visible."
+    },
+    {
+      "pano_id": "pano-side",
+      "label": "Side door by parking",
+      "path": null,
+      "reading": "Level threshold, no steps, metal door about 0.9 m clear width, opens onto the curb loading zone."
+    },
+    {
+      "pano_id": "pano-lobby",
+      "label": "Ground floor lobby",
+      "path": null,
+      "reading": "Mailboxes and a stairwell door. No elevator doors or call buttons visible."
+    },
+    {
+      "pano_id": "pano-stair",
+      "label": "Main stairwell",
+      "path": null,
+      "reading": "Concrete stairs about 1.1 m wide with a handrail on one side."
+    }
+  ]
+}

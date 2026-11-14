@@ -1,0 +1,8 @@
+{
+  "roof_material": "built-up asphalt",
+  "roof_tone": "dark",
+  "roof_condition": "fair",
+  "tree_cover_fraction": 0.05,
+  "image": "vexcel.png",
+  "fixture": true
+}

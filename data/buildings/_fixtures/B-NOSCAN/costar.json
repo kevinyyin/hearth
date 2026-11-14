@@ -1,0 +1,14 @@
+{
+  "building_id": "B-NOSCAN",
+  "address": "1400 Fixture St, Houston, TX 77002",
+  "lat": 29.753,
+  "lon": -95.36,
+  "property_type": "multifamily",
+  "floors": 8,
+  "units": 96,
+  "year_built": 1974,
+  "construction": "masonry",
+  "elevator_count": 1,
+  "fixture": true,
+  "note": "hand-made fixture; real CoStar field names unknown until the toolkit keys arrive"
+}

@@ -1,0 +1,29 @@
+[project]
+name = "hearth"
+version = "0.1.0"
+description = "Dispatcher tool for people on power-dependent home medical devices during outages (synthetic patients)"
+requires-python = ">=3.12"
+dependencies = [
+    "deepagents==0.7.38",
+    "fastapi>=0.162.7",
+    "httpx>=0.28.1",
+    "langchain-anthropic>=1.7.10",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "pyarrow>=26.0.1",
+    "pydantic>=2.14.3",
+    "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.3",
+    "uvicorn>=0.54.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = ["live: calls the real model or network; run only where the plan says"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
