@@ -1,0 +1,378 @@
+{
+ "t": "2024-07-08T12:30:00Z",
+ "patients": [
+  {
+   "id": "p1",
+   "lat": 29.7604,
+   "lon": -95.3698,
+   "device": "feeding_pump",
+   "state": "UNREACHABLE",
+   "backup_hours": 3.6,
+   "indoor_temp_c": 28.1,
+   "unpowered": true,
+   "building_id": "B-SAMPLE"
+  },
+  {
+   "id": "p2",
+   "lat": 29.7604,
+   "lon": -95.3698,
+   "device": "ventilator",
+   "state": "RESUPPLY",
+   "backup_hours": 21.3,
+   "indoor_temp_c": 30.0,
+   "unpowered": true,
+   "building_id": "B-SAMPLE"
+  },
+  {
+   "id": "p3",
+   "lat": 29.7604,
+   "lon": -95.3698,
+   "device": "oxygen",
+   "state": "NOT_AFFECTED",
+   "backup_hours": 28.1,
+   "indoor_temp_c": 22.0,
+   "unpowered": false,
+   "building_id": "B-SAMPLE"
+  },
+  {
+   "id": "p4",
+   "lat": 29.7604,
+   "lon": -95.3698,
+   "device": "oxygen",
+   "state": "NOT_AFFECTED",
+   "backup_hours": 13.0,
+   "indoor_temp_c": 22.0,
+   "unpowered": false,
+   "building_id": "B-SAMPLE"
+  },
+  {
+   "id": "p5",
+   "lat": 29.753,
+   "lon": -95.36,
+   "device": "home_dialysis",
+   "state": "OWN_BACKUP",
+   "backup_hours": 24.5,
+   "indoor_temp_c": 29.8,
+   "unpowered": true,
+   "building_id": "B-NOSCAN"
+  },
+  {
+   "id": "p6",
+   "lat": 29.753,
+   "lon": -95.36,
+   "device": "oxygen",
+   "state": "OWN_BACKUP",
+   "backup_hours": 8.9,
+   "indoor_temp_c": 29.3,
+   "unpowered": true,
+   "building_id": "B-NOSCAN"
+  },
+  {
+   "id": "p7",
+   "lat": 29.79825,
+   "lon": -95.32846,
+   "device": "oxygen",
+   "state": "URGENT",
+   "backup_hours": 0.1,
+   "indoor_temp_c": 28.9,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p8",
+   "lat": 29.7689,
+   "lon": -95.42586,
+   "device": "feeding_pump",
+   "state": "MOVE",
+   "backup_hours": 7.2,
+   "indoor_temp_c": 30.4,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p9",
+   "lat": 29.75143,
+   "lon": -95.40924,
+   "device": "oxygen",
+   "state": "UNREACHABLE",
+   "backup_hours": 16.2,
+   "indoor_temp_c": 29.9,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p10",
+   "lat": 29.77745,
+   "lon": -95.38504,
+   "device": "home_dialysis",
+   "state": "NOT_AFFECTED",
+   "backup_hours": 13.4,
+   "indoor_temp_c": 22.0,
+   "unpowered": false,
+   "building_id": null
+  },
+  {
+   "id": "p11",
+   "lat": 29.76084,
+   "lon": -95.33659,
+   "device": "oxygen",
+   "state": "RESUPPLY",
+   "backup_hours": 15.4,
+   "indoor_temp_c": 28.4,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p12",
+   "lat": 29.75897,
+   "lon": -95.42645,
+   "device": "feeding_pump",
+   "state": "URGENT",
+   "backup_hours": 0.1,
+   "indoor_temp_c": 26.6,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p13",
+   "lat": 29.78034,
+   "lon": -95.31202,
+   "device": "ventilator",
+   "state": "OWN_BACKUP",
+   "backup_hours": 17.5,
+   "indoor_temp_c": 28.4,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p14",
+   "lat": 29.72703,
+   "lon": -95.36973,
+   "device": "oxygen",
+   "state": "NOT_AFFECTED",
+   "backup_hours": 29.5,
+   "indoor_temp_c": 22.0,
+   "unpowered": false,
+   "building_id": null
+  },
+  {
+   "id": "p15",
+   "lat": 29.78705,
+   "lon": -95.36525,
+   "device": "oxygen",
+   "state": "NOT_AFFECTED",
+   "backup_hours": 25.9,
+   "indoor_temp_c": 22.0,
+   "unpowered": false,
+   "building_id": null
+  },
+  {
+   "id": "p16",
+   "lat": 29.73322,
+   "lon": -95.36835,
+   "device": "ventilator",
+   "state": "RESUPPLY",
+   "backup_hours": 28.1,
+   "indoor_temp_c": 29.3,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p17",
+   "lat": 29.75591,
+   "lon": -95.39769,
+   "device": "home_dialysis",
+   "state": "RESUPPLY",
+   "backup_hours": 16.2,
+   "indoor_temp_c": 31.2,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p18",
+   "lat": 29.71057,
+   "lon": -95.33596,
+   "device": "oxygen",
+   "state": "RESUPPLY",
+   "backup_hours": 24.2,
+   "indoor_temp_c": 30.8,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p19",
+   "lat": 29.78405,
+   "lon": -95.3329,
+   "device": "oxygen",
+   "state": "OWN_BACKUP",
+   "backup_hours": 15.3,
+   "indoor_temp_c": 29.2,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p20",
+   "lat": 29.75261,
+   "lon": -95.42327,
+   "device": "home_dialysis",
+   "state": "RESUPPLY",
+   "backup_hours": 25.7,
+   "indoor_temp_c": 29.2,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p21",
+   "lat": 29.72998,
+   "lon": -95.36943,
+   "device": "oxygen",
+   "state": "UNREACHABLE",
+   "backup_hours": 14.3,
+   "indoor_temp_c": 28.2,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p22",
+   "lat": 29.74461,
+   "lon": -95.36538,
+   "device": "ventilator",
+   "state": "OWN_BACKUP",
+   "backup_hours": 18.4,
+   "indoor_temp_c": 29.5,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p23",
+   "lat": 29.75581,
+   "lon": -95.42664,
+   "device": "oxygen",
+   "state": "OWN_BACKUP",
+   "backup_hours": 6.8,
+   "indoor_temp_c": 27.3,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p24",
+   "lat": 29.76845,
+   "lon": -95.32668,
+   "device": "oxygen",
+   "state": "MOVE",
+   "backup_hours": 23.6,
+   "indoor_temp_c": 30.4,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p25",
+   "lat": 29.79164,
+   "lon": -95.39936,
+   "device": "oxygen",
+   "state": "OWN_BACKUP",
+   "backup_hours": 24.8,
+   "indoor_temp_c": 29.8,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p26",
+   "lat": 29.71832,
+   "lon": -95.428,
+   "device": "feeding_pump",
+   "state": "MOVED",
+   "backup_hours": 0.9,
+   "indoor_temp_c": 29.8,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p27",
+   "lat": 29.73496,
+   "lon": -95.41686,
+   "device": "feeding_pump",
+   "state": "RESUPPLY",
+   "backup_hours": 18.4,
+   "indoor_temp_c": 28.1,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p28",
+   "lat": 29.71695,
+   "lon": -95.41084,
+   "device": "feeding_pump",
+   "state": "MOVE",
+   "backup_hours": 15.6,
+   "indoor_temp_c": 27.2,
+   "unpowered": true,
+   "building_id": null
+  },
+  {
+   "id": "p29",
+   "lat": 29.73729,
+   "lon": -95.34461,
+   "device": "ventilator",
+   "state": "RESTORED",
+   "backup_hours": 13.9,
+   "indoor_temp_c": 22.0,
+   "unpowered": false,
+   "building_id": null
+  },
+  {
+   "id": "p30",
+   "lat": 29.7422,
+   "lon": -95.37315,
+   "device": "oxygen",
+   "state": "NOT_AFFECTED",
+   "backup_hours": 1.2,
+   "indoor_temp_c": 22.0,
+   "unpowered": false,
+   "building_id": null
+  }
+ ],
+ "crews": [
+  {
+   "crew_id": "c1",
+   "org_id": "s2",
+   "lat": 29.72,
+   "lon": -95.385,
+   "job_id": "j1"
+  },
+  {
+   "crew_id": "c2",
+   "org_id": "s3",
+   "lat": 29.74,
+   "lon": -95.37,
+   "job_id": null
+  },
+  {
+   "crew_id": "c3",
+   "org_id": "s1",
+   "lat": 29.759999999999998,
+   "lon": -95.355,
+   "job_id": null
+  }
+ ],
+ "depots": [
+  {
+   "depot_id": "s1-d1",
+   "org_id": "s1",
+   "lat": 29.75,
+   "lon": -95.41
+  },
+  {
+   "depot_id": "s2-d1",
+   "org_id": "s2",
+   "lat": 29.779999999999998,
+   "lon": -95.37
+  },
+  {
+   "depot_id": "s3-d1",
+   "org_id": "s3",
+   "lat": 29.81,
+   "lon": -95.33
+  }
+ ]
+}
