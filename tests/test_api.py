@@ -18,6 +18,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch, tmp_path):
+    # .env may hold the hosted settings; tests run as the local API, with no password and no Supabase
+    for k in ("HEARTH_PASSWORD", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "HEARTH_DATABASE_URL", "HEARTH_WEB_ORIGIN_REGEX"):
+        monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("HEARTH_FIXTURES", "1")
     monkeypatch.setenv("HEARTH_DB", str(tmp_path / "t.db"))
     monkeypatch.setattr(refuge, "MEMORY_FILE", str(tmp_path / "memory.md"))
@@ -70,6 +73,7 @@ def test_consent_call_blocked_without_approval():
 def test_reject_places_no_call(monkeypatch):
     calls = []
     monkeypatch.setattr(live, "start_call", lambda *a, **k: calls.append(a) or "c1")
+    monkeypatch.setattr(live, "dial", lambda call_id: calls.append(call_id))
     seed_pending_proposal("P1")
     r = client.post("/api/proposals/P1/decision", json={"decision": "reject", "reason": "too far"})
     assert r.status_code == 200 and r.json()["status"] == "rejected" and calls == []
@@ -78,9 +82,11 @@ def test_reject_places_no_call(monkeypatch):
 def test_approve_places_exactly_one_call(monkeypatch):
     calls = []
     monkeypatch.setattr(live, "start_call", lambda *a, **k: calls.append(a) or "c1")
+    monkeypatch.setattr(live, "dial", lambda call_id: calls.append(("dial", call_id)) or "conv1")
     seed_pending_proposal("P2")
     r = client.post("/api/proposals/P2/decision", json={"decision": "approve"})
-    assert r.status_code == 200 and r.json()["status"] == "approved" and len(calls) == 1 and calls[0][1] == "move_consent"
+    assert r.status_code == 200 and r.json()["status"] == "approved" and r.json()["phone_call"] == "conv1"
+    assert len(calls) == 2 and calls[0][1] == "move_consent" and calls[1] == ("dial", "c1")
     assert client.post("/api/calls", json={"patient_id": "p1", "kind": "move_consent"}).status_code == 200
 
 
@@ -142,3 +148,61 @@ def test_tunneled_requests_reach_only_the_voice_route():
     assert store.get("proposal", "P9")["status"] == "pending"
     r = client.post("/voice/v1/chat/completions", json={"messages": []}, headers={"x-forwarded-for": "203.0.113.7"})
     assert r.status_code == 200
+
+
+def test_a_run_that_lives_only_in_storage_is_served(monkeypatch, tmp_path):
+    from hearth import remote
+    src = tmp_path / "remote" / "results" / "cloud_run"
+    (src / "snapshots").mkdir(parents=True)
+    (src / "meta.json").write_text('{"run_id": "cloud_run", "scenario": "beryl_2024", "policy": "p3", "crews": 20, "seed": 1, "ticks": [], "center": [29.76, -95.37]}')
+    (src / "snapshots" / "0.json").write_text('{"t": "2024-07-08T06:00:00Z", "patients": [], "crews": [], "depots": []}')
+    (src / "events.jsonl").write_text('{"t": "2024-07-08T06:00:00Z", "type": "power_lost", "patient_id": "x", "data": {}}\n')
+    monkeypatch.setattr(remote, "listdir", lambda prefix: ["cloud_run"] if prefix == "results" else [])
+    monkeypatch.setattr(remote, "fetch", lambda path: (tmp_path / "remote" / path) if (tmp_path / "remote" / path).exists() else None)
+    assert any(r["run_id"] == "cloud_run" for r in client.get("/api/runs").json())
+    assert client.get("/api/runs/cloud_run/meta").json()["policy"] == "p3"
+    Snapshot.model_validate(client.get("/api/runs/cloud_run/snapshots/0").json())
+    assert client.get("/api/runs/cloud_run/events?patient_id=x").json()[0]["type"] == "power_lost"
+    assert client.get("/api/runs/cloud_run/snapshots/5").status_code == 404
+
+
+def test_hosted_api_needs_the_shared_password(monkeypatch):
+    monkeypatch.setenv("HEARTH_PASSWORD", "open sesame")
+    origin = {"Origin": "http://localhost:3000"}
+    r = client.get("/api/runs", headers=origin)
+    assert r.status_code == 401 and r.headers.get("access-control-allow-origin") == "http://localhost:3000"  # the browser can read it
+    assert client.get("/api/runs", headers={"Authorization": "Bearer wrong"}).status_code == 401
+    assert client.get("/api/runs", headers={"Authorization": "Bearer open sesame", "x-forwarded-for": "203.0.113.7"}).status_code == 200
+    assert client.options("/api/runs", headers=origin | {"Access-Control-Request-Method": "GET"}).status_code == 200
+    assert client.post("/voice/v1/chat/completions", json={"messages": []}).status_code == 200  # its own secret
+    assert client.post("/photon/webhook", content=b"{}").json()["detail"] == "bad or missing webhook signature"  # its own check
+
+
+def test_county_patients_come_from_a_json_copy_in_storage(monkeypatch, tmp_path):
+    import json
+    import api.main as m
+    from bhelpers import patient as make_patient
+    from hearth import remote
+    copy = tmp_path / "patients.json"
+    copy.write_text(json.dumps([make_patient(patient_id="SIM-77002-0001").model_dump(mode="json")]))
+    monkeypatch.setattr(m, "PATIENTS_FILE", tmp_path / "absent.parquet")
+    monkeypatch.setattr(remote, "fetch", lambda path: copy if path == "processed/patients_beryl_2024_s1.json" else None)
+    assert m._patient("SIM-77002-0001").patient_id == "SIM-77002-0001"
+
+
+def test_web_origins_can_be_a_pattern_for_preview_deployments():
+    import importlib
+    import api.main as m
+    os_env = {"HEARTH_WEB_ORIGIN_REGEX": r"https://hearth[a-z0-9-]*\.vercel\.app"}
+    import os
+    old = {k: os.environ.get(k) for k in os_env}
+    os.environ.update(os_env)
+    try:
+        fresh = TestClient(importlib.reload(m).app)
+        r = fresh.get("/api/runs", headers={"Origin": "https://hearth-abc123-kyin.vercel.app"})
+        assert r.headers.get("access-control-allow-origin") == "https://hearth-abc123-kyin.vercel.app"
+        assert "access-control-allow-origin" not in fresh.get("/api/runs", headers={"Origin": "https://evil.example"}).headers
+    finally:
+        for k, v in old.items():
+            os.environ.pop(k) if v is None else os.environ.__setitem__(k, v)
+        importlib.reload(m)

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import PasswordGate from "@/components/PasswordGate";
 import { API } from "@/lib/api";
 import "./globals.css";
 
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               Sample data, not results: these pages are reading hand-made dev files. Set NEXT_PUBLIC_API to the Hearth API to see the simulation.
             </div>
           )}
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+            <PasswordGate>{children}</PasswordGate>
+          </main>
         </div>
         <SimulatedBadge />
       </body>

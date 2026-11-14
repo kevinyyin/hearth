@@ -91,3 +91,17 @@ def test_rooms_keep_unit_type_and_sizes_and_drop_blank_rooms():
     assert u["unit_type"] == "2BR, 2BA - 1,000SF"
     assert u["rooms"] == [{"room": "hallway", "width_m": 1.1, "length_m": 4.0, "area_m2": 4.4},
                           {"room": "Bedroom 1", "width_m": 3.0, "length_m": 3.4, "area_m2": 10.2}]
+
+
+def test_costar_index_comes_from_storage_when_the_extract_is_absent(monkeypatch, tmp_path):
+    import json
+    from hearth import remote
+    from hearth.buildings import tools
+    idx = tmp_path / "houston_v2.json"
+    idx.write_text(json.dumps({"77": {"building_id": "77", "address": "1 A St", "lat": 29.7, "lon": -95.3, "property_type": "hotel"}}))
+    monkeypatch.delenv("HEARTH_FIXTURES", raising=False)
+    monkeypatch.setattr(tools, "CACHE_ROOT", tmp_path / "cache")
+    monkeypatch.setattr(tools, "COSTAR_FILE", tmp_path / "absent.jsonl")
+    monkeypatch.setattr(tools, "_costar", None)
+    monkeypatch.setattr(remote, "fetch", lambda path: idx if path == "costar/houston_v2.json" else None)
+    assert tools.costar_record("77")["property_type"] == "hotel"

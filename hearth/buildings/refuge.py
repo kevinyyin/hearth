@@ -4,6 +4,7 @@ are written to the agent's memory file and read on every later proposal."""
 import json
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 from typing import Iterator, Literal
@@ -22,6 +23,7 @@ from hearth.contracts import BuildingProfile, Patient, RefugeOption, RefugePropo
 
 MEMORY_FILE = str(tools.CACHE_ROOT / "memories" / "dispatcher.md")
 MEMORY_SOURCE = "/memories/dispatcher.md"  # the same file, as the agent's filesystem backend (rooted at data/buildings) sees it
+MEMORY_HEADER = "# Dispatcher decisions on refuge proposals\n"
 NEEDS_STEP_FREE = {"wheelchair_manual", "wheelchair_power", "bedbound"}
 _ctx: dict[str, tuple[Patient, set[str]]] = {}  # patient_id -> (patient, dark zips) for the running proposal
 _graph = None
@@ -107,26 +109,50 @@ outage. You book nothing and contact no one. Steps:
 Be brief. No medical advice, no promises of help."""
 
 
-def _build():
+def sync_memory() -> None:
+    """Write the stored rejection notes to the agent's memory file. The notes live in the store, so a fresh server
+    instance (whose temp folder starts empty) still remembers them."""
+    Path(MEMORY_FILE).parent.mkdir(parents=True, exist_ok=True)
+    Path(MEMORY_FILE).write_text((store.get("memory", "dispatcher") or {"text": MEMORY_HEADER})["text"])
+
+
+def _build(checkpointer):
     from deepagents import create_deep_agent
     from deepagents.backends import FilesystemBackend
     from langchain_anthropic import ChatAnthropic
 
-    Path(MEMORY_FILE).parent.mkdir(parents=True, exist_ok=True)
-    if not Path(MEMORY_FILE).exists():
-        Path(MEMORY_FILE).write_text("# Dispatcher decisions on refuge proposals\n")
+    sync_memory()
     model = ChatAnthropic(model=a("models.agent"), default_headers=anthropic_headers(), timeout=60, max_retries=1,
                           output_config={"effort": a("models.agent_effort")})
     return create_deep_agent(model=model, tools=[search_refuges, check_access, submit_proposal], system_prompt=SYSTEM,
                              middleware=[TodoListMiddleware()], memory=[MEMORY_SOURCE], interrupt_on={"submit_proposal": True},
-                             backend=FilesystemBackend(root_dir=tools.CACHE_ROOT, virtual_mode=True), checkpointer=InMemorySaver())
+                             backend=FilesystemBackend(root_dir=tools.CACHE_ROOT, virtual_mode=True), checkpointer=checkpointer)
 
 
-def _graph_once():
-    global _graph
-    if _graph is None:
-        _graph = _build()
-    return _graph
+_pg_checkpoints_ready = False
+
+
+@contextmanager
+def _graph_session():
+    """The refuge graph. With the store on Postgres, the paused agent is checkpointed there too, so an Approve that
+    lands on another server instance can resume it; otherwise one in-memory graph per process."""
+    global _graph, _pg_checkpoints_ready
+    url = store.postgres_url()
+    if not url:
+        if _graph is None:
+            _graph = _build(InMemorySaver())
+        yield _graph
+        return
+    import psycopg
+    from langgraph.checkpoint.postgres import PostgresSaver
+    from psycopg.rows import dict_row
+
+    with psycopg.connect(url, autocommit=True, prepare_threshold=None, row_factory=dict_row) as conn:
+        saver = PostgresSaver(conn)
+        if not _pg_checkpoints_ready:
+            saver.setup()  # creates the checkpoint tables once
+            _pg_checkpoints_ready = True
+        yield _build(saver)
 
 
 def _options(patient: Patient, options_json: str) -> list[RefugeOption]:
@@ -158,25 +184,27 @@ def propose(patient: Patient, dark_zips: set[str]) -> Iterator[TraceEvent]:
            f"heat/cold sensitivity {patient.temp_sensitive}.")
     error = None
     try:
-        for chunk in _graph_once().stream({"messages": [{"role": "user", "content": ask}]}, config, stream_mode="updates", subgraphs=True):
-            for e in to_trace(chunk, seq, t0, root="refuge"):
-                if e.kind != "interrupt":
-                    seq += 1
-                    yield e
-                    continue
-                args = e.data["requests"][0]["action_requests"][0]["args"]
-                options = _options(patient, args["options_json"])
-                if not options:
-                    error = "the agent proposed no option that passes the access check"
+        sync_memory()  # rejections recorded by any instance since this one started
+        with _graph_session() as graph:
+            for chunk in graph.stream({"messages": [{"role": "user", "content": ask}]}, config, stream_mode="updates", subgraphs=True):
+                for e in to_trace(chunk, seq, t0, root="refuge"):
+                    if e.kind != "interrupt":
+                        seq += 1
+                        yield e
+                        continue
+                    args = e.data["requests"][0]["action_requests"][0]["args"]
+                    options = _options(patient, args["options_json"])
+                    if not options:
+                        error = "the agent proposed no option that passes the access check"
+                        break
+                    prop = RefugeProposal(proposal_id=f"P-{uuid.uuid4().hex[:8]}", patient_id=patient.patient_id, options=options,
+                                          status="pending", thread_id=thread)
+                    store.put("proposal", prop.proposal_id, prop)
+                    yield TraceEvent(seq=seq, t=e.t, kind="interrupt", agent="dispatcher", text="waiting for dispatcher approval",
+                                     data={"proposal_id": prop.proposal_id, "proposal": prop.model_dump(mode="json")})
+                    return
+                if error:
                     break
-                prop = RefugeProposal(proposal_id=f"P-{uuid.uuid4().hex[:8]}", patient_id=patient.patient_id, options=options,
-                                      status="pending", thread_id=thread)
-                store.put("proposal", prop.proposal_id, prop)
-                yield TraceEvent(seq=seq, t=e.t, kind="interrupt", agent="dispatcher", text="waiting for dispatcher approval",
-                                 data={"proposal_id": prop.proposal_id, "proposal": prop.model_dump(mode="json")})
-                return
-            if error:
-                break
     except Exception as ex:
         error = f"{type(ex).__name__}: {ex}"
     yield TraceEvent(seq=seq, t=round(time.time() - t0, 2), kind="done", agent="refuge",
@@ -194,18 +222,20 @@ def decide(proposal_id: str, decision: Literal["approve", "reject"], reason: str
     if decision == "reject":
         if not (reason or "").strip():
             raise ValueError("a rejection needs a reason")
-        Path(MEMORY_FILE).parent.mkdir(parents=True, exist_ok=True)
-        with Path(MEMORY_FILE).open("a") as f:
-            f.write(f"- {date.today().isoformat()}: rejected {', '.join(o.name for o in prop.options)}: {reason.strip()}\n")
+        notes = (store.get("memory", "dispatcher") or {"text": MEMORY_HEADER})["text"]
+        line = f"- {date.today().isoformat()}: rejected {', '.join(o.name for o in prop.options)}: {reason.strip()}\n"
+        store.put("memory", "dispatcher", {"text": notes + line})
+        sync_memory()
     prop = prop.model_copy(update={"status": "approved" if decision == "approve" else "rejected", "reason": reason})
     store.put("proposal", proposal_id, prop)
-    if _graph is not None:  # resume only a thread this process started; a restart leaves nothing to resume
+    if store.postgres_url() or _graph is not None:  # in memory, only a thread this process started can resume
         resume = {"type": "approve"} if decision == "approve" else {
             "type": "reject", "message": f"Dispatcher rejected: {reason}. Do not submit another proposal in this conversation; stop."}
         try:
-            for _ in _graph.stream(Command(resume={"decisions": [resume]}), {"configurable": {"thread_id": prop.thread_id}},
-                                   stream_mode="updates"):
-                pass
+            with _graph_session() as graph:
+                for _ in graph.stream(Command(resume={"decisions": [resume]}), {"configurable": {"thread_id": prop.thread_id}},
+                                      stream_mode="updates"):
+                    pass
         except Exception:  # the decision is already recorded; resuming the agent is best-effort
             pass
     return prop

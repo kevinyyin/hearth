@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import AccessBrief from "@/components/AccessBrief";
 import AgentTrace from "@/components/AgentTrace";
 import ProposalCard from "@/components/ProposalCard";
-import { API, getJson } from "@/lib/api";
+import { getJson } from "@/lib/api";
+import { useAuthedImage } from "@/lib/useAuthedImage";
 import { reduceTrace, streamEvents } from "@/lib/sse";
 import { PROFILE_FIELDS, type BuildingDetail, type RefugeProposal, type TraceEvent } from "@/lib/types";
 
@@ -30,6 +31,8 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
   const [running, setRunning] = useState<"survey" | "refuge" | null>(null);
   const [proposal, setProposal] = useState<RefugeProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const image = useAuthedImage(detail?.image_url ?? null);
 
   const load = useCallback(() => {
     getJson<BuildingDetail>(`/api/buildings/${buildingId}`).then(setDetail).catch((e) => setError(String(e)));
@@ -72,7 +75,7 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
           </span>
         ) : p?.cached && !trace.done && <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "var(--grid)" }}>cached agent survey</span>}
       </div>
-      {detail && API && <img src={`${API}${detail.image_url}`} alt="Top-down aerial image of the building (Vexcel)" className="w-full rounded" />}
+      {image && <img src={image} alt="Top-down aerial image of the building (Vexcel)" className="w-full rounded" />}
       {detail?.embed_url && (
         <iframe src={detail.embed_url} title="Matterport scan" className="h-48 w-full rounded border-0" allow="xr-spatial-tracking; fullscreen" />
       )}
