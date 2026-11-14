@@ -166,7 +166,6 @@ export default function SideBySide() {
   const toursHearth = county.toursBy(RUN_HOURS + 1, "hearthAt");
   const toursToday = county.toursBy(RUN_HOURS + 1, "todayAt");
 
-  const live = feed.source === "api";
 
   return (
     <section
@@ -300,12 +299,6 @@ export default function SideBySide() {
           argue with that number and you are arguing with the panel. It is also why the right-hand
           crews are idle rather than slow: they are not being outrun, they are waiting to be told
           where to go.
-        </p>
-        <p className="m-0">
-          <strong style={{ color: "var(--text-primary)" }}>What is real here and what is not.</strong>{" "}
-          {live
-            ? `The households, their coordinates and the hour each one runs out of backup come from the replay the API served. The crews, stations, speed and the queue rate are this panel's own model: the simulation in this repository reports patient-hours at risk and has never modelled a fleet.`
-            : `No API answered, so the households are drawn rather than read. Point NEXT_PUBLIC_API at a running Hearth API and the dots become the replay's own patients. Either way the crews, stations, speed and queue rate are this panel's model, not a result from the repository.`}
         </p>
       </div>
     </section>
