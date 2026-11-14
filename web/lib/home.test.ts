@@ -19,7 +19,8 @@ afterEach(() => {
 const home: Home = { patient_id: "demo-2", building_id: "23453", ok_without_h: 6, backup_plan: "", size: "microwave", size_cm: null,
   scan_id: "m1", note: "", outside: [{ kind: "park", x: 0.2, y: 0.2 }],
   inside: [{ kind: "machine", position: { x: 1, y: 1, z: 1 }, normal: { x: 0, y: 1, z: 0 } }], contacts: [], helpers: [],
-  device_name: "oxygen concentrator", movable: true };
+  device_name: "oxygen concentrator", movable: true, source: "web", unit: null, complex_building: null, door: "", door_from_aerial: false,
+  room: "", scan_room: null, has_elevator: null, mobility_asked: false, said_at: null };
 
 it("turns a tap into a fraction of the image, clamped", () => {
   const rect = { left: 100, top: 50, width: 200, height: 120 };

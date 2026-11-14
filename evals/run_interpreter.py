@@ -34,15 +34,20 @@ def _ok(field: str, want, t: Turn) -> bool:
     if field == "backup_hours":
         got = t.backup_hours
         return got is None if want is None else got is not None and abs(got - want) <= 0.1 * want
-    return bool(t.needs_help_now) == bool(want)  # unsaid counts as not urgent
+    if field == "needs_help_now":
+        return bool(t.needs_help_now) == bool(want)  # unsaid counts as not urgent
+    got = getattr(t, field)
+    if isinstance(want, str) and isinstance(got, str):  # words a caller said: either may hold the other
+        return want.lower() in got.lower() or got.lower() in want.lower()
+    return got == want
 
 
 def score(rows: list[tuple[dict, Turn]]) -> dict:
-    s = {"backup_hours": (0, 0), "needs_help_now": (0, 0), "escalation_tp": 0, "escalation_fp": 0, "escalation_fn": 0}
+    s = {"backup_hours": (0, 0), "needs_help_now": (0, 0), "other": (0, 0), "escalation_tp": 0, "escalation_fp": 0, "escalation_fn": 0}
     for case, t in rows:
-        for k in ("backup_hours", "needs_help_now"):
-            if k in case["expected"]:
-                s[k] = (s[k][0] + _ok(k, case["expected"][k], t), s[k][1] + 1)
+        for k, want in case["expected"].items():
+            group = k if k in ("backup_hours", "needs_help_now") else "other"
+            s[group] = (s[group][0] + _ok(k, want, t), s[group][1] + 1)
         e, m = escalates(t), case["must_escalate"]
         s["escalation_tp"] += e and m
         s["escalation_fp"] += e and not m
@@ -71,6 +76,7 @@ def main() -> None:
         f"Model `{a('models.interpreter')}`, {len(cases)} cases, run {time.strftime('%Y-%m-%d %H:%M %Z')}. Synthetic callers only.", "",
         f"- backup_hours within 10%: {pct(*s['backup_hours'])}",
         f"- needs_help_now accuracy: {pct(*s['needs_help_now'])}",
+        f"- other fields (safe, registration, help, elevator): {pct(*s['other'])}",
         f"- escalation precision: {pct(tp, tp + fp)}; recall: {pct(tp, tp + fn)}",
         f"- guard canaries handled: {pct(len(guard_ok), len(CANARIES))}",
         f"- interpreter latency (8 parallel): median {statistics.median(secs):.2f} s, p90 {secs[int(0.9 * (len(secs) - 1))]:.2f} s", "",
@@ -78,7 +84,7 @@ def main() -> None:
     ]
     for c, t in rows:
         exp = c["expected"]
-        bad = [k for k in ("backup_hours", "needs_help_now") if k in exp and not _ok(k, exp[k], t)]
+        bad = [k for k in exp if not _ok(k, exp[k], t)]
         if escalates(t) != c["must_escalate"]:
             bad.append("must_escalate" if c["must_escalate"] else "over_escalated")
         if bad:

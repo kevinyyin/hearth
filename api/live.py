@@ -2,10 +2,10 @@
 from hearth.contracts import RefugeProposal
 
 
-def start_call(patient_id: str, kind: str, proposal_id: str | None = None) -> str:
+def start_call(patient_id: str | None, kind: str, proposal_id: str | None = None, **kw) -> str:
     from hearth.messaging.voice import start_call as voice_start_call  # lane V; imported late so the API runs without it
 
-    return voice_start_call(patient_id, kind, proposal_id)
+    return voice_start_call(patient_id, kind, proposal_id, **kw)
 
 
 def dial(call_id: str) -> str | None:

@@ -207,3 +207,98 @@ def test_web_origins_can_be_a_pattern_for_preview_deployments():
         for k, v in old.items():
             os.environ.pop(k) if v is None else os.environ.__setitem__(k, v)
         importlib.reload(m)
+
+
+PHONE_FACTS = {"device": "oxygen", "device_words": "oxygen", "building_id": "B-SAMPLE", "address": "1200 Fixture St, Houston, TX 77002",
+               "backup_hours": 4.0, "floor": 3, "unit": "00-0310"}
+
+
+def phone_registrant(phone="+15550100002"):
+    from hearth.messaging import registry
+    return registry.save({"patient_id": None, "ctx": {"phone": phone}, "facts": dict(PHONE_FACTS)})
+
+
+def test_a_phone_registrant_is_found_by_the_patient_routes():
+    pid = phone_registrant()
+    r = client.get(f"/api/patients/{pid}/home")
+    assert r.status_code == 200 and r.json()["home"]["source"] == "phone" and r.json()["patient"]["patient_id"] == pid
+
+
+def test_registrations_lists_phone_homes_and_calls_that_need_a_person():
+    pid = phone_registrant()
+    store.put("call", "C-9", {"call_id": "C-9", "kind": "register", "patient_id": None, "status": "handoff", "ctx": {"phone": "+15550100009"},
+                              "facts": {"device": "oxygen"}, "started_at": 1.0})
+    out = client.get("/api/registrations").json()
+    assert [r["patient"]["patient_id"] for r in out["registered"]] == [pid] and out["registered"][0]["address"].startswith("1200 Fixture St")
+    assert out["needs_person"] == [{"call_id": "C-9", "phone": "+15550100009", "facts": {"device": "oxygen"}, "status": "handoff", "started_at": 1.0}]
+
+
+def test_a_browser_register_call_needs_a_listed_phone(monkeypatch):
+    assert client.post("/api/calls", json={"kind": "register", "phone": "+15550100002"}).status_code == 403
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
+    r = client.post("/api/calls", json={"kind": "register", "phone": "+15550100002"})
+    assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "register"
+
+
+def test_storm_route_reports_what_it_sent():
+    assert client.post("/api/storm").json() == {"alerted": [], "dialed": [], "failed": []}
+
+
+def test_calling_an_unlisted_building_is_refused(monkeypatch):
+    assert client.post("/api/buildings/H-LEVEL/call").status_code == 403
+    assert client.get("/api/buildings/H-LEVEL").json()["can_call"] is False
+    monkeypatch.setenv("HEARTH_BUILDING_PHONES", "H-LEVEL=+15551230000")
+    r = client.post("/api/buildings/H-LEVEL/call")
+    assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "building_check" and r.json()["conversation_id"] is None
+    assert client.get("/api/buildings/H-LEVEL").json()["can_call"] is True
+
+
+def test_sim_day_returns_a_side_and_refuses_runaway_requests():
+    import json
+    from hearth.config import ROOT
+    fx = json.loads((ROOT / "tests/fixtures/sim_day.json").read_text())
+    r = client.post("/api/sim/day", json={"households": fx["households"][:20], "constants": fx["constants"]})
+    assert r.status_code == 200 and len(r.json()["legs"]) == 15 and r.json()["stops"] >= 20
+    big = [fx["households"][0]] * 100_000
+    assert client.post("/api/sim/day", json={"households": big, "constants": fx["constants"]}).status_code == 422
+    for bad in ({"dt": 0}, {"runHours": 10_000}, {"capacity": 0}, {"cruise": 0}, {"stations": []}, {"crewsPerStation": 99}):
+        assert client.post("/api/sim/day", json={"households": [], "constants": {**fx["constants"], **bad}}).status_code == 422, bad
+    odd = {**fx["households"][0], "needsAt": float("1e9")}
+    assert client.post("/api/sim/day", json={"households": [odd], "constants": fx["constants"]}).status_code == 422
+    assert client.post("/api/sim/day", json={"households": [{"lon": "x"}], "constants": fx["constants"]}).status_code == 422
+
+
+def test_sim_day_bounds_the_work_not_only_each_field():
+    import json
+    from hearth.config import ROOT
+    fx = json.loads((ROOT / "tests/fixtures/sim_day.json").read_text())
+    post = lambda **k: client.post("/api/sim/day", json={"households": [], "constants": {**fx["constants"], **k}}).status_code  # noqa: E731
+    assert post() == 200
+    ten = [{"name": f"S{i}", "at": [-95.37, 29.76]} for i in range(10)]
+    assert post(stations=ten, crewsPerStation=10) == 422  # 100 vans: each field is legal, the fleet is not
+    assert post(stations=ten, crewsPerStation=3) == 200  # 30 vans is the most
+    assert post(dt=0.05, runHours=48) == 422  # 960 steps
+    assert post(dt=0.25, runHours=48) == 200  # 192 steps
+    assert post(stations=[{"name": "far", "at": [1e308, 29.76]}]) == 422  # not a place on Earth
+
+
+def test_staging_options_choice_and_clear(monkeypatch):
+    from hearth import staging
+    opt = {"building_id": "B-SAMPLE", "name": "Lot", "address": "1 Lot St", "zip": "77027", "property_type": "retail",
+           "surface_spaces": 300, "lot_acres": 4.0, "km": 1.1}
+    from hearth.buildings import tools
+    monkeypatch.setattr(tools, "costar_all", lambda: [opt | {"lat": 29.77, "lon": -95.37}])
+    monkeypatch.setattr(staging, "scene", lambda: ((29.76, -95.37), set(), "open requests"))
+    assert client.get("/api/staging").json() == {"chosen": None, "options": [opt], "basis": "open requests"}
+    assert client.post("/api/staging", json={"building_id": "NOPE"}).status_code == 409
+    assert client.post("/api/staging", json={"building_id": "B-SAMPLE"}).json()["chosen"]["building_id"] == "B-SAMPLE"
+    assert client.get("/api/staging").json()["chosen"]["stale"] is False
+    assert client.get("/api/crews/c1/job").json()["staging"]["building_id"] == "B-SAMPLE"
+    assert client.post("/api/staging", json={"building_id": None}).json() == {"chosen": None}
+    assert client.get("/api/staging").json()["chosen"] is None
+
+
+def test_a_lot_without_a_tile_or_reading_is_404_not_an_error():
+    assert client.get("/api/buildings/B-SAMPLE/lot-image").status_code == 404  # fixtures hold no lot tile
+    assert client.get("/api/buildings/B-SAMPLE/lot-reading").status_code == 404  # fixtures ask no vision model
+    assert client.get("/api/buildings/NOPE/lot-image").status_code == 404

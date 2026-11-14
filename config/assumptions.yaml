@@ -78,6 +78,7 @@ refuge:
   search_radius_km: {value: 15, source: "our call: a short ride across Houston", confirmed: false}
   max_candidates: {value: 3, source: "our call: each uncached candidate costs a 30-60 s survey", confirmed: false}
   elevator_runs_outside_outage: {value: true, source: "team decision Nov 14: a refuge outside the dark area has power, so an elevator seen in its scan is assumed running; a simulated call stands in for a real one", confirmed: false}
+  building_answer_valid_h: {value: 6, source: "our call: a building office's answer about power and the elevator counts for this many hours, then the simulated answer applies again; placeholder", confirmed: false}
 
 voice:
   county: {value: Harris County, source: "design: synthetic Harris County patients", confirmed: true}
@@ -85,6 +86,8 @@ voice:
   silences_to_escalate: {value: 3, source: "plan Task V2: three empty turns in a row end the call", confirmed: false}
   turn_timeout_s: {value: 7, source: "ElevenLabs default turn_timeout; seconds of caller silence before a turn counts as empty", confirmed: false}
   tts_streaming_optimization: {value: 1, source: "ElevenLabs optimize_streaming_latency 0-4; 3 sounded robotic on the first real call while speech started 0.07 s after text, so quality wins", confirmed: false}
+  unfinished_after_min: {value: 5, source: "our call: a registration call with no turn for this long has been hung up (the server is not told), so it is listed for a person", confirmed: false}
+  room_lookup_timeout_s: {value: 3, source: "our call: longest wait for the scan's room names when the address is confirmed; after it the room question uses the bedroom wording", confirmed: false}
 
 # ---- lane S (simulation) ----
 outage:
@@ -98,6 +101,14 @@ planner:
   delivery_backup_h: {value: 24, source: "our call: hours of backup one delivery adds; placeholder", confirmed: false}
   destinations: {value: [[29.7069, -95.3972, "Texas Medical Center"], [29.7520, -95.3580, "George R. Brown Convention Center"], [29.6847, -95.4107, "NRG Center"]], source: "our call: approximate locations of a hospital campus and two large shelters; rides end at the nearest", confirmed: false}
   candidates_per_free_crew: {value: 50, source: "our call (speed): only the top needs per free crew are offered each tick", confirmed: false}
+  # central planner (hearth/routing.py, hearth/alns.py)
+  lookahead_h: {value: 6, source: "our call (central planner design, Nov 14)", confirmed: false}
+  early_weight: {value: 0.1, source: "our call (central planner design, Nov 14)", confirmed: false}
+  alns_iterations: {value: 15, source: "our call (central planner design, Nov 14)", confirmed: false}
+  alns_remove_share: {value: 0.15, source: "our call (central planner design, Nov 14)", confirmed: false}
+  insert_nearest_crews: {value: 3, source: "our call (central planner design, Nov 14)", confirmed: false}
+  alns_needs_per_free_crew: {value: 4, source: "our call (speed): the route search sees only the most urgent few needs per free crew", confirmed: false}
+  day: {value: {alns_iterations: 200, alns_needs_per_free_crew: 12, insert_nearest_crews: 5}, source: "our call: the simulation page's day is 15 vans and a few hundred stops, so its search can afford far more effort than the county replay's; chosen on the stand-in households, where the wait fell from 526 to 453 against the browser greedy's 556", confirmed: false}
 
 # records-only building profiles (hearth/buildings/bulk.py); Vexcel gives roof material, not color
 building_records:
@@ -115,4 +126,16 @@ dispatch:
   refuge_capacity_share: {value: 0.05, source: "user decision Nov 14: a refuge takes this share of its CoStar unit count, at least 1; placeholder", confirmed: false}
   eta_window_min: {value: 15, source: "our call: width of the arrival window shown to a resident; placeholder", confirmed: false}
   offer_timeout_s: {value: 90, source: "our call: an offer a crew does not answer in this time passes to the next crew; placeholder", confirmed: false}
+  text_max_age_h: {value: 6, source: "our call: an open help request untouched for this long is not texted when someone else's request changes (keeps rehearsal leftovers quiet)", confirmed: false}
   vehicle_max_item_cm: {value: {car: 60, van: 150, wheelchair_van: 150, ambulance: 100}, source: "our call: longest side of a device each vehicle can carry beside a passenger; placeholder", confirmed: false}
+
+# ---- voice registration: residents register and ask for help by phone ----
+registration:
+  defaults: {value: {device_detail: "not asked", use_rate: 1.0, mobility: bedbound, temp_sensitive: both, risk_weight: 1.0, supplier_id: none, can_self_relocate: false}, source: "design Nov 14: patient fields the registration call does not ask; mobility is the most careful until the caller answers it on a help call", confirmed: false}
+
+storm:
+  forecast_zips: {value: ["77002", "77003", "77004", "77005", "77006", "77007", "77008", "77009", "77010", "77011", "77012", "77013", "77014", "77015", "77016", "77017", "77018", "77019", "77020", "77021", "77022", "77023", "77024", "77025", "77026", "77027", "77028", "77029", "77030", "77031", "77032", "77033", "77034", "77035", "77036", "77037", "77038", "77039", "77040", "77041", "77042", "77043", "77044", "77045", "77046", "77047", "77048", "77049", "77050", "77051", "77054", "77055", "77056", "77057", "77058", "77059", "77060", "77061", "77062", "77063", "77064", "77065", "77066", "77067", "77068", "77069", "77070", "77071", "77072", "77073", "77074", "77075", "77076", "77077", "77078", "77079", "77080", "77081", "77082", "77083", "77084", "77085", "77086", "77087", "77088", "77089", "77090", "77091", "77092", "77093", "77094", "77095", "77096", "77098", "77099", "77336", "77338", "77339", "77345", "77346", "77373", "77375", "77377", "77379", "77388", "77389", "77396", "77401", "77429", "77433", "77447", "77449", "77450", "77484", "77493", "77502", "77503", "77504", "77505", "77506", "77520", "77521", "77530", "77532", "77536", "77547", "77562", "77571", "77586", "77587", "77598"], source: "our call: the Harris County ZIPs of the Beryl replay's synthetic patients stand in for a forecast area", confirmed: false}
+
+# ---- staging lots: where crews gather near an outage, proposed from CoStar parking data ----
+staging:
+  min_surface_spaces: {value: 100, source: "our call Nov 14: a surface lot this size leaves room for several vans; 129 existing Houston properties in the kit pass the staging rule", confirmed: false}

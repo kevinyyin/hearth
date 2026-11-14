@@ -10,7 +10,7 @@ export type SweepRow = {
 };
 
 /** Policy ids in the order the results page shows them. */
-export const POLICY_ORDER = ["p0", "p3", "p3__nobld", "p3__nomove", "p3__aid"] as const;
+export const POLICY_ORDER = ["p0", "p3", "p3__nobld", "p3__nomove", "p3__aid", "p3__paired", "p3__alns"] as const;
 
 export type PolicyId = (typeof POLICY_ORDER)[number];
 
@@ -20,12 +20,15 @@ export const POLICY_LABELS: Record<PolicyId, string> = {
   p3__nobld: "Hearth without building data",
   p3__nomove: "Hearth without moves",
   p3__aid: "Hearth with supplier mutual aid",
+  // the central planner: same crews and rules as Hearth, only who goes where changes
+  p3__paired: "Hearth, best pairing",
+  p3__alns: "Hearth, pairing and route search",
 };
 
-/** The three policies drawn when the page loads; the other two are toggles. */
-export const DEFAULT_POLICIES: PolicyId[] = ["p0", "p3", "p3__nobld"];
+/** The policies drawn when the page loads; the others are toggles. */
+export const DEFAULT_POLICIES: PolicyId[] = ["p0", "p3", "p3__nobld", "p3__paired"];
 
-export const OPTIONAL_POLICIES: PolicyId[] = ["p3__nomove", "p3__aid"];
+export const OPTIONAL_POLICIES: PolicyId[] = ["p3__nomove", "p3__aid", "p3__alns"];
 
 export function policyLabel(policy: string): string {
   return POLICY_LABELS[policy as PolicyId] ?? policy;
@@ -131,6 +134,20 @@ export type BuildingDetail = {
   /** The building's real scan models; empty with fixtures or when CoStar lists none. */
   scan_ids: string[];
   scan_sdk_key: string | null;
+  /** What someone said by phone today about power and the elevator; one person's word at one time. */
+  status: BuildingStatus | null;
+  /** This building's office has a real number to call (never one from the CoStar kit). */
+  can_call: boolean;
+};
+
+export type BuildingStatus = {
+  building_id: string;
+  said_by: "resident" | "building_office";
+  call_id: string;
+  power: boolean | null;
+  elevator: "yes" | "no" | "unknown" | null;
+  /** Unix seconds. */
+  t: number;
 };
 
 // --- Home markup shapes (mirrors Patient and Home in hearth/contracts.py). ---
@@ -177,7 +194,8 @@ export type Home = {
   movable: boolean | null;
   /** No longer asked on the resident page; older saved homes may carry one. */
   backup_plan: string;
-  size: SizeId;
+  /** null: not asked (a home registered by phone). */
+  size: SizeId | null;
   /** Width, depth, height in cm; only for a custom size. */
   size_cm: [number, number, number] | null;
   /** The scan the resident says is laid out like their home; null: none of them. */
@@ -189,12 +207,29 @@ export type Home = {
   contacts: Person[];
   /** People who live with the resident and can help before a crew arrives. */
   helpers: Person[];
+  /** What a caller said by phone; a home saved on the resident page keeps the defaults. */
+  source: "web" | "phone";
+  unit: string | null;
+  complex_building: string | null;
+  door: string;
+  door_from_aerial: boolean;
+  room: string;
+  scan_room: string | null;
+  has_elevator: boolean | null;
+  mobility_asked: boolean;
+  said_at: string | null;
 };
 
 /** Someone the resident names. Invented, like the resident. */
 export type Person = { name: string; relation: string; phone: string; note: string };
 
 export type HomeRow = { home: Home; patient: Patient; address: string };
+
+/** Phone registrations, newest first, and registration calls that ended before anyone was registered. */
+export type Registrations = {
+  registered: { patient: Patient; home: Home; address: string | null; call_id: string | null; call_status: string | null }[];
+  needs_person: { call_id: string; phone: string | null; facts: Record<string, unknown>; status: string; started_at: number | null }[];
+};
 
 export type Vehicle = "car" | "van" | "wheelchair_van" | "ambulance";
 export type Equipment = "oxygen" | "power" | "wheelchair_lift" | "stretcher";
@@ -236,7 +271,17 @@ export type Tracker = {
 export type CrewJob = {
   crew: Responder | null;
   job: { request: HelpRequest; patient: Patient; home: Home | null; address: string | null; building_id: string | null; km: number } | null;
+  staging: StagingLot | null;
 };
+
+/** A parking lot proposed for crews to gather at, from CoStar's parking and lot fields. `stale` is set on the chosen lot
+ *  once someone in its ZIP has asked for help. */
+export type StagingLot = {
+  building_id: string; name: string; address: string; zip: string; property_type: string;
+  surface_spaces: number; lot_acres: number | null; km: number; stale?: boolean;
+};
+/** `basis` is what an option's `km` is measured from; null when there is nothing to centre on. */
+export type StagingView = { chosen: StagingLot | null; options: StagingLot[]; basis: "open requests" | "registered homes" | null };
 
 export type DispatchView = {
   requests: { request: HelpRequest; device: string; mobility: string; address: string | null }[];

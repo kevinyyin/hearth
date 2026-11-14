@@ -18,10 +18,13 @@ import { useEffect, useState } from "react";
 import { API, authHeaders, getJson, onUnauthorized } from "@/lib/api";
 import {
   COUNTY_CENTER,
+  DAY_CONSTANTS,
   FIXTURE_COUNTY,
   buildCounty,
+  parseSide,
   type CountySim,
   type Household,
+  type SideSim,
 } from "@/lib/simulation";
 import { RESIDENT, type SimResident } from "@/lib/simulation";
 
@@ -31,6 +34,8 @@ export type CountyFeed = {
   county: CountySim;
   center: [number, number];
   source: SourceKind;
+  /** Who planned the Hearth side's vans: the API's central planner, or this browser's own greedy. */
+  routes: "planner" | "browser";
   /** One line for the badge: what answered, and what it was. */
   detail: string;
 };
@@ -39,6 +44,7 @@ export const FIXTURE_FEED: CountyFeed = {
   county: FIXTURE_COUNTY,
   center: COUNTY_CENTER,
   source: "fixture",
+  routes: "browser",
   detail: "Drawn households — no API configured",
 };
 
@@ -84,6 +90,37 @@ function toHousehold(p: Snap["patients"][number]): Household {
   };
 }
 
+/** The planner answers in about 0.2 s for the page's own request; a slow host should not hold the map. */
+const PLAN_TIMEOUT_MS = 8000;
+
+/**
+ * The Hearth side's day from the central planner. Any failure — no route, a
+ * refusal, a slow answer, a shape the page cannot draw — is null, and the caller
+ * keeps the browser's own routes: the map must never hang on this or go blank for it.
+ */
+async function planDay(households: Household[], signal: AbortSignal): Promise<SideSim | null> {
+  // the real households are already in hand: past this wait they are drawn with the browser's own routes
+  const ac = new AbortController();
+  const stop = () => ac.abort();
+  const timer = setTimeout(stop, PLAN_TIMEOUT_MS);
+  signal.addEventListener("abort", stop);
+  try {
+    const res = await fetch(`${API}/api/sim/day`, {
+      method: "POST",
+      cache: "no-store",
+      signal: ac.signal,
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ households, constants: DAY_CONSTANTS }),
+    });
+    return res.ok ? parseSide(await res.json(), households.length) : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", stop);
+  }
+}
+
 /** Caps the population so a county replay does not put 23,000 circles on one map. */
 const MAX_DOTS = 400;
 
@@ -107,12 +144,17 @@ export async function loadCounty(signal: AbortSignal): Promise<CountyFeed> {
   const stride = Math.max(1, Math.ceil(patients.length / MAX_DOTS));
   const households = patients.filter((_, i) => i % stride === 0).map(toHousehold);
 
+  const hearth = await planDay(households, signal);
+
   const [lat, lon] = meta.center; // the API sends [lat, lon]; MapLibre wants [lon, lat]
   return {
-    county: buildCounty(households),
+    county: buildCounty(households, hearth ?? undefined),
     center: [lon, lat],
     source: "api",
-    detail: `${households.length} of ${patients.length} simulated patients from run ${run.run_id}`,
+    routes: hearth ? "planner" : "browser",
+    detail:
+      `${households.length} of ${patients.length} simulated patients from run ${run.run_id} · ` +
+      (hearth ? "routes from the central planner" : "routes drawn in this browser (greedy)"),
   };
 }
 

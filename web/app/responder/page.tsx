@@ -50,8 +50,8 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
     getJson<BuildingDetail>(`/api/buildings/${buildingId}`).then(setDetail).catch(() => setDetail(null));
   }, [buildingId]);
 
-  const cm = home && (home.size === "custom" ? home.size_cm : SIZES[home.size].cm);
-  const size = home && `${home.size === "custom" ? "measured" : SIZES[home.size].label}${cm ? ` (${cm.join(" × ")} cm)` : ""}`;
+  const cm = home?.size && (home.size === "custom" ? home.size_cm : SIZES[home.size].cm);
+  const size = !home?.size ? "not asked" : `${home.size === "custom" ? "measured" : SIZES[home.size].label}${cm ? ` (${cm.join(" × ")} cm)` : ""}`;
 
   return (
     <article className={card} style={cardStyle}>
@@ -73,6 +73,18 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
           <li style={{ color: "var(--text-muted)" }}>This resident has not marked up their home.</li>
         )}
       </ul>
+      {home?.source === "phone" && (
+        <Part title={`Said by phone${home.said_at ? ` at ${new Date(home.said_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}`}>
+          <ul className="space-y-0.5 text-sm">
+            {home.unit && <li>Apartment {home.unit}</li>}
+            {home.complex_building && <li>Building {home.complex_building}</li>}
+            <li>Floor {patient.floor}</li>
+            {home.has_elevator !== null && <li>{home.has_elevator ? "Says the building has an elevator" : "Says the building has no elevator"}</li>}
+            {home.door && <li>Door: {home.door}{home.door_from_aerial ? " (they agreed with the aerial photo)" : ""}</li>}
+            {home.room && <li>Machine: {home.room}{home.scan_room ? ` (the scan's ${home.scan_room})` : ""}</li>}
+          </ul>
+        </Part>
+      )}
       {/* who is already there comes before how to get in */}
       {home && (
         <Part title="At home with the resident">
@@ -92,7 +104,8 @@ function JobCard({ patient, home, address, buildingId }: { patient: Patient; hom
               {/* the key arrives with the building detail. Without it the scan cannot open, and the pins are still listed */}
               {detail !== undefined && <ScanPins scanId={home.scan_id} sdkKey={detail?.scan_sdk_key ?? null} pins={home.inside} />}
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Simulated: this resident&apos;s home is this scanned unit.
+                {home.source === "phone" ? "Scan of this resident's floor plan, matched from their apartment number. Not their own home."
+                  : "Simulated: this resident's home is this scanned unit."}
               </p>
             </>
           ) : (
@@ -174,6 +187,12 @@ export default function ResponderPage() {
             <button type="button" className="underline underline-offset-2" onClick={() => setEditing(true)}>Edit setup</button>
           </div>
         </section>
+      )}
+
+      {crew && !editing && data?.staging && (
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          Stage at {data.staging.name}{data.staging.address === data.staging.name ? "" : `, ${data.staging.address}`} (not confirmed with the owner)
+        </p>
       )}
 
       {crew && !editing && !job && (

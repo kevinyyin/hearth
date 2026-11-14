@@ -5,9 +5,10 @@ import json
 import time
 import uuid
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Iterator, Literal
+from zoneinfo import ZoneInfo
 
 from langchain.agents.middleware import TodoListMiddleware
 from langchain_core.tools import tool
@@ -15,7 +16,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
 from hearth import store
-from hearth.buildings import tools
+from hearth.buildings import status, tools
 from hearth.buildings.agent import survey
 from hearth.buildings.trace import to_trace
 from hearth.config import a, anthropic_headers
@@ -34,12 +35,14 @@ def outside_dark_area(zip: str | None, dark_zips: set[str]) -> bool:
     return bool(zip) and zip not in dark_zips
 
 
+SIMULATED_CALL = "the refuge confirmed by phone that it is running (simulated call)"
 NEEDS_CALL = "needs a call"  # the first reason when the only open question is one a phone call to the refuge can settle
 
 
-def eligible(option_profile: BuildingProfile, patient: Patient, elevator_confirmed: bool = False) -> tuple[bool, list[str]]:
+def eligible(option_profile: BuildingProfile, patient: Patient, elevator_confirmed: str | None = None) -> tuple[bool, list[str]]:
     """Code, not model. Wheelchair and bedbound patients need a step-free entrance, and an elevator above one floor.
-    An elevator a scan shows but no record states counts only once the refuge has confirmed it (`elevator_confirmed`)."""
+    An elevator a scan shows but no record states counts only once the refuge has confirmed it; `elevator_confirmed` says
+    who did (the building's office by phone, or the simulated call)."""
     p = option_profile
     if patient.mobility not in NEEDS_STEP_FREE:
         return True, [f"patient {patient.mobility.replace('_', ' ')}: no access constraint"]
@@ -58,7 +61,7 @@ def eligible(option_profile: BuildingProfile, patient: Patient, elevator_confirm
         seen = f"elevator seen in a scan ({src('elevator_count')})"
         if not elevator_confirmed:
             return False, [NEEDS_CALL, seen, "not confirmed running"]
-        return True, reasons + [seen, "the refuge confirmed by phone that it is running (simulated call)"]
+        return True, reasons + [seen, elevator_confirmed]
     if p.elevator_count.value is None:
         return False, ["unverified access", f"elevator unknown for {floors or 'an unknown number of'} floors"]
     if p.elevator_count.value < 1:
@@ -66,23 +69,30 @@ def eligible(option_profile: BuildingProfile, patient: Patient, elevator_confirm
     return True, reasons + [f"{p.elevator_count.value} elevator(s) ({src('elevator_count')})"]
 
 
-def confirm_elevator(building_id: str, dark_zips: set[str]) -> bool:
-    """A simulated phone call to a refuge: is a passenger elevator running? Nobody is called. The answer is the
-    assumption `refuge.elevator_runs_outside_outage`, and the question is only put to a building outside the dark area."""
+def confirm_elevator(building_id: str, dark_zips: set[str]) -> str | None:
+    """Is a passenger elevator running? Who said so, or None. A building office's answer by phone within
+    `refuge.building_answer_valid_h` decides; otherwise a simulated call: nobody is called, the answer is the assumption
+    `refuge.elevator_runs_outside_outage`, and the question is only put to a building outside the dark area."""
+    said = status.latest(building_id)
+    if said and said["said_by"] == "building_office" and time.time() - said["t"] < a("refuge.building_answer_valid_h") * 3600:
+        if said.get("elevator") != "yes":
+            return None
+        at = datetime.fromtimestamp(said["t"], ZoneInfo("America/Chicago")).strftime("%-I:%M %p")
+        return f"the building's office said so by phone at {at}"
     rec = tools.costar_record(building_id)
     if rec is None or not outside_dark_area(rec.get("zip"), dark_zips):
-        return False
+        return None
     yes = bool(a("refuge.elevator_runs_outside_outage"))
     store.put("refuge_call", building_id, {"building_id": building_id, "simulated": True, "question": "Is a passenger elevator running?",
                                            "answer": "yes" if yes else "no", "t": time.time()})
-    return yes
+    return SIMULATED_CALL if yes else None
 
 
 def access(prof: BuildingProfile, patient: Patient, dark_zips: set[str]) -> tuple[bool, list[str]]:
     """`eligible`, plus the simulated call when the only thing missing is confirmation of an elevator a scan showed."""
     ok, why = eligible(prof, patient)
-    if not ok and why[0] == NEEDS_CALL and confirm_elevator(prof.building_id, dark_zips):
-        return eligible(prof, patient, elevator_confirmed=True)
+    if not ok and why[0] == NEEDS_CALL and (said := confirm_elevator(prof.building_id, dark_zips)):
+        return eligible(prof, patient, elevator_confirmed=said)
     return ok, why
 
 

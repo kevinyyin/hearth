@@ -193,7 +193,7 @@ class Home(BaseModel):
     device_name: str = Field("", max_length=120)  # the device as the resident names it; the patient record keeps the clinical type
     movable: bool | None = None  # can the device leave with the person? None: not answered
     backup_plan: str = Field("", max_length=500)  # no longer asked on the resident page; kept so older saved homes still load
-    size: Literal["shoebox", "microwave", "carry_on", "mini_fridge", "custom"]
+    size: Literal["shoebox", "microwave", "carry_on", "mini_fridge", "custom"] | None = None  # None: not asked (a phone home)
     size_cm: tuple[Cm, Cm, Cm] | None = None  # width, depth, height; needed only for "custom", checked whenever sent
     scan_id: str | None = None  # the scan the resident says is laid out like their home; None: none of them
     note: str = Field("", max_length=500)
@@ -201,6 +201,17 @@ class Home(BaseModel):
     inside: list[InsidePin] = Field(default_factory=list, max_length=50)
     contacts: list[Person] = Field(default_factory=list, max_length=5)  # family or trusted people to reach as well; shown, never messaged
     helpers: list[Person] = Field(default_factory=list, max_length=5)  # people who live there and can help before a crew arrives
+    # what a caller said by phone (voice registration); a home saved on the resident page keeps the defaults
+    source: Literal["web", "phone"] = "web"
+    unit: str | None = Field(None, max_length=20)  # the apartment number, in CoStar's spelling when it matched the unit list
+    complex_building: str | None = Field(None, max_length=40)
+    door: str = Field("", max_length=200)
+    door_from_aerial: bool = False
+    room: str = Field("", max_length=120)  # where the machine is, in the caller's words
+    scan_room: str | None = Field(None, max_length=80)  # the scan's room name it matched, if any
+    has_elevator: bool | None = None  # the caller's own statement, asked only when the record says nothing
+    mobility_asked: bool = False  # the patient's mobility came from the caller, not the registration default
+    said_at: datetime | None = None
 
     @model_validator(mode="after")
     def _consistent(self):

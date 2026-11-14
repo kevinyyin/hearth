@@ -21,6 +21,7 @@ class Flags:
     use_buildings: bool = True
     allow_moves: bool = True
     mutual_aid: bool = False
+    routing: str = "greedy"  # greedy (assign, below) | paired | alns (hearth/routing.py)
 
 
 @dataclass
@@ -44,6 +45,8 @@ class Crew:
     lat: float
     lon: float
     free_at_h: float = 0.0
+    base: tuple[float, float] | None = None  # with capacity: where a round starts and ends (the simulation page's vans)
+    capacity: int | None = None  # stops per round before returning to base; None is no rounds
 
 
 def travel_h(a_: tuple[float, float], b: tuple[float, float], multiplier: float = 1.0) -> float:

@@ -1,8 +1,12 @@
 """Call scripts as code. Each step reads the interpreted turn and returns template keys; voice.py renders and stores.
 
-impact:       open -> ask -> readback -> temperature -> close
+impact:       open -> ask -> readback -> [elevator_now] -> temperature -> close
 move_consent: open -> move_offer -> consent_readback -> close
+register, check, menu: see register.py; building_check: see building_call.py
 """
+from hearth import store
+from hearth.buildings import status, tools
+from hearth.messaging import building_call, register
 from hearth.messaging.interpreter import Turn
 from hearth.messaging.templates import say_hours
 
@@ -10,6 +14,10 @@ Lines = list[tuple[str, dict]]
 
 
 def opening(call: dict) -> Lines:
+    if call["kind"] == "building_check":
+        return building_call.opening(call)
+    if call["kind"] in ("register", "check", "menu"):
+        return register.opening(call)
     c = call["ctx"]
     if call["kind"] == "move_consent":
         call["step"] = "move_offer"
@@ -24,6 +32,12 @@ def opening(call: dict) -> Lines:
 
 def advance(call: dict, t: Turn) -> Lines:
     """Mutates call (step, pending, facts, status) and returns what to say next."""
+    if call["kind"] == "building_check":
+        return building_call.advance(call, t)
+    if call["kind"] in ("register", "check", "menu") or call["step"] in ("walk", "wheelchair"):
+        return register.advance(call, t)
+    if t.intent == "help" and call["patient_id"]:  # asking for help on an impact or move call opens the same request
+        return register.help_branch(call)
     step, c, facts = call["step"], call["ctx"], call["facts"]
     # plain statements; only confident turns reach here. Never "safe": on a call, keypad 1 means "yes" to the question
     for k in ("device_running", "can_move"):
@@ -35,7 +49,7 @@ def advance(call: dict, t: Turn) -> Lines:
             return _readback(call, t.backup_hours)
         if call["last"][0] == "impact_check" and t.confirms:
             facts["backup_hours"] = c["hours"]  # caller agreed with the profile value we read to them
-            return _go(call, "temperature", "ask_temperature")
+            return _after_hours(call)
         return _go(call, "ask", "dialysis_check" if c.get("dialysis") else "ask_hours")
 
     if step == "readback":
@@ -43,11 +57,19 @@ def advance(call: dict, t: Turn) -> Lines:
             return _readback(call, t.backup_hours)  # a correction gets its own read-back
         if t.confirms:
             facts["backup_hours"] = call.pop("pending")
-            return _go(call, "temperature", "ask_temperature")
+            return _after_hours(call)
         if t.confirms is False:
             call.pop("pending")
             return _go(call, "ask", "dialysis_check" if c.get("dialysis") else "ask_hours")
         return _readback(call, call["pending"])
+
+    if step == "elevator_now":
+        said = t.elevator_working or {True: "yes", False: "no"}.get(t.confirms)
+        if said is None:
+            return _go(call, "elevator_now", "ask_elevator_working")
+        facts["elevator_working"] = said
+        status.record(call["ctx"]["building_id"], "resident", call["call_id"], elevator=said)
+        return _go(call, "temperature", "ask_temperature")
 
     if step == "temperature":
         if t.confirms is None:
@@ -77,6 +99,18 @@ def advance(call: dict, t: Turn) -> Lines:
         return _go(call, "consent_readback", "consent_readback", place=c["place"])
 
     return [("close_no_promise", {})]  # closed call
+
+
+def _after_hours(call: dict) -> Lines:
+    """Whether an elevator runs is a fact about today: asked when the power is out, of someone above floor 1 in a building
+    with an elevator (on record, or by their own statement)."""
+    p, h = store.get("patient", call["patient_id"]) or {}, store.get("home", call["patient_id"]) or {}
+    building_id = h.get("building_id") or p.get("building_id")
+    rec = (tools.costar_record(building_id) if building_id else None) or {}
+    if (p.get("floor") or 0) > 1 and ((rec.get("elevator_count") or 0) > 0 or h.get("has_elevator")):
+        call["ctx"]["building_id"] = building_id
+        return _go(call, "elevator_now", "ask_elevator_working")
+    return _go(call, "temperature", "ask_temperature")
 
 
 def _go(call: dict, step: str, key: str, **vars) -> Lines:
