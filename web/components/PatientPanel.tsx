@@ -6,7 +6,8 @@ import type { HearthEvent, PatientSnap } from "@/lib/types";
 /** Backup hours are capped on the gauge; past a day of runway the exact number stops mattering. */
 const GAUGE_MAX_HOURS = 24;
 
-function BackupGauge({ hours }: { hours: number }) {
+/** For home dialysis the number is hours until the next treatment is due, not device backup. */
+function BackupGauge({ hours, dialysis }: { hours: number; dialysis: boolean }) {
   const pct = Math.max(0, Math.min(hours / GAUGE_MAX_HOURS, 1)) * 100;
   const low = hours < 4;
 
@@ -14,7 +15,7 @@ function BackupGauge({ hours }: { hours: number }) {
     <div>
       <div className="flex items-baseline justify-between">
         <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Backup left
+          {dialysis ? "Next treatment due in" : "Backup left"}
         </span>
         <span className="tnum text-sm font-medium">{hours.toFixed(1)} h</span>
       </div>
@@ -25,7 +26,7 @@ function BackupGauge({ hours }: { hours: number }) {
         aria-valuenow={hours}
         aria-valuemin={0}
         aria-valuemax={GAUGE_MAX_HOURS}
-        aria-label="Backup hours left"
+        aria-label={dialysis ? "Hours until the next dialysis treatment" : "Backup hours left"}
       >
         <div
           className="h-full rounded-full"
@@ -115,7 +116,7 @@ export default function PatientPanel({
           <Field label="Power" value={patient.unpowered ? "Out" : "On"} />
         </div>
 
-        <BackupGauge hours={patient.backup_hours} />
+        <BackupGauge hours={patient.backup_hours} dialysis={patient.device === "home_dialysis"} />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto border-t px-5 py-4" style={{ borderColor: "var(--border)" }}>

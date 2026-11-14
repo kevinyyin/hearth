@@ -19,7 +19,11 @@ def profile_from_fields(rec: dict, attrs: dict | None) -> BuildingProfile:
     conf = a("building_records.costar_confidence")
     upd = {f: Sourced(value=rec[f], source="costar", confidence=conf)
            for f in ("floors", "units", "year_built", "construction", "property_type", "elevator_count") if rec.get(f) is not None}
-    evidence = [Evidence(field="elevator_count", layer="costar", ref=rec["building_id"], note=rec["elevator_note"])] if "elevator_count" in upd else []
+    evidence = []
+    if "elevator_count" in upd:
+        evidence.append(Evidence(field="elevator_count", layer="costar", ref=rec["building_id"], note=rec["elevator_note"]))
+        if rec["elevator_note"] != "passenger elevators listed":  # "at least one" or a walk-up flag: inferred, not counted
+            upd["elevator_count"] = upd["elevator_count"].model_copy(update={"confidence": a("building_records.costar_inferred_confidence")})
     if attrs:
         if attrs.get("tree_cover_fraction") is not None:
             upd["tree_cover_fraction"] = Sourced(value=attrs["tree_cover_fraction"], source="vexcel", confidence=conf)

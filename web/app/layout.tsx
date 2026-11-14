@@ -31,12 +31,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">
-        {!API && (
-          <div role="status" className="px-4 py-1.5 text-center text-xs font-medium" style={{ background: "#fdf0c4", color: "#5c4300" }}>
-            Sample data, not results: these pages are reading hand-made dev files. Set NEXT_PUBLIC_API to the Hearth API to see the simulation.
-          </div>
-        )}
-        <main className="min-w-0">{children}</main>
+        {/* one screen tall: the banner takes its row, pages fill the rest (the map) or scroll inside it (results) */}
+        <div className="flex h-screen flex-col">
+          {!API && (
+            <div role="status" className="shrink-0 px-4 py-1.5 text-center text-xs font-medium" style={{ background: "#fdf0c4", color: "#5c4300" }}>
+              Sample data, not results: these pages are reading hand-made dev files. Set NEXT_PUBLIC_API to the Hearth API to see the simulation.
+            </div>
+          )}
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
+        </div>
         <SimulatedBadge />
       </body>
     </html>

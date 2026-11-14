@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BuildingPanel from "@/components/BuildingPanel";
 import PatientPanel from "@/components/PatientPanel";
 import TimeSlider from "@/components/TimeSlider";
-import { getJson } from "@/lib/api";
+import { API, getJson } from "@/lib/api";
 import { countByState, PLAN_STATES, stateColor } from "@/lib/snapshots";
 import type { HearthEvent, Meta, PlanState, Run, Snapshot } from "@/lib/types";
 
@@ -57,7 +57,7 @@ export default function HomePage() {
     [],
   );
 
-  // Load the run, its meta and its events once.
+  // Load the run and its meta once; events load per selected patient (a county run has ~140k).
   useEffect(() => {
     let cancelled = false;
 
@@ -65,15 +65,13 @@ export default function HomePage() {
       try {
         const runs = await getJson<Run[]>("/api/runs");
         if (runs.length === 0) throw new Error("No runs available.");
-        const first = runs.find((r) => r.scenario === "beryl_2024") ?? runs[0];  // the county replay when it has been generated
-        const [m, ev] = await Promise.all([
-          getJson<Meta>(`/api/runs/${first.run_id}/meta`),
-          getJson<HearthEvent[]>(`/api/runs/${first.run_id}/events`).catch(() => [] as HearthEvent[]),
-        ]);
+        // the county Hearth replay when it has been generated, then any county run, then the samples
+        const first = runs.find((r) => r.scenario === "beryl_2024" && r.policy === "p3")
+          ?? runs.find((r) => r.scenario === "beryl_2024") ?? runs[0];
+        const m = await getJson<Meta>(`/api/runs/${first.run_id}/meta`);
         if (cancelled) return;
         setRun(first);
         setMeta(m);
-        setEvents(ev);
       } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       }
@@ -83,6 +81,19 @@ export default function HomePage() {
       cancelled = true;
     };
   }, []);
+
+  // The selected patient's events. Dev files have no query support, so there the whole (small) file is read.
+  useEffect(() => {
+    if (!run || !selectedId) return;
+    let cancelled = false;
+    const path = API ? `/api/runs/${run.run_id}/events?patient_id=${encodeURIComponent(selectedId)}` : `/api/runs/${run.run_id}/events`;
+    getJson<HearthEvent[]>(path)
+      .then((ev) => !cancelled && setEvents(ev))
+      .catch(() => !cancelled && setEvents([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [run, selectedId]);
 
   // Show the current tick, then warm the next ten in the background.
   useEffect(() => {
@@ -147,7 +158,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-full flex-col">
       <header
         className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b px-5 py-3"
         style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}

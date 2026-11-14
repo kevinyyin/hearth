@@ -153,3 +153,11 @@ def test_delivery_is_feasible_only_for_patients_a_unit_is_left_for():
     pooled = allot_deliveries(wants, priority, supplier, {"s1": 1, "s2": 1}, pooled=True, holding=holding)
     assert pooled.tolist() == [True, True, False, True, False, False]     # two pooled units, top two priorities
     assert not allot_deliveries(wants, priority, supplier, {"s1": 0, "s2": 0}, pooled=True, holding=holding)[1:].any()
+
+
+def test_a_moved_patient_is_no_longer_safe_once_their_refuge_goes_dark():
+    from hearth.sim.engine import refuge_open
+    moved = np.array([True, True, True, False])
+    dest = np.array([0, 1, -1, 1])                    # -1: moved somewhere always open (hospital or shelter)
+    dest_dark_now = np.array([False, True])
+    assert refuge_open(moved, dest, dest_dark_now).tolist() == [True, False, True, False]

@@ -15,6 +15,8 @@ def opening(call: dict) -> Lines:
         call["step"] = "move_offer"
         return [("open_automated", {"county": c["county"]}), ("move_offer", {"place": c["place"]})]
     call["step"] = "ask"
+    if c.get("dialysis"):
+        return [("open_automated", {"county": c["county"]}), ("dialysis_check", {})]
     if c.get("hours") is None:
         return [("open_automated", {"county": c["county"]}), ("ask_hours", {})]
     return [("open_automated", {"county": c["county"]}), ("impact_check", {"device": c["device"], "hours": say_hours(c["hours"])})]
@@ -34,7 +36,7 @@ def advance(call: dict, t: Turn) -> Lines:
         if call["last"][0] == "impact_check" and t.confirms:
             facts["backup_hours"] = c["hours"]  # caller agreed with the profile value we read to them
             return _go(call, "temperature", "ask_temperature")
-        return _go(call, "ask", "ask_hours")
+        return _go(call, "ask", "dialysis_check" if c.get("dialysis") else "ask_hours")
 
     if step == "readback":
         if t.backup_hours is not None and abs(t.backup_hours - call["pending"]) > 0.01:
@@ -44,7 +46,7 @@ def advance(call: dict, t: Turn) -> Lines:
             return _go(call, "temperature", "ask_temperature")
         if t.confirms is False:
             call.pop("pending")
-            return _go(call, "ask", "ask_hours")
+            return _go(call, "ask", "dialysis_check" if c.get("dialysis") else "ask_hours")
         return _readback(call, call["pending"])
 
     if step == "temperature":

@@ -133,3 +133,12 @@ def test_records_only_profiles_do_not_count_as_surveyed():
     rows = {r["building_id"]: r for r in client.get("/api/buildings").json()}
     assert rows["B-SAMPLE"]["surveyed"] is False and rows["B-SAMPLE"]["records_only"] is True
     assert client.get("/api/buildings/B-SAMPLE").json()["profile"]["method"] == "fields"
+
+
+def test_tunneled_requests_reach_only_the_voice_route():
+    seed_pending_proposal("P9")
+    for h in ({"x-forwarded-for": "203.0.113.7"}, {"cf-connecting-ip": "203.0.113.7"}):
+        assert client.post("/api/proposals/P9/decision", json={"decision": "approve"}, headers=h).status_code == 403
+    assert store.get("proposal", "P9")["status"] == "pending"
+    r = client.post("/voice/v1/chat/completions", json={"messages": []}, headers={"x-forwarded-for": "203.0.113.7"})
+    assert r.status_code == 200

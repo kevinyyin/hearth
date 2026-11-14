@@ -40,3 +40,10 @@ def test_a_fields_profile_is_not_a_cache_hit_for_a_live_survey(monkeypatch):
     monkeypatch.setattr(agent, "build_surveyor", lambda model=None: ExplodingGraph())
     last = list(agent.survey("123", REC["address"], REC["lat"], REC["lon"]))[-1]
     assert "live survey ran" in last.data["profile"]["error"]  # it tried the agent instead of returning the bulk profile
+
+
+def test_inferred_elevator_counts_get_lower_confidence_than_listed_ones():
+    listed = profile_from_fields(REC, ATTRS).elevator_count.confidence
+    for note, count in (("at least one passenger elevator; count not listed", 1), ("listed as a walk-up", 0)):
+        p = profile_from_fields(REC | {"elevator_count": count, "elevator_note": note}, ATTRS)
+        assert p.elevator_count.value == count and p.elevator_count.confidence < listed

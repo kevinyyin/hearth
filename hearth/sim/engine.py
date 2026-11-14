@@ -58,6 +58,11 @@ def hours_to_unsafe(indoor, temps, rhs, heat_tc, cold_tc, sens, dt) -> np.ndarra
     return out
 
 
+def refuge_open(moved, dest, dest_dark_now) -> np.ndarray:
+    """Moved patients whose destination still has power; dest is a column of dest_dark (-1: none recorded)."""
+    return moved & ~((dest >= 0) & dest_dark_now[np.maximum(dest, 0)])
+
+
 def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(), out_root: Path | None = ROOT / "results") -> dict:
     """Simulate and return the summary; with out_root, also write out_root/<run_id>/ (meta, events, snapshots, summary,
     a copy of assumptions.yaml)."""
@@ -98,10 +103,10 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
     dest_ll = np.array(fixed + [(profiles[b].lat, profiles[b].lon) for b in refuges])
     dest_dark = np.hstack([np.zeros((len(ticks), len(fixed)), bool), dark_mask(np.array([r_b[b] for b in refuges]), f_ticks)])
 
-    def dest_for(i, k):
+    def dest_for(i, k) -> int:
+        """Column of the nearest destination with power at tick k."""
         ok = np.flatnonzero(~dest_dark[k])
-        j = ok[np.argmin(km(lat[i], lon[i], dest_ll[ok, 0], dest_ll[ok, 1]))]
-        return float(dest_ll[j, 0]), float(dest_ll[j, 1])
+        return int(ok[np.argmin(km(lat[i], lon[i], dest_ll[ok, 0], dest_ll[ok, 1]))])
 
     orgs = [f"s{i + 1}" for i in range(len(a("population.supplier_shares")))]
     depots = a("planner.depots")
@@ -111,7 +116,8 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
 
     # state
     state, streak = np.full(n, NA, np.int8), np.zeros(n, int)
-    moved, ever_dark, prev_dark, has_job, zeroed = (np.zeros(n, bool) for _ in range(5))
+    moved, ever_dark, prev_dark, has_job, zeroed, delivering = (np.zeros(n, bool) for _ in range(6))
+    ride_dest, moved_dest = np.full(n, -1), np.full(n, -1)  # destination column of a ride in flight / of where they are
     known = verified.copy() if policy == "p3" else np.zeros(n, bool)
     indoor = np.full(n, float(a("temperature.setpoint_c")))
     indoor_b = indoor.copy()
@@ -143,11 +149,11 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
             if done_h > now:
                 keep.append((done_h, job, i))
                 continue
-            has_job[i], since[i] = False, np.nan
+            has_job[i], delivering[i], since[i] = False, False, np.nan
             if job.kind == "delivery":
                 backup[i] += a("planner.delivery_backup_h")
             elif job.kind == "ride" and dark[i]:  # power already back: the ride is not needed
-                moved[i], moves = True, moves + 1
+                moved[i], moved_dest[i], moves = True, ride_dest[i], moves + 1
                 ev(t, "moved", i, job_id=job.job_id)
             elif job.kind == "welfare_check":
                 known[i] = True
@@ -159,6 +165,10 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
         for i in np.flatnonzero(~dark & prev_dark):
             ev(t, "power_restored", int(i), zip=ps[i].zip)
         moved &= dark  # power back at home: a moved patient goes home
+        safe = refuge_open(moved, moved_dest, dest_dark[k])  # a refuge that loses power is no longer safe
+        for i in np.flatnonzero(moved & ~safe):
+            ev(t, "refuge_lost_power", int(i))
+        moved = safe
         ever_dark |= dark
 
         # clocks
@@ -206,7 +216,7 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
                 # the rest are decided as if no delivery were possible, so they can be moved instead of waiting
                 wants = decide_vec(*args, can, np.ones(ix.size, bool), flags.allow_moves) == RES
                 deliver = allot_deliveries(wants, weight[ix] / np.maximum(backup[ix], 0.1), supplier[ix], served,
-                                           flags.mutual_aid, has_job[ix])
+                                           flags.mutual_aid, delivering[ix])
                 prop = decide_vec(*args, deliver, np.ones(ix.size, bool), flags.allow_moves)
                 new[ix], streak[ix] = hysteresis_vec(state[ix], prop, streak[ix])
             want = np.select([new == RES, new == MOVE, new == UNR], [0, 1, 2], -1)
@@ -227,13 +237,16 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
                 order = np.lexsort((cand, -weight[cand] / np.maximum(left, 0.1)))
             cand = cand[order][: free * a("planner.candidates_per_free_crew")]  # shortcut: deeper needs wait a tick
             kinds = ("delivery", "ride", "welfare_check")
+            dest_of = {i: dest_for(i, k) for i in cand if want[i] == 1}
             needs = [Need(ps[i].patient_id, kinds[want[i]], supplier[i], weight[i],
                           float(backup[i] if want[i] == 0 else min(backup[i], hu[i]) if want[i] == 1 else a("decision.low_backup_h")),
                           lat[i], lon[i], service_h[i], float(since[i]) if policy == "p0" else now,
-                          dest_for(i, k) if want[i] == 1 else None) for i in cand]
+                          (float(dest_ll[dest_of[i], 0]), float(dest_ll[dest_of[i], 1])) if want[i] == 1 else None) for i in cand]
             for job in assign(needs, fleet, stock, flags, now, fcfs=policy == "p0"):
                 i = idx_of[job.patient_id]
-                has_job[i] = True
+                has_job[i], delivering[i] = True, job.kind == "delivery"
+                if job.kind == "ride":
+                    ride_dest[i] = dest_of[i]
                 active_jobs.append((job.data["done_h"], job, i))
                 eta = ticks[0] + pd.Timedelta(hours=job.data["done_h"])
                 ev(t, "job_created", i, job_id=job.job_id, kind=job.kind, org_id=job.org_id, crew_id=job.data["crew_id"], eta=_iso(eta),

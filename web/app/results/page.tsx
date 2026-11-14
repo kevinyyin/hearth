@@ -66,7 +66,10 @@ export default function ResultsPage() {
         />
       )}
 
-      {rows != null && <CrewsChart rows={rows} />}
+      {rows != null && rows.length > 0 && <CrewsChart rows={rows} />}
+      {rows != null && rows.length === 0 && (
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>The sweep file has no rows yet.</p>
+      )}
 
       <section className="mt-8">
         <h2 className="text-sm font-semibold">Assumptions that flatter Hearth</h2>

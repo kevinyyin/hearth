@@ -4,6 +4,7 @@ TEMPLATES: dict[str, str] = {
     "open_automated": "This is an automated call from Hearth for the {county} health department.",
     "impact_check": "The power is out at your address, and we're checking on your {device}. Our records say your backup should last about {hours}. Is that about right? You can answer, or press 1 for yes, 2 if you need help now, or 3 if it's different.",
     "ask_hours": "About how many hours of backup do you have?",
+    "dialysis_check": "The power is out at your address. In how many hours is your next home dialysis treatment due? You can answer, or press 2 if you need help now.",
     "readback_hours": "I have you at {hours} of {supply}. Is that right?",
     "ask_temperature": "Is your home getting too hot or too cold?",
     "close_no_promise": "We'll call you again before your backup runs low. If you need help sooner, call this number back or call 911 in an emergency.",

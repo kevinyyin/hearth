@@ -65,3 +65,10 @@ def test_dialysis_backup_is_the_time_until_the_next_session_is_due():
 def test_synthetic_scenarios_never_use_surveyed_buildings():
     store.put("profile", "MF", _surveyed("MF", "multifamily"))
     assert all(p.building_id is None for p in load_population("sample", 1))  # committed outputs carry no CoStar data
+
+
+def test_zip_at_finds_the_polygon_containing_a_point():
+    from hearth.population import zip_at
+    sq = lambda x0: np.array([[x0, 0], [x0 + 1, 0], [x0 + 1, 1], [x0, 1], [x0, 0]], float)
+    shapes = {"A": [sq(0)], "B": [sq(2)]}
+    assert zip_at(0.5, 2.5, shapes) == "B" and zip_at(0.5, 0.5, shapes) == "A" and zip_at(0.5, 9.0, shapes) is None

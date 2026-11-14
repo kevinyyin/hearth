@@ -211,3 +211,17 @@ def test_an_internal_error_hands_off_instead_of_failing(monkeypatch):
     r = client().post("/voice/v1/chat/completions", json={
         "stream": True, "messages": [{"role": "user", "content": "about forty minutes"}], "elevenlabs_extra_body": {"call_id": c}})
     assert sse_text(r) == render("human_handoff") and store.get("call", c)["status"] == "handoff"
+
+
+def test_short_distress_at_the_opening_escalates(monkeypatch):
+    FAKE["help me"] = Turn(needs_help_now=True, wants_human=True, confidence=0.9)
+    c = start_call("p1", "impact")
+    out = respond(c, "help me")
+    assert store.get("call", c)["status"] == "escalated" and render("human_handoff") in out
+
+
+def test_dialysis_patient_hears_about_their_next_treatment_not_backup():
+    store.put("patient", "p2", PATIENT | {"patient_id": "p2", "device": "home_dialysis", "backup_hours_on_hand": 30.0})
+    c = start_call("p2", "impact")
+    first = respond(c, "")
+    assert "next home dialysis treatment" in first and "backup should last" not in first

@@ -34,3 +34,9 @@ def test_hourly_weather_has_no_gaps():
 def test_nobody_gets_power_back_for_one_interval():
     m = dark_mask(np.random.default_rng(1).random(23_000), fraction_out("beryl_2024"))
     assert not (m[:-2] & ~m[1:-1] & m[2:]).any()
+
+
+def test_onset_without_a_real_rise_does_not_crash():
+    idx = pd.date_range("2024-07-08", periods=8, freq="15min", tz="UTC")
+    c = clean_curve(pd.Series([100.0] * 8, index=idx), 1_000_000, onset=idx[1])
+    assert len(c) == 8 and c.max() <= 1.0

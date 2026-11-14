@@ -26,6 +26,9 @@ from hearth.messaging.templates import allowed, render
 router = APIRouter()
 log = logging.getLogger(__name__)
 DEMO_PATIENTS = ROOT / "data" / "demo" / "patients.json"
+# answering the phone, not answering a question: skips the model on the first turn. Anything else is interpreted,
+# so a short "help me" at the opening still escalates
+GREETINGS = {"hello", "hi", "hey", "yes", "yeah", "speaking", "this is she", "this is he", "who is this", "who's this"}
 
 
 def start_call(patient_id: str, kind: Literal["impact", "move_consent"], proposal_id: str | None = None) -> str:
@@ -34,8 +37,9 @@ def start_call(patient_id: str, kind: Literal["impact", "move_consent"], proposa
     if kind == "move_consent" and not (proposal and proposal["status"] == "approved" and proposal["patient_id"] == patient_id):
         raise PermissionError(f"no approved proposal {proposal_id!r} for patient {patient_id}")
     p = _patient(patient_id)
-    ctx = {"county": a("voice.county"), "device": p.get("device", "medical device").replace("_", " "),
-           "hours": p.get("backup_hours_on_hand"), "supply": "backup",
+    dialysis = p.get("device") == "home_dialysis"  # its hours are the time until the next treatment, not device backup
+    ctx = {"county": a("voice.county"), "device": p.get("device", "medical device").replace("_", " "), "dialysis": dialysis,
+           "hours": p.get("backup_hours_on_hand"), "supply": "time before your next treatment" if dialysis else "backup",
            "place": proposal["options"][0]["name"] if proposal else None}
     call_id = f"C-{uuid.uuid4().hex[:8]}"
     store.put("call", call_id, {"call_id": call_id, "patient_id": patient_id, "kind": kind, "proposal_id": proposal_id,
@@ -83,7 +87,7 @@ def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, script
             return None, [("human_handoff", {})]
         return None, [tuple(call["last"])]  # ask the last question again
     call["silences"] = 0
-    if active and call["step"] == "open" and len(text.split()) <= 2:  # "hello?": no model latency on the greeting
+    if active and call["step"] == "open" and " ".join(re.sub(r"[^a-z' ]", " ", text.lower()).split()) in GREETINGS:
         return None, _script(call, scripts.opening(call))
     if active and call["last"] and call["last"][0] == "ask_hours" and text.isdigit() and len(text) <= 3:
         t = Turn(backup_hours=float(text), confidence=1.0)  # "3" answers "how many hours", not the keypad menu

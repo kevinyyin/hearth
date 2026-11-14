@@ -1,13 +1,14 @@
 """Hearth API: run files for the map, the building agent's surveys and refuge proposals, and the approval-gated call."""
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterator, Literal
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from api import live
@@ -26,6 +27,16 @@ PATIENTS_FILE = ROOT / "data" / "processed" / "patients_beryl_2024_s1.parquet"
 app = FastAPI(title="Hearth (simulated patients)")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)  # a full-county snapshot is megabytes of JSON; gzip keeps scrubbing smooth
+
+
+@app.middleware("http")
+async def local_only(request: Request, call_next):
+    """The dispatcher API is for this machine. A tunnel (opened so ElevenLabs can reach the voice route) adds forwarding
+    headers; such requests reach only /voice, so approvals and paid agent runs are never public."""
+    proxied = "x-forwarded-for" in request.headers or "cf-connecting-ip" in request.headers
+    if proxied and not request.url.path.startswith("/voice/"):
+        return JSONResponse({"detail": "the dispatcher API is not reachable through a tunnel"}, status_code=403)
+    return await call_next(request)
 try:  # lane V's OpenAI-compatible endpoint that ElevenLabs calls as its model
     from hearth.messaging.voice import router as voice_router
 
@@ -97,9 +108,16 @@ def snapshot(run_id: str, i: int):
     return _json_file(_run(run_id) / "snapshots" / f"{i}.json")
 
 
+@lru_cache(maxsize=4)
+def _events(path: str, mtime: float) -> list[dict]:
+    """Parsed once per run file (a county run has about 140k events); the mtime key drops it when the run is regenerated."""
+    return [json.loads(line) for line in Path(path).read_text().splitlines() if line]
+
+
 @app.get("/api/runs/{run_id}/events")
 def events(run_id: str, patient_id: str | None = None):
-    rows = [json.loads(line) for line in (_run(run_id) / "events.jsonl").read_text().splitlines() if line]
+    path = _run(run_id) / "events.jsonl"
+    rows = _events(str(path), path.stat().st_mtime)
     return [e for e in rows if patient_id is None or e.get("patient_id") == patient_id]
 
 

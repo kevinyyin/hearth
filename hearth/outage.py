@@ -21,7 +21,8 @@ def clean_curve(customers_out: pd.Series, total_customers: int, window=None, ons
     bad &= inside
     if onset is not None:
         risen = s.index[(s.index > onset) & (s >= a("outage.onset_fraction") * total_customers)]
-        bad |= (s.index > onset) & (s.index < risen[0])
+        if len(risen):  # no real rise after onset: nothing to ramp
+            bad |= (s.index > onset) & (s.index < risen[0])
     s[bad] = np.nan
     out = (s.interpolate(limit_direction="both") / total_customers).clip(0, 1)
     out.attrs["corrected"] = [str(i) for i in s.index[bad | clipped]]

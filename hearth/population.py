@@ -35,6 +35,11 @@ def inside(x: np.ndarray, y: np.ndarray, rings: list[np.ndarray]) -> np.ndarray:
     return hit
 
 
+def zip_at(lat: float, lon: float, shapes: dict) -> str | None:
+    """The ZIP whose ZCTA polygon contains the point, or None."""
+    return next((z for z, rings in shapes.items() if inside(np.array([lon]), np.array([lat]), rings)[0]), None)
+
+
 def _rings(geom: dict) -> list[np.ndarray]:
     polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"]
     return [np.asarray(r, float) for poly in polys for r in poly]
@@ -108,6 +113,9 @@ def generate(scenario: str, seed: int) -> list[Patient]:
         floors = prof["floors"]["value"] if isinstance(prof["floors"]["value"], int) and prof["floors"]["value"] > 0 else 1
         building[near], lat[near], lon[near] = prof["building_id"], prof["lat"], prof["lon"]
         floor[near] = rng.integers(1, floors + 1, len(near))
+        if near.size and (bzip := zip_at(prof["lat"], prof["lon"], shapes)):  # they live at the building now, so its ZIP
+            for i in near:
+                zip_[i] = bzip
 
     return [Patient(patient_id=pid[i], lat=round(float(lat[i]), 5), lon=round(float(lon[i]), 5), zip=zip_[i],
                     floor=int(floor[i]), device=device[i], device_detail=detail[i],
