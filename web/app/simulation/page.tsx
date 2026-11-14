@@ -7,6 +7,8 @@ import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
 import BuildingViews from "@/components/sim/BuildingViews";
 import FullRun from "@/components/sim/FullRun";
+import RouteSim from "@/components/sim/RouteSim";
+import { CREW_VEHICLE } from "@/lib/routeSim";
 import { useResidentFeed } from "@/lib/simSource";
 import {
   ENROLMENT_CALL,
@@ -165,11 +167,12 @@ export default function SimulationPage() {
   const stepBy = (who: Actor) => (step && step.by === who && !step.auto ? step : null);
 
   // The two steps Hearth takes without being told: dialling, and routing the request.
+  // The drive itself ends when the van on the route map pulls up, not on a timer.
   useEffect(() => {
-    if (stage !== "event" || !step?.auto) return;
+    if (stage !== "event" || !step?.auto || phase === "enroute") return;
     const t = setTimeout(advance, AUTO_MS);
     return () => clearTimeout(t);
-  }, [stage, step, advance]);
+  }, [stage, step, phase, advance]);
 
   // Most people ask the person they are already talking to. Once that line is said
   // the request exists, so the button gives way to a note and the run moves on.
@@ -733,8 +736,20 @@ export default function SimulationPage() {
                     </p>
                     <p className="display mt-1 text-2xl">Hearth · Harris County</p>
                     <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-                      Answered. The transcript is on the right.
+                      Answered. The transcript is below.
                     </p>
+                  </div>
+                )}
+
+                {phaseReached("calling") && showTranscript && (
+                  <div className="mb-4 h-[380px]">
+                    <CallTranscript
+                      lines={transcript.lines}
+                      revealed={transcript.revealed}
+                      title={transcript.title}
+                      live={transcript.live}
+                      onHide={() => setShowTranscript(false)}
+                    />
                   </div>
                 )}
 
@@ -800,6 +815,22 @@ export default function SimulationPage() {
 
               {/* ems side */}
               <Section side="Responder side" title="Crew 7 · wheelchair van">
+                <p className="mb-4 flex flex-wrap gap-2 text-xs font-medium">
+                  {[
+                    CREW_VEHICLE.label,
+                    `${CREW_VEHICLE.lengthM} m long · ${CREW_VEHICLE.widthM} m wide`,
+                    `${CREW_VEHICLE.heightM} m tall`,
+                    CREW_VEHICLE.lift,
+                  ].map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-md border px-2 py-1"
+                      style={{ borderColor: "var(--border)", background: "var(--surface-0)", color: "var(--text-secondary)" }}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </p>
                 {!phaseReached("offered") && (
                   <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                     No open jobs. Waiting.
@@ -890,18 +921,8 @@ export default function SimulationPage() {
 
               {/* sidebar */}
               <div className="flex min-h-0 flex-col gap-5">
-                {showTranscript ? (
-                  <div className="h-[380px] shrink-0">
-                    <CallTranscript
-                      lines={transcript.lines}
-                      revealed={transcript.revealed}
-                      title={transcript.title}
-                      live={transcript.live}
-                      onHide={() => setShowTranscript(false)}
-                    />
-                  </div>
-                ) : null}
-                <CoverageMap hour={countyHour} />
+                {phaseReached("accepted") && <RouteSim onArrive={advance} />}
+                <CoverageMap hour={countyHour} heading={false} />
               </div>
             </div>
           </>
