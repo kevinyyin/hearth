@@ -189,6 +189,12 @@ export default function ResponderPage() {
         </section>
       )}
 
+      {crew && !editing && data?.staging && (
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          Stage at {data.staging.name}{data.staging.address === data.staging.name ? "" : `, ${data.staging.address}`} (not confirmed with the owner)
+        </p>
+      )}
+
       {crew && !editing && !job && (
         <p className="rounded-lg border p-4 text-sm" style={{ ...cardStyle, color: "var(--text-muted)" }}>
           {crew.on_duty ? "On duty. Waiting for a job." : "Off duty. You will not be offered jobs."}

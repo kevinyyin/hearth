@@ -280,3 +280,25 @@ def test_sim_day_bounds_the_work_not_only_each_field():
     assert post(dt=0.05, runHours=48) == 422  # 960 steps
     assert post(dt=0.25, runHours=48) == 200  # 192 steps
     assert post(stations=[{"name": "far", "at": [1e308, 29.76]}]) == 422  # not a place on Earth
+
+
+def test_staging_options_choice_and_clear(monkeypatch):
+    from hearth import staging
+    opt = {"building_id": "B-SAMPLE", "name": "Lot", "address": "1 Lot St", "zip": "77027", "property_type": "retail",
+           "surface_spaces": 300, "lot_acres": 4.0, "km": 1.1}
+    from hearth.buildings import tools
+    monkeypatch.setattr(tools, "costar_all", lambda: [opt | {"lat": 29.77, "lon": -95.37}])
+    monkeypatch.setattr(staging, "scene", lambda: ((29.76, -95.37), set(), "open requests"))
+    assert client.get("/api/staging").json() == {"chosen": None, "options": [opt], "basis": "open requests"}
+    assert client.post("/api/staging", json={"building_id": "NOPE"}).status_code == 409
+    assert client.post("/api/staging", json={"building_id": "B-SAMPLE"}).json()["chosen"]["building_id"] == "B-SAMPLE"
+    assert client.get("/api/staging").json()["chosen"]["stale"] is False
+    assert client.get("/api/crews/c1/job").json()["staging"]["building_id"] == "B-SAMPLE"
+    assert client.post("/api/staging", json={"building_id": None}).json() == {"chosen": None}
+    assert client.get("/api/staging").json()["chosen"] is None
+
+
+def test_a_lot_without_a_tile_or_reading_is_404_not_an_error():
+    assert client.get("/api/buildings/B-SAMPLE/lot-image").status_code == 404  # fixtures hold no lot tile
+    assert client.get("/api/buildings/B-SAMPLE/lot-reading").status_code == 404  # fixtures ask no vision model
+    assert client.get("/api/buildings/NOPE/lot-image").status_code == 404

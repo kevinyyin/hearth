@@ -39,7 +39,7 @@ def act(name, action, patient_id=None):
 
 
 def test_the_loop_end_to_end():
-    assert client.get("/api/crews/Alpha/job").json() == {"crew": None, "job": None}
+    assert client.get("/api/crews/Alpha/job").json() == {"crew": None, "job": None, "staging": None}
     assert crew("Alpha").json()["lat"] == 29.753 and crew("Bravo", base_building_id="H-LEVEL", vehicle="van").status_code == 200
     assert client.get("/api/patients/p4/help").json() == {"state": None, "steps": [], "window": None, "refuge_note": None}
 

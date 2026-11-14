@@ -65,7 +65,7 @@ function Panel({
  * instead of its own clock, and with the controls off: a panel to glance at, not
  * a map to drive.
  */
-export default function CoverageMap({ hour = 0 }: { hour?: number }) {
+export default function CoverageMap({ hour = 0, heading = true }: { hour?: number; heading?: boolean }) {
   const { county, center, source, detail } = useCountyFeed();
   const live = source === "api";
 
@@ -75,7 +75,7 @@ export default function CoverageMap({ hour = 0 }: { hour?: number }) {
       style={{ background: "var(--surface-1)", borderColor: "var(--border)" }}
       aria-label="Coverage across the simulated county"
     >
-      <h3 className="mb-3 text-sm font-semibold">Across the county</h3>
+      {heading && <h3 className="mb-3 text-sm font-semibold">Across the county</h3>}
 
       <div className="grid grid-cols-2 gap-3">
         <Panel county={county} center={center} which="hearthAt" title="With Hearth" hour={hour} />
