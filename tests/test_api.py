@@ -120,3 +120,9 @@ def test_profiles_stored_before_new_fields_get_them_as_unknown():
     store.put("profile", "B-SAMPLE", old)
     d = client.get("/api/buildings/B-SAMPLE").json()
     assert d["profile"]["unit_type"]["source"] == "default" and d["profile"]["cached"] is True
+
+
+def test_loaded_patients_are_stored_for_the_voice_lane():
+    from api.main import _patient
+    _patient("demo-1")
+    assert store.get("patient", "demo-1")["mobility"] == "wheelchair_power"

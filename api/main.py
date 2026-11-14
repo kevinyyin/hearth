@@ -63,18 +63,21 @@ def _building(building_id: str) -> dict:
 
 
 def _patient(patient_id: str) -> Patient:
+    """Demo patients first, then lane S's patients file. Stored as a "patient" doc so the voice lane can read it."""
+    found = None
     if DEMO_PATIENTS.exists():
-        for row in json.loads(DEMO_PATIENTS.read_text()):
-            if row["patient_id"] == patient_id:
-                return Patient(**row)
-    if PATIENTS_FILE.exists():
+        found = next((Patient(**r) for r in json.loads(DEMO_PATIENTS.read_text()) if r["patient_id"] == patient_id), None)
+    if found is None and PATIENTS_FILE.exists():
         import pandas as pd
 
         df = pd.read_parquet(PATIENTS_FILE)
         hit = df[df["patient_id"] == patient_id]
         if len(hit):
-            return Patient(**json.loads(hit.iloc[[0]].to_json(orient="records"))[0])
-    raise HTTPException(404, "no such patient")
+            found = Patient(**json.loads(hit.iloc[[0]].to_json(orient="records"))[0])
+    if found is None:
+        raise HTTPException(404, "no such patient")
+    store.put("patient", patient_id, found)
+    return found
 
 
 # ---- replay files ----
