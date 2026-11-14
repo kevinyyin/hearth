@@ -67,15 +67,17 @@ def plan_cost(routes: Routes, pool: list[Need], crews: list[Crew], now_h: float,
 
 
 def search(start: Routes, pool: list[Need], crews: list[Crew], can: Callable[[Need, Crew], bool], now_h: float, *,
-           travel: Travel, rng: random.Random) -> Routes:
+           travel: Travel, rng: random.Random, tune: dict | None = None) -> Routes:
     """The best plan found from `start`: never worse than it by `plan_cost`. `pool` is every need in play, most urgent
-    first; `crews` are the crews in play; `can(need, crew)` says who may serve whom."""
+    first; `crews` are the crews in play; `can(need, crew)` says who may serve whom. `tune` replaces planner settings
+    by name for a caller that can afford more search (the simulation page's small day)."""
     horizon, early = a("planner.lookahead_h"), a("planner.early_weight")
+    setting = lambda name: (tune or {}).get(name, a(f"planner.{name}"))  # noqa: E731
     by_id = {c.crew_id: c for c in crews}
     left_out = {id(n): _cost(n, horizon, early) for n in pool}  # what each need costs when no route reaches it
     # speed cut: a need is only tried in the routes of the few nearest crews that can take it (nearest by where each
     # crew starts, in plain degrees: this only prunes, the score uses real travel time)
-    k = a("planner.insert_nearest_crews")
+    k = setting("insert_nearest_crews")
     near = {id(n): [c for c in sorted(crews, key=lambda c: ((c.lat - n.lat) ** 2 + (c.lon - n.lon) ** 2, c.crew_id))[: 3 * k]
                     if can(n, c)][:k] for n in pool}
 
@@ -127,13 +129,13 @@ def search(start: Routes, pool: list[Need], crews: list[Crew], can: Callable[[Ne
     current, current_costs, current_total = routes, costs, total(routes, costs)
     best, best_total = {cid: list(r) for cid, r in routes.items()}, current_total
     temperature = 0.05 * current_total or 1.0
-    for _ in range(a("planner.alns_iterations")):
+    for _ in range(setting("alns_iterations")):
         count = sum(len(r) for r in current.values())
         if not count:
             break
         ri, pi = rng.choices(range(3), w_remove)[0], rng.choices(range(2), w_repair)[0]
         trial, trial_costs = {cid: list(r) for cid, r in current.items()}, dict(current_costs)
-        out = take_out(trial, removes[ri], min(count, max(1, round(a("planner.alns_remove_share") * count))))
+        out = take_out(trial, removes[ri], min(count, max(1, round(setting("alns_remove_share") * count))))
         gone = {id(n) for n in out}
         for cid in [cid for cid, r in trial.items() if any(id(n) in gone for n in r)]:
             trial[cid] = [n for n in trial[cid] if id(n) not in gone]

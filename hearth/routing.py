@@ -154,8 +154,9 @@ def pair(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_h:
 
 
 def routes(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_h: float, *, routing: str, fits: Fits = None,
-           travel: Travel = travel_h, rng: random.Random | None = None) -> dict[str, list[Need]]:
-    """Crew id -> the needs it should serve, in order. Changes nothing: `plan` commits the first job of each."""
+           travel: Travel = travel_h, rng: random.Random | None = None, tune: dict | None = None) -> dict[str, list[Need]]:
+    """Crew id -> the needs it should serve, in order. Changes nothing: `plan` commits the first job of each.
+    `tune` replaces the search's planner settings by name (see `alns.search`)."""
     start = {c.crew_id: [n] for c, n, _ in _pair(needs, crews, stock, flags, now_h, fits, travel)}
     if routing == "paired":
         return start
@@ -168,10 +169,11 @@ def routes(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_
 
     # speed cut: the search sees the pairing's needs and the first few per free crew (callers pass needs most urgent first)
     paired = {id(n) for r in start.values() for n in r}
-    pool = [n for i, n in enumerate(needs) if i < a("planner.alns_needs_per_free_crew") * free or id(n) in paired]
+    cap = (tune or {}).get("alns_needs_per_free_crew", a("planner.alns_needs_per_free_crew")) * free
+    pool = [n for i, n in enumerate(needs) if i < cap or id(n) in paired]
     in_play = [c for c in crews if c.free_at_h < now_h + a("planner.lookahead_h")]
     return alns.search(start, pool, in_play, lambda n, c: allowed(n, c, stock, flags, fits), now_h, travel=travel,
-                       rng=rng or random.Random(0))
+                       rng=rng or random.Random(0), tune=tune)
 
 
 def plan(needs: list[Need], crews: list[Crew], stock: dict, flags: Flags, now_h: float, *, routing: str, fits: Fits = None,

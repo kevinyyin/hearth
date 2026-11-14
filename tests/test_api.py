@@ -251,3 +251,18 @@ def test_calling_an_unlisted_building_is_refused(monkeypatch):
     r = client.post("/api/buildings/H-LEVEL/call")
     assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "building_check" and r.json()["conversation_id"] is None
     assert client.get("/api/buildings/H-LEVEL").json()["can_call"] is True
+
+
+def test_sim_day_returns_a_side_and_refuses_runaway_requests():
+    import json
+    from hearth.config import ROOT
+    fx = json.loads((ROOT / "tests/fixtures/sim_day.json").read_text())
+    r = client.post("/api/sim/day", json={"households": fx["households"][:20], "constants": fx["constants"]})
+    assert r.status_code == 200 and len(r.json()["legs"]) == 15 and r.json()["stops"] >= 20
+    big = [fx["households"][0]] * 100_000
+    assert client.post("/api/sim/day", json={"households": big, "constants": fx["constants"]}).status_code == 422
+    for bad in ({"dt": 0}, {"runHours": 10_000}, {"capacity": 0}, {"cruise": 0}, {"stations": []}, {"crewsPerStation": 99}):
+        assert client.post("/api/sim/day", json={"households": [], "constants": {**fx["constants"], **bad}}).status_code == 422, bad
+    odd = {**fx["households"][0], "needsAt": float("1e9")}
+    assert client.post("/api/sim/day", json={"households": [odd], "constants": fx["constants"]}).status_code == 422
+    assert client.post("/api/sim/day", json={"households": [{"lon": "x"}], "constants": fx["constants"]}).status_code == 422

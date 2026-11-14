@@ -109,3 +109,17 @@ def test_routes_with_alns_returns_several_jobs_per_crew():
     c, ns = crew("c1"), [need("a", 1), need("b", 2), need("c", 3)]
     out = routes(ns, [c], {"s1": 99}, Flags(), 0.0, routing="alns", travel=flat, rng=random.Random(0))
     assert [n.patient_id for n in out["c1"]] == ["a", "b", "c"] and c.free_at_h == 0
+
+
+def test_a_caller_can_set_the_search_effort():
+    c, ns = crew("c1"), [need(p, x) for p, x in (("a", 1), ("b", 2), ("c", 3), ("d", 4))]
+    tangled = {"c1": [ns[3], ns[0], ns[2], ns[1]]}
+    out = search(tangled, ns, [c], yes, 0.0, travel=flat, rng=random.Random(0), tune={"alns_iterations": 0})
+    assert [n.patient_id for n in out["c1"]] == ["d", "a", "c", "b"]  # no iterations: the tangle stays
+
+
+def test_routes_passes_the_callers_effort_on():
+    c, ns = crew("c1"), [need(p, x) for p, x in (("a", 1), ("b", 2), ("c", 3))]
+    kw = dict(routing="alns", travel=flat, rng=random.Random(0))
+    assert len(routes(ns, [c], {"s1": 99}, Flags(), 0.0, **kw, tune={"alns_needs_per_free_crew": 1})["c1"]) == 1
+    assert len(routes(ns, [c], {"s1": 99}, Flags(), 0.0, **kw, tune={"alns_needs_per_free_crew": 3})["c1"]) == 3

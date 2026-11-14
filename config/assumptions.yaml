@@ -108,6 +108,7 @@ planner:
   alns_remove_share: {value: 0.15, source: "our call (central planner design, Nov 14)", confirmed: false}
   insert_nearest_crews: {value: 3, source: "our call (central planner design, Nov 14)", confirmed: false}
   alns_needs_per_free_crew: {value: 4, source: "our call (speed): the route search sees only the most urgent few needs per free crew", confirmed: false}
+  day: {value: {alns_iterations: 200, alns_needs_per_free_crew: 12, insert_nearest_crews: 5}, source: "our call: the simulation page's day is 15 vans and a few hundred stops, so its search can afford far more effort than the county replay's; chosen on the stand-in households, where the wait fell from 526 to 453 against the browser greedy's 556", confirmed: false}
 
 # records-only building profiles (hearth/buildings/bulk.py); Vexcel gives roof material, not color
 building_records:

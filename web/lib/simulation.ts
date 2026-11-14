@@ -321,6 +321,21 @@ const CALLS_IN = { hearthAt: 1, todayAt: 0.7 } as const;
 const callsIn = (i: number, share: number): boolean =>
   share >= 1 || ((Math.imul(i + 1, 2654435761) >>> 8) % 1000) / 1000 < share;
 
+/**
+ * Everything the central planner needs to plan the Hearth side's day (POST /api/sim/day).
+ * The page sends these with its households, so the API keeps no copy that could drift.
+ */
+export const DAY_CONSTANTS = {
+  stations: STATIONS,
+  crewsPerStation: CREWS_PER_STATION,
+  cruise: CRUISE,
+  serviceH: SERVICE_H,
+  dt: DT,
+  runHours: RUN_HOURS,
+  refillH: REFILL_H,
+  capacity: CAPACITY.hearthAt,
+};
+
 export type Household = {
   lon: number;
   lat: number;
@@ -407,6 +422,15 @@ export type SideSim = {
   refills: number;
   events: SimEvent[];
 };
+
+/**
+ * Hours households spent waiting on one side, a first delivery counting twice a
+ * restock, and a visit that never came counted to the end of the day. The number
+ * the planner's routes are held against the browser's own.
+ */
+export function weightedWait(side: SideSim): number {
+  return side.jobs.reduce((sum, j) => sum + (j.refill ? 1 : 2) * ((j.servedAt ?? RUN_HOURS) - j.dueAt), 0);
+}
 
 const dist = (a: [number, number], b: [number, number]) =>
   Math.hypot(a[0] - b[0], a[1] - b[1]);
