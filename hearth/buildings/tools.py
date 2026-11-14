@@ -152,12 +152,15 @@ def costar_record(building_id: str) -> dict | None:
     return _costar_index().get(_safe(building_id))
 
 
-def costar_search(property_types: list[str], center: tuple[float, float], radius_km: float, limit: int = 20) -> list[dict]:
+def costar_all() -> list[dict]:
+    """Every building we can survey: the fixtures, or the Houston CoStar records still standing."""
     if _fixtures_on():
-        rows = [json.loads(p.read_text()) for p in sorted(FIXTURES.glob("*/costar.json"))]
-    else:
-        rows = [r for r in _costar_index().values() if r["existing"]]
-    rows = [r for r in rows if r["property_type"] in property_types and _km(center, (r["lat"], r["lon"])) <= radius_km]
+        return [json.loads(p.read_text()) for p in sorted(FIXTURES.glob("*/costar.json"))]
+    return [r for r in _costar_index().values() if r["existing"]]
+
+
+def costar_search(property_types: list[str], center: tuple[float, float], radius_km: float, limit: int = 20) -> list[dict]:
+    rows = [r for r in costar_all() if r["property_type"] in property_types and _km(center, (r["lat"], r["lon"])) <= radius_km]
     return sorted(rows, key=lambda r: _km(center, (r["lat"], r["lon"])))[:limit]
 
 
