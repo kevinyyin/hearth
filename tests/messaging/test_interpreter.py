@@ -17,6 +17,13 @@ def test_bare_digit_reply_means_the_keypad_choice(monkeypatch):
     assert interpret_turn(" 1 ", None, ctx, []).safe is True
 
 
+@pytest.mark.parametrize("text,yes", [("No.", False), ("yes", True), ("Yeah", True), ("that's right", True), ("nope", False)])
+def test_plain_yes_or_no_is_read_by_code(monkeypatch, text, yes):
+    monkeypatch.setattr(interpreter, "_call_model", lambda *a: pytest.fail("a plain yes/no must not reach the model"))
+    t = interpret_turn(text, None, ctx, [])
+    assert t.confirms is yes and not t.wants_human and t.confidence == 1.0
+
+
 def test_keypad_two_means_help_now():
     t = interpret_turn("", "2", ctx, [])
     assert t.needs_help_now is True and t.safe is None
@@ -83,3 +90,12 @@ def test_eval_scoring_counts_hours_within_ten_percent_and_escalations():
     s = score(rows)
     assert s["backup_hours"] == (1, 2) and s["needs_help_now"] == (1, 1)
     assert s["escalation_tp"] == 1 and s["escalation_fn"] == 1 and s["escalation_fp"] == 0
+
+
+@pytest.mark.live
+def test_live_plain_no_to_a_readback_is_clear():
+    hist = [{"role": "agent", "text": "About how many hours of backup do you have?"}, {"role": "caller", "text": "more like forty minutes"},
+            {"role": "agent", "text": "I have you at forty minutes of backup. Is that right?"}]
+    for _ in range(2):
+        t = interpret_turn("no", None, ctx, hist)
+        assert t.confirms is False and not t.wants_human and t.confidence >= 0.7

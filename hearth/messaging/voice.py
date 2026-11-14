@@ -79,7 +79,9 @@ def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, script
             return None, [("human_handoff", {})]
         return None, [tuple(call["last"])]  # ask the last question again
     call["silences"] = 0
-    t = interpret_turn(text, keypad, call["ctx"], [{"role": m["role"], "text": m["text"]} for m in call["transcript"]])
+    history = [{"role": m["role"], "text": m["text"]} for m in call["transcript"][:-1]]  # [-1] is this turn
+    t = interpret_turn(text, keypad, call["ctx"], history)
+    call["transcript"][-1]["read"] = t.model_dump(exclude_defaults=True)  # what the interpreter heard, for review
     if t.medical_question:
         call["events"].append({"type": "medical_question", "text": text, "t": time.time()})
         return None, [("medical_handoff", {})]
