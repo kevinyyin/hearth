@@ -307,7 +307,7 @@ export type Household = {
   repeats: boolean;
 };
 
-export type HouseholdState = "unaffected" | "waiting" | "resupply" | "reached";
+export type HouseholdState = "unaffected" | "waiting" | "resupply" | "reached" | "restocked";
 export type SideKey = "hearthAt" | "todayAt";
 
 function mulberry32(seed: number): () => number {
@@ -563,16 +563,23 @@ export function buildCounty(households: Household[]): CountySim {
     let anyDue = false;
     let openNow = false;
     let servedBefore = false;
+    let refillDone = false;
 
     for (const j of mine) {
       if (j.dueAt > time) continue;
       anyDue = true;
-      if (j.servedAt === null || j.servedAt > time) openNow = true;
-      else servedBefore = true;
+      if (j.servedAt === null || j.servedAt > time) {
+        openNow = true;
+      } else {
+        servedBefore = true;
+        if (j.refill) refillDone = true;
+      }
     }
 
     if (!anyDue) return "unaffected";
-    if (!openNow) return "reached";
+    // settled: purple if a second delivery has actually been made, green if the
+    // first one is still holding
+    if (!openNow) return refillDone ? "restocked" : "reached";
     // blue once they have been helped before: this is a resupply, not a first call
     return servedBefore ? "resupply" : "waiting";
   };
@@ -603,6 +610,7 @@ export function buildCounty(households: Household[]): CountySim {
         waiting: 0,
         resupply: 0,
         reached: 0,
+        restocked: 0,
       };
       for (let i = 0; i < households.length; i++) t[stateAt(i, hour, which)] += 1;
       return t;

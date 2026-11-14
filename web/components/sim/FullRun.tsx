@@ -30,6 +30,7 @@ const SWATCH: Record<HouseholdState, { fill: string; ring: boolean }> = {
   reached: { fill: "#0e7a54", ring: false },
   waiting: { fill: "#c4461a", ring: true },
   resupply: { fill: "#2a6fd6", ring: false },
+  restocked: { fill: "#9333a8", ring: false },
   unaffected: { fill: "#b8b1a4", ring: false },
 };
 
@@ -37,11 +38,12 @@ const STATE_LABEL: Record<HouseholdState, string> = {
   reached: "Reached",
   waiting: "Waiting",
   resupply: "Needs a restock",
+  restocked: "Restocked",
   unaffected: "Not yet affected",
 };
 
-/** A log that floats over its map and folds away to a single bar. */
-function LogPopup({
+/** A log that sits under its map and folds away to a single bar. */
+function LogPanel({
   title,
   note,
   events,
@@ -49,7 +51,6 @@ function LogPopup({
   badgeTone,
   open,
   onToggle,
-  bottom,
 }: {
   title: string;
   note: string;
@@ -58,7 +59,6 @@ function LogPopup({
   badgeTone?: "warn" | "ok";
   open: boolean;
   onToggle: () => void;
-  bottom: number;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -69,12 +69,8 @@ function LogPopup({
 
   return (
     <div
-      className="absolute left-3 z-10 w-[min(21rem,calc(100%-1.5rem))] overflow-hidden rounded-xl border shadow-lg backdrop-blur"
-      style={{
-        bottom,
-        background: "color-mix(in srgb, var(--surface-1) 92%, transparent)",
-        borderColor: "var(--border)",
-      }}
+      className="flex min-w-0 flex-col overflow-hidden rounded-xl border"
+      style={{ background: "var(--surface-0)", borderColor: "var(--border)" }}
     >
       <button
         type="button"
@@ -175,35 +171,35 @@ function Side({
         </p>
       </div>
 
-      <div className="relative">
-        <HouseholdMap
-          county={county}
-          center={center}
-          which={which}
-          time={time}
-          vehicles={running ? county.vehiclesAt(time, which) : []}
-          height="min(62vh, 620px)"
-          onMap={onMap}
-          ariaLabel={`${title} at hour ${hour}: ${t.reached} reached, ${t.waiting} waiting, ${t.resupply} needing a restock.`}
-        />
+      <HouseholdMap
+        county={county}
+        center={center}
+        which={which}
+        time={time}
+        vehicles={running ? county.vehiclesAt(time, which) : []}
+        height="min(44vh, 440px)"
+        onMap={onMap}
+        ariaLabel={`${title} at hour ${hour}: ${t.reached} reached, ${t.waiting} waiting, ${t.resupply} needing a restock.`}
+      />
 
-        <LogPopup
-          title={hearth ? "Agent call log" : "Operator call log"}
-          note={hearth ? "worked in parallel" : "one at a time"}
+      {/* the two logs sit under their own map, side by side, so a column reads
+          as one thing: the ground, then what was heard, then what was sent */}
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <LogPanel
+          title={hearth ? "Agent calls" : "Operator calls"}
+          note={hearth ? "in parallel" : "one at a time"}
           events={county.logAt(time, which, 20, ["call"])}
           badge={`${count.format(backlog)} open`}
           badgeTone={backlog > 0 ? "warn" : "ok"}
           open={callsOpen}
           onToggle={() => setCallsOpen((v) => !v)}
-          bottom={dispatchOpen ? 232 : 60}
         />
-        <LogPopup
+        <LogPanel
           title="Dispatch"
-          note={`${chained}% of rounds chained`}
+          note={`${chained}% chained`}
           events={county.logAt(time, which, 20, ["dispatch", "arrive", "restock"])}
           open={dispatchOpen}
           onToggle={() => setDispatchOpen((v) => !v)}
-          bottom={12}
         />
       </div>
 
