@@ -286,12 +286,8 @@ export const CREW_COUNT = STATIONS.length * CREWS_PER_STATION;
 const CRUISE = 0.34;
 /** Hours spent at a door. Same job either way. */
 const SERVICE_H = 0.2;
-/**
- * How finely the dispatcher reconsiders: about a minute, so an order that comes in
- * while a van is free goes out straight away. A power of two, so the steps add up
- * exactly.
- */
-export const DT = 1 / 64;
+/** How finely the dispatcher reconsiders. */
+export const DT = 0.25;
 /**
  * Hours of running a single delivery buys. Past this a household that was helped
  * needs helping again — which is the thing a one-visit-per-person picture misses.
