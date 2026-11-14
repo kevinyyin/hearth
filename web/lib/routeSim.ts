@@ -17,11 +17,15 @@ export const CREW_VEHICLE = { label: "Large van", lengthM: 6.0, widthM: 2.1, hei
 
 const JOBS: Pick<Leg, "job" | "task">[] = [
   { job: "R. Alvarez · assisted move, oxygen", task: "Down stairwell B with the concentrator" },
-  { job: "Oxygen restock · Kempwood Dr", task: "Swap two cylinders" },
-  { job: "Wellness check · Sonneville Dr", task: "Check on a CPAP user, leave a power bank" },
+  { job: "Oxygen restock · Valkeith Dr", task: "Swap two cylinders" },
+  { job: "Wellness check · Willowbend Blvd", task: "Check on a CPAP user, leave a power bank" },
 ];
 
-/** Road paths from the public OSRM router (OpenStreetMap), fetched once and saved, so the demo needs no router. */
+/**
+ * Road paths from the public OSRM router (OpenStreetMap), fetched once and saved, so the demo needs no router.
+ * shortcut: the first leg ends at the demo resident's building (CoStar 23453, 4620 N Braeswood Blvd); if the
+ * resident picks another building the map still drives there, so route at runtime once the planner serves paths.
+ */
 export const LEGS: Leg[] = (legs as Omit<Leg, "job" | "task">[]).map((l, i) => ({ ...l, ...JOBS[i] }));
 
 export const OBSTACLE_STYLE: Record<ObstacleKind, { label: string; color: string }> = {
