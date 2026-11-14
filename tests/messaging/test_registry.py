@@ -123,3 +123,17 @@ def test_a_registration_call_that_went_quiet_needs_a_person():
                                                       "transcript": [{"role": "caller", "text": "oxygen", "t": long_ago}]})
     store.put("call", "C-8", call() | {"call_id": "C-8", "status": "active", "started_at": time.time(), "transcript": []})
     assert [(r["call_id"], r["status"]) for r in registry.registrations()["needs_person"]] == [("C-7", "unfinished")]
+
+
+def test_a_second_storm_press_right_after_the_first_calls_no_one_again(monkeypatch):
+    from hearth.messaging import photon, voice
+    texts, dials = [], []
+    monkeypatch.setattr(photon, "_send", lambda phone, text: texts.append(phone) or "pho1")
+    monkeypatch.setattr(voice, "dial", lambda call_id: dials.append(call_id) or "conv1")
+    monkeypatch.setenv("HEARTH_ALERT_PHONES", "+15550009999")
+    monkeypatch.setenv("HEARTH_LINE_NUMBER", "(555) 010-0000")
+    registry.save(call(**FULL))
+    registry.storm()
+    again = registry.storm()
+    assert (len(texts), len(dials)) == (1, 1) and again["alerted"] == again["dialed"] == []
+    assert again["failed"] == ["the storm alert was already sent a moment ago; wait 2 minutes to send it again"]

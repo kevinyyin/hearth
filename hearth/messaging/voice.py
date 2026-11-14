@@ -144,13 +144,18 @@ def _turn(call: dict, text: str, keypad: str | None) -> tuple[str | None, script
         # then ask the pending question again, so a "yes" to the hand-off line is not read as an answer
         again = scripts.opening(call) if call["step"] == "open" else [tuple(call["last"])]
         return None, [("medical_handoff", {})] + _script(call, again)
-    if t.wants_human:
+    # a registered caller's "help" is the menu's own word for a crew: a sharp "Help!" also reads as wanting a person
+    asks_crew = call["kind"] == "menu" and t.intent == "help"
+    if t.wants_human and not asks_crew:
         _end(call, "handoff", "handoff", "caller asked for a person, or the turn was unclear")
         return None, [("human_handoff", {})]
     if not active:
         return None, [("close_no_promise" if call["status"] == "done" else "human_handoff", {})]
     if call["step"] == "open":
-        return None, _script(call, scripts.opening(call))
+        opener = scripts.opening(call)
+        if not asks_crew:
+            return None, _script(call, opener)
+        return None, _script(call, opener[:1] + scripts.advance(call, t))  # "help" as the first words: who is calling, then the help questions
     step = call["step"]
     lines = scripts.advance(call, t)
     backup_steps = BACKUP_STEPS.get(call["kind"], ())

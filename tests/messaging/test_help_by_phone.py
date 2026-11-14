@@ -91,6 +91,23 @@ def test_needs_help_now_opens_a_request_without_questions_and_flags_the_call(mon
     assert store.get("call", c)["status"] == "escalated" and dispatch.request(pid).state in ("waiting", "offered") and mobility(pid) == "bedbound"
 
 
+def test_help_as_the_first_words_starts_the_help_questions_not_a_hand_off(monkeypatch):
+    pid = registrant()
+    monkeypatch.setattr(voice, "interpret_turn", lambda *a: Turn(intent="help", wants_human=True))  # how a sharp "Help!" is read
+    c = voice.start_call(pid, "menu", phone=PHONE)
+    said = voice.respond(c, "Help!")
+    assert said == render("open_automated", county="Harris County") + " " + render("ask_walk")
+    assert store.get("call", c)["status"] == "active" and dispatch.request(pid).state in ("waiting", "offered")
+
+
+def test_help_at_the_menu_is_a_request_for_a_crew_even_when_read_as_wanting_a_person(monkeypatch):
+    pid = registrant()
+    monkeypatch.setattr(voice, "interpret_turn", lambda *a: Turn(intent="help", wants_human=True))
+    c = voice.start_call(pid, "menu", phone=PHONE)
+    voice.respond(c, "hello")  # the menu
+    assert voice.respond(c, "Help!") == render("ask_walk") and store.get("call", c)["status"] == "active"
+
+
 def test_a_live_request_is_already_in_and_read_back():
     pid = registrant()
     dispatch.open_request(pid)
