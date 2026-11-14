@@ -84,3 +84,16 @@ def test_an_entrance_reading_is_a_point_on_the_tile_or_nothing():
         "x": 0.44, "y": 0.69, "note": "canopy on the south side"}
     for answer in ("cannot tell", '{"x": 1.4, "y": 0.2}', '{"x": "left", "y": 0.2}', '{"note": "no door visible"}', "{not json}"):
         assert tools.parse_entrance(answer) is None
+
+
+def test_normalize_reads_surface_spaces_and_lot_acres():
+    n = tools.normalize_costar(raw(lotSize=9.5, lotSizeMeasurementType=2, parking=[
+        {"parkingType": 1, "totalSpaces": 600}, {"parkingType": 1, "totalSpaces": 11}, {"parkingType": 3, "totalSpaces": 80}]))
+    assert (n["surface_spaces"], n["lot_acres"]) == (611, 9.5)
+
+
+def test_lot_in_square_feet_becomes_acres_and_unknowns_stay_none():
+    assert tools.normalize_costar(raw(lotSize=87120, lotSizeMeasurementType=1))["lot_acres"] == 2.0
+    assert tools.normalize_costar(raw(lotSize=5, lotSizeMeasurementType=0))["lot_acres"] is None
+    n = tools.normalize_costar(raw(parking=[{"parkingType": 1}]))
+    assert (n["surface_spaces"], n["lot_acres"]) == (None, None)
