@@ -110,7 +110,8 @@ def normalize_costar(r: dict) -> dict:
     street = " ".join(str(pa[k]) for k in ("streetNumber", "streetDirection", "streetName", "streetType", "streetSuffix") if pa.get(k))
     elevator_count, elevator_note = _elevators(r)
     return {
-        "building_id": str(r["id"]), "address": f"{street}, {pa.get('city')}, {pa.get('state')} {str(pa.get('postcode') or '')[:5]}",
+        "building_id": str(r["id"]), "name": r.get("buildingName"), "zip": str(pa.get("postcode") or "")[:5] or None,
+        "address": f"{street}, {pa.get('city')}, {pa.get('state')} {str(pa.get('postcode') or '')[:5]}",
         "lat": pa.get("latitude"), "lon": pa.get("longitude"), "property_type": kind,
         "floors": r.get("numStoriesAboveGrade"),
         "units": apt.get("totalNumUnits") or (r.get("propertyHospitality") or {}).get("numUnits"),
@@ -130,7 +131,7 @@ def _costar_index() -> dict[str, dict]:
     """Houston records, normalized once and kept under data/buildings/_costar/ (git-ignored)."""
     global _costar
     if _costar is None:
-        path = CACHE_ROOT / "_costar" / "houston.json"
+        path = CACHE_ROOT / "_costar" / "houston_v2.json"  # bump the name when normalize_costar changes
         if not path.exists():
             rows = {}
             with COSTAR_FILE.open() as f:

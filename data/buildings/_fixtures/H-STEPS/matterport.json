@@ -1,0 +1,19 @@
+{
+  "model_id": "fixture-H-STEPS",
+  "embed_url": null,
+  "fixture": true,
+  "panoramas": [
+    {
+      "pano_id": "pano-front",
+      "label": "Lobby: front entrance",
+      "path": null,
+      "reading": "Four stone steps up to a revolving door; no ramp visible."
+    },
+    {
+      "pano_id": "pano-lobby",
+      "label": "Lobby",
+      "path": null,
+      "reading": "Front desk and a wooden staircase; no elevator visible."
+    }
+  ]
+}

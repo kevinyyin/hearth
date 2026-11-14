@@ -10,5 +10,10 @@
   "construction": "masonry",
   "elevator_count": 1,
   "fixture": true,
-  "note": "hand-made fixture; real CoStar field names unknown until the toolkit keys arrive"
+  "note": "hand-made fixture; real CoStar field names unknown until the toolkit keys arrive",
+  "name": "Sample Apartments (fixture)",
+  "zip": "77002",
+  "matterport_model_ids": [
+    "fixture-B-SAMPLE"
+  ]
 }

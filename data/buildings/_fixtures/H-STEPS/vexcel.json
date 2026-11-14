@@ -1,0 +1,6 @@
+{
+  "roof_material": "membrane",
+  "roof_tone": "light",
+  "tree_cover_fraction": 0.1,
+  "fixture": true
+}

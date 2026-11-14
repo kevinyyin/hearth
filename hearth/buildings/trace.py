@@ -6,7 +6,8 @@ from hearth.contracts import TraceEvent
 
 # subagent chunks carry only a namespace id, so the agent is named from the tool it calls
 TOOL_AGENT = {"costar_record": "costar", "vexcel_attributes": "aerial", "aerial_look": "aerial",
-              "matterport_panoramas": "interior", "scan_look": "interior"}
+              "matterport_panoramas": "interior", "scan_look": "interior",
+              "search_refuges": "refuge", "check_access": "refuge", "submit_proposal": "refuge"}
 LOOK_TOOLS = {"aerial_look", "scan_look"}
 FILE_AGENT = {"costar": "costar", "vexcel": "aerial", "matterport": "interior"}  # /<id>/<layer>.md
 
@@ -54,7 +55,7 @@ def _loads(s, default):
         return default
 
 
-def to_trace(chunk, seq: int, t0: float) -> list[TraceEvent]:
+def to_trace(chunk, seq: int, t0: float, root: str = "surveyor") -> list[TraceEvent]:
     ns, update = plain(chunk)
     t = round(time.time() - t0, 2)
     events: list[TraceEvent] = []
@@ -67,12 +68,12 @@ def to_trace(chunk, seq: int, t0: float) -> list[TraceEvent]:
             emit("interrupt", "dispatcher", "waiting for dispatcher approval", {"requests": d})
             continue
         if d.get("todos"):
-            emit("todo", "surveyor" if not ns else "subagent",
+            emit("todo", root if not ns else "subagent",
                  "; ".join(f"[{t['status']}] {t['content']}" for t in d["todos"]), {"todos": d["todos"]})
         for m in d.get("messages", []):
             for call in m.get("tool_calls", []):
                 name, a = call["name"], call["args"]
-                who = TOOL_AGENT.get(name, "surveyor" if not ns else "subagent")
+                who = TOOL_AGENT.get(name, root if not ns else "subagent")
                 if name == "task":
                     emit("subagent", a.get("subagent_type", "subagent"), str(a.get("description", ""))[:300])
                 elif name in ("write_file", "edit_file"):

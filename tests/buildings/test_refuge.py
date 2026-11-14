@@ -1,0 +1,69 @@
+from pathlib import Path
+
+import pytest
+from bhelpers import patient, profile, seed_pending_proposal
+
+from hearth import store
+from hearth.buildings import refuge
+from hearth.buildings.profile import default_profile, finalize
+from hearth.buildings.refuge import decide, eligible, outside_dark_area
+
+
+@pytest.fixture(autouse=True)
+def isolated(monkeypatch, tmp_path):
+    monkeypatch.setenv("HEARTH_DB", str(tmp_path / "t.db"))
+    monkeypatch.setattr(refuge, "MEMORY_FILE", str(tmp_path / "memories" / "dispatcher.md"))
+
+
+def test_wheelchair_patient_needs_step_free_and_elevator():
+    ok, why = eligible(profile(step_free=False, floors=4, elevators=1), patient(mobility="wheelchair_power"))
+    assert not ok and why
+    ok, why = eligible(profile(step_free=True, floors=4, elevators=0), patient(mobility="bedbound"))
+    assert not ok and any("elevator" in w for w in why)
+    ok, why = eligible(profile(step_free=True, floors=4, elevators=2), patient(mobility="wheelchair_manual"))
+    assert ok and any("step-free" in w for w in why)
+
+
+def test_single_floor_refuge_needs_no_elevator():
+    assert eligible(profile(step_free=True, floors=1), patient(mobility="wheelchair_manual"))[0]
+
+
+def test_unknown_access_is_ineligible():
+    ok, why = eligible(finalize(default_profile("H", "x", 0, 0)), patient(mobility="wheelchair_manual"))
+    assert not ok and "unverified access" in why
+
+
+def test_walking_patient_has_no_access_constraint():
+    assert eligible(finalize(default_profile("H", "x", 0, 0)), patient(mobility="walks"))[0]
+
+
+def test_dark_area_check_is_by_zip_and_unknown_is_not_outside():
+    assert outside_dark_area("77030", {"77002"}) and not outside_dark_area("77002", {"77002"}) and not outside_dark_area(None, set())
+
+
+def test_reject_writes_memory_and_changes_nothing_else():
+    seed_pending_proposal("P1")
+    p = decide("P1", "reject", "no backup generator")
+    assert p.status == "rejected" and p.reason == "no backup generator"
+    assert "no backup generator" in Path(refuge.MEMORY_FILE).read_text() and "Fixture Hotel" in Path(refuge.MEMORY_FILE).read_text()
+    assert store.get("proposal", "P1")["status"] == "rejected"
+    assert store.all("call") == [] and store.all("message") == []
+
+
+def test_reject_needs_a_reason():
+    seed_pending_proposal("P3")
+    with pytest.raises(ValueError):
+        decide("P3", "reject", "")
+    assert store.get("proposal", "P3")["status"] == "pending"
+
+
+def test_approve_sets_approved_and_cannot_be_decided_twice():
+    seed_pending_proposal("P4")
+    assert decide("P4", "approve", None).status == "approved"
+    with pytest.raises(ValueError):
+        decide("P4", "reject", "changed my mind")
+
+
+def test_pending_proposal_never_times_into_approved():
+    seed_pending_proposal("P2")
+    assert store.get("proposal", "P2")["status"] == "pending"

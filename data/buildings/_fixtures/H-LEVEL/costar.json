@@ -1,0 +1,20 @@
+{
+  "building_id": "H-LEVEL",
+  "name": "Level Inn (fixture)",
+  "address": "H-LEVEL Fixture Ave, Houston, TX 77030",
+  "zip": "77030",
+  "lat": 29.707,
+  "lon": -95.401,
+  "property_type": "hotel",
+  "floors": 5,
+  "units": 120,
+  "year_built": 2008,
+  "construction": "steel",
+  "elevator_count": null,
+  "elevator_note": "no elevator information",
+  "existing": true,
+  "matterport_model_ids": [
+    "fixture-H-LEVEL"
+  ],
+  "fixture": true
+}

@@ -23,3 +23,18 @@ def profile(building_id="B", **kw):
 def fields(**kw):
     p = profile(**kw)
     return {f: getattr(p, f) for f in FIELDS}
+
+
+def patient(**over):
+    from hearth.contracts import Patient
+    base = dict(patient_id="p1", lat=29.7604, lon=-95.3698, zip="77002", floor=3, device="oxygen", device_detail="concentrator",
+                backup_hours_on_hand=6.0, use_rate=1.0, mobility="walks", can_self_relocate=False, temp_sensitive="heat",
+                risk_weight=3.0, supplier_id="s1", building_id="B-SAMPLE", phone_status="verified", profile_status="complete")
+    return Patient(**base | over)
+
+
+def seed_pending_proposal(pid, patient_id="p1"):
+    from hearth import store
+    from hearth.contracts import RefugeOption, RefugeProposal
+    opt = RefugeOption(building_id="H-LEVEL", name="Fixture Hotel", lat=29.71, lon=-95.40, reasons=["step-free entrance"], sources=["matterport"], score=1.0)
+    store.put("proposal", pid, RefugeProposal(proposal_id=pid, patient_id=patient_id, options=[opt], status="pending", thread_id=f"t-{pid}"))

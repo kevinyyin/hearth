@@ -1,0 +1,19 @@
+{
+  "model_id": "fixture-H-LEVEL",
+  "embed_url": null,
+  "fixture": true,
+  "panoramas": [
+    {
+      "pano_id": "pano-front",
+      "label": "Lobby: front entrance",
+      "path": null,
+      "reading": "Automatic sliding doors level with the drive-up canopy; no steps; clear width about 1.8 m."
+    },
+    {
+      "pano_id": "pano-lobby",
+      "label": "Lobby: elevator bank",
+      "path": null,
+      "reading": "Two elevator doors with call buttons beside the front desk; doors about 1.0 m wide."
+    }
+  ]
+}

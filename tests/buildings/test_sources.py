@@ -3,7 +3,7 @@ from hearth.buildings.tools import normalize_costar, normalize_vexcel
 
 
 def costar(**over):
-    rec = {"id": 1, "propertyType": 11, "propertySubtype": 58, "numStoriesAboveGrade": 9, "buildingConstructionMaterial": 1,
+    rec = {"id": 1, "buildingName": "Main Tower", "propertyType": 11, "propertySubtype": 58, "numStoriesAboveGrade": 9, "buildingConstructionMaterial": 1,
            "constructionStatus": 1,
            "primaryAddress": {"streetNumber": "100", "streetName": "Main", "streetType": "St", "city": "Houston", "state": "TX",
                               "postcode": "770021234", "latitude": 29.7, "longitude": -95.3},
@@ -21,6 +21,7 @@ def test_costar_multifamily_fields():
     assert r["property_type"] == "multifamily" and r["elevator_count"] == 5 and r["existing"]
     assert r["matterport_model_ids"] == ["lobbyTour", "unitTour"]
     assert r["address"] == "100 Main St, Houston, TX 77002" and (r["lat"], r["lon"]) == (29.7, -95.3)
+    assert r["name"] == "Main Tower" and r["zip"] == "77002"
 
 
 def test_costar_senior_flag_and_walkup():

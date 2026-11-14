@@ -1,0 +1,20 @@
+{
+  "building_id": "H-STEPS",
+  "name": "Stoop Hotel (fixture)",
+  "address": "H-STEPS Fixture Ave, Houston, TX 77019",
+  "zip": "77019",
+  "lat": 29.755,
+  "lon": -95.405,
+  "property_type": "hotel",
+  "floors": 3,
+  "units": 40,
+  "year_built": 1928,
+  "construction": "masonry",
+  "elevator_count": null,
+  "elevator_note": "no elevator information",
+  "existing": true,
+  "matterport_model_ids": [
+    "fixture-H-STEPS"
+  ],
+  "fixture": true
+}
