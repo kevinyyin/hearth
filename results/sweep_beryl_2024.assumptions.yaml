@@ -100,6 +100,7 @@ planner:
 building_records:
   roof_tone_by_material: {value: {membrane: light, metal: light, shingle: medium, tile: medium, gravel: dark, built-up: dark, asphalt: dark}, source: "our call: typical colors; most Houston flat membrane roofs are white TPO", confirmed: false}
   costar_confidence: {value: 0.8, source: "our call: CoStar research fields, not verified on site", confirmed: false}
+  costar_inferred_confidence: {value: 0.5, source: "our call: elevator count inferred from 'at least one' or a walk-up flag, not counted", confirmed: false}
   roof_tone_confidence: {value: 0.4, source: "our call: color inferred from material class, no image read", confirmed: false}
 
 sweep:
