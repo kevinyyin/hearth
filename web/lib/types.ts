@@ -182,6 +182,8 @@ export type Home = {
   inside: InsidePin[];
   /** Family or trusted people to reach as well. Shown to the responder, never messaged. */
   contacts: Person[];
+  /** People who live with the resident and can help before a crew arrives. */
+  helpers: Person[];
 };
 
 /** Someone the resident names. Invented, like the resident. */

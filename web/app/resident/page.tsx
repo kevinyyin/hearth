@@ -112,7 +112,8 @@ export default function ResidentPage() {
     if (!home) return;
     if (!home.building_id) return setStatus({ ok: false, text: "Choose your building first." });
     try {
-      const named = { ...home, contacts: home.contacts.filter((p) => p.name.trim()) }; // a row left without a name is not a person
+      const hasName = (p: { name: string }) => !!p.name.trim(); // a row left without a name is not a person
+      const named = { ...home, contacts: home.contacts.filter(hasName), helpers: home.helpers.filter(hasName) };
       setHome(await putJson<Home>(`/api/patients/${home.patient_id}/home`, named));
       setStatus({ ok: true, text: "Saved." });
     } catch (e) {
@@ -235,6 +236,14 @@ export default function ResidentPage() {
             </label>
           </>
         )}
+      </Section>
+
+      <Section title="People who live with you">
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          Anyone at home who can help before a crew arrives. Simulated: do not enter a real person&apos;s details.
+        </p>
+        <PeopleFields people={home.helpers} onChange={(helpers) => set({ helpers })} addLabel="Add a person at home"
+          notePlaceholder="What they can do (swap the tank, lift)" />
       </Section>
 
       <Section title="People to contact">

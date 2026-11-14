@@ -102,3 +102,19 @@ def test_contacts_round_trip_and_reach_the_responder():
 @pytest.mark.parametrize("bad", BAD_PEOPLE)
 def test_contact_validation(bad):
     assert put(HOME | {"contacts": bad}).status_code == 422
+
+
+HELPER = {"name": "Jo Rivera", "relation": "husband", "phone": "", "note": "can swap the oxygen tank"}
+
+
+def test_people_at_home_round_trip_and_reach_the_responder():
+    assert put(HOME | {"helpers": [HELPER], "contacts": [PERSON]}).status_code == 200
+    home = client.get("/api/homes").json()[0]["home"]
+    assert home["helpers"] == [HELPER] and home["contacts"] == [PERSON]  # two separate lists
+    put(HOME)
+    assert client.get("/api/patients/demo-1/home").json()["home"]["helpers"] == []
+
+
+@pytest.mark.parametrize("bad", BAD_PEOPLE)
+def test_people_at_home_validation(bad):
+    assert put(HOME | {"helpers": bad}).status_code == 422
