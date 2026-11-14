@@ -1,0 +1,10 @@
+{
+ "run_id": "case_jarrett__p3__c20__s1",
+ "risk_hours_unweighted": 0.0,
+ "risk_hours_weighted": 0.0,
+ "device_hours": 0.0,
+ "temp_hours": 0.0,
+ "moves": 1,
+ "patients_reaching_zero": 0,
+ "assumptions_sha256": "b7514cc1b1d449292e5dae675c3a02c23bf7eb7249f8b54a592b6c0bb6ae8ee0"
+}
