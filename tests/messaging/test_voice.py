@@ -306,3 +306,13 @@ def test_a_line_the_plan_does_not_allow_hands_the_call_to_a_person(monkeypatch):
     c = call_at_ask()
     monkeypatch.setattr(scripts, "advance", lambda call, t: [("delivery_confirmed", {"org": "x", "item": "y", "window": "z"})])
     assert respond(c, "yes") == render("human_handoff") and store.get("call", c)["status"] == "handoff"
+
+
+def test_a_finished_call_hangs_up_after_the_closing_line(monkeypatch):
+    from hearth.messaging import photon
+    monkeypatch.setattr(photon, "after_call", lambda call_id: None)
+    c = call_at_move_offer(); respond(c, "yes")  # -> consent read-back
+    r = client().post("/voice/v1/chat/completions", json={
+        "stream": True, "tools": END_CALL, "messages": [{"role": "user", "content": "yes"}], "elevenlabs_extra_body": {"call_id": c}})
+    assert sse_text(r).endswith(render("close_no_promise")) and chunks(r)[-1]["choices"][0]["finish_reason"] == "tool_calls"
+    assert store.get("call", c)["status"] == "done"  # nothing after the closing line can re-flag it

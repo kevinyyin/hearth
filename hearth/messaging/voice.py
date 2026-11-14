@@ -209,9 +209,10 @@ def chat_completions(body: dict = Body(...), authorization: str | None = Header(
             _end(call, "handoff", "error", f"{type(e).__name__}: {e}")
             store.put("call", call_id, call)
             line = render("human_handoff")
-    # a person has the call now (or no one matched the caller): after the hand-off line, end it rather than loop on it
+    # the call is over (closed, or a person has it, or no one matched the caller): end it after this line, so nothing
+    # heard afterwards (the agent's own closing words, on the first real call) can re-flag a finished call
     now = store.get("call", call_id) if can_hang_up and call_id else None
-    hang_up = can_hang_up and (now is None or now["status"] in ("handoff", "escalated"))
+    hang_up = can_hang_up and (now is None or now["status"] in ("done", "handoff", "escalated"))
     return StreamingResponse(_sse(line, body.get("model", "hearth-voice"), then, hang_up), media_type="text/event-stream")
 
 
@@ -224,7 +225,7 @@ def _sse(line: str, model: str, then=None, hang_up: bool = False):
     yield chunk({"role": "assistant", "content": line}, None)
     if hang_up:  # ElevenLabs' end_call system tool: the line above is spoken, then the call ends
         yield chunk({"tool_calls": [{"index": 0, "id": f"call_{uuid.uuid4().hex[:12]}", "type": "function",
-                                     "function": {"name": "end_call", "arguments": json.dumps({"reason": "handed to a person"})}}]}, None)
+                                     "function": {"name": "end_call", "arguments": json.dumps({"reason": "call finished"})}}]}, None)
     yield chunk({}, "tool_calls" if hang_up else "stop")
     yield "data: [DONE]\n\n"
     if then:  # after the caller has the line, so the follow-up text adds no delay to the call
