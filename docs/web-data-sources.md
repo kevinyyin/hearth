@@ -125,3 +125,35 @@ lane and is deliberately untouched here.
 `web/components/BuildingPanel.tsx` is the happier case: it already calls
 `getJson`, so the fixtures above are enough for it to render without the kit — no
 edit needed there, and none made.
+
+## Not spending the deployment budget on nothing
+
+Vercel's Hobby plan allows 100 deployments per rolling 24 hours, **per account, not
+per project**. Both projects here build from this one repository, so every push
+used to cost two — including the many that touched only `web/` and left the Python
+API untouched. A day of ordinary PR work exhausted it, and then the production
+build that actually mattered was refused while an unchanged API project took the
+last free slot.
+
+`vercel.json` and `web/vercel.json` now carry:
+
+```json
+{ "git": { "deploymentEnabled": { "claude/*": false, "codex/*": false } } }
+```
+
+Branches on those prefixes no longer create deployments at all, so a PR costs
+nothing until it merges. Merges to `main` still deploy normally, which is the only
+build that has to happen.
+
+Two things worth knowing before relying on it:
+
+- **An Ignored Build Step does not help here.** A build it cancels still counts
+  against the deployment quota and the concurrent build slot — it saves build
+  minutes, not deployments. `git.deploymentEnabled` is the one that stops the
+  deployment being created.
+- **The file has to be on the branch being pushed.** Vercel reads it from the
+  commit it is about to build, so this takes effect for branches cut after it
+  lands, not for ones already open.
+
+The cost of it is that pull requests get no preview URL on those branches. Check
+the change locally, or on `main` once it is merged.
