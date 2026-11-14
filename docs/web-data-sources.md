@@ -80,10 +80,9 @@ Still placeholder regardless of the API, because nothing serves them yet:
 
 - **The call transcripts.** The voice lane owns the real wording, and the rule
   that no sentence promising help is model-written.
-- **The room layout behind the Recommended path, when no scan opens.** With a
-  scan the route is planned over the scan's own spots and drawn on its floor
-  plan (`web/lib/scanRoute.ts`). Without one, `web/lib/floorplan.ts` is a
-  schematic: the route across it is really planned; the shape is invented.
+- **A route when no scan opens.** With a scan the route is planned over the
+  scan's own spots and drawn on its floor plan (`web/lib/scanRoute.ts`).
+  Without one no route is shown.
 - **The machine and the two entrances, until the resident pins them.** The
   machine is placed in the farthest room from where the scan starts, the inside
   entrance is where the scan starts, and the entrance on the aerial tile is a

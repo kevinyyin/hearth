@@ -6,7 +6,6 @@ import CallTranscript from "@/components/sim/CallTranscript";
 import CoverageMap from "@/components/sim/CoverageMap";
 import EmsOffer from "@/components/sim/EmsOffer";
 import BuildingViews from "@/components/sim/BuildingViews";
-import FloorPlan from "@/components/sim/FloorPlan";
 import FullRun from "@/components/sim/FullRun";
 import { useResidentFeed } from "@/lib/simSource";
 import {
@@ -202,7 +201,7 @@ export default function SimulationPage() {
       return {
         lines: ENROLMENT_CALL,
         revealed: stage === "enrolled" ? ENROLMENT_CALL.length : enrol.n,
-        title: `Enrolment call · ${callMode === "real" ? realNumber || "no number yet" : resident.phone}`,
+        title: `Enrollment call · ${callMode === "real" ? realNumber || "no number yet" : resident.phone}`,
         live: stage === "enrol" && !callDone,
       };
     }
@@ -242,7 +241,7 @@ export default function SimulationPage() {
                   ? "Three ways in: one household, step by step, or the whole county"
                   : stage === "full"
                     ? "The whole county, both ways at once"
-                    : "Before the event · enrolment"}
+                    : "Before the event · enrollment"}
             </p>
           </div>
 
@@ -298,7 +297,7 @@ export default function SimulationPage() {
                   </span>
                   <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     <strong style={{ color: "var(--text-primary)" }}>Before the event.</strong> A call
-                    goes out to enrol the household, and what they say becomes their record.
+                    goes out to enroll the household, and what they say becomes their record.
                   </span>
                 </li>
                 <li className="flex gap-4">
@@ -328,7 +327,7 @@ export default function SimulationPage() {
                 className="mt-7 rounded-xl border p-5"
                 style={{ borderColor: "var(--border)", background: "var(--surface-0)" }}
               >
-                <h3 className="mb-3 text-sm font-semibold">How to place the enrolment call</h3>
+                <h3 className="mb-3 text-sm font-semibold">How to place the enrollment call</h3>
                 <div
                   role="group"
                   aria-label="Call mode"
@@ -425,7 +424,7 @@ export default function SimulationPage() {
                   className="rounded-lg px-6 py-3.5 text-base font-semibold"
                   style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
                 >
-                  Start stage 1 — the enrolment call
+                  Start stage 1 — the enrollment call
                 </button>
                 <button
                   type="button"
@@ -445,7 +444,7 @@ export default function SimulationPage() {
                 style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
               >
                 Every call, transcript and record in this simulation is a fixed placeholder written
-                into the page. The real enrolment call, its wording and the resident record belong to
+                into the page. The real enrollment call, its wording and the resident record belong to
                 the registration lane, and this screen is built to have them dropped in.
               </p>
             </div>
@@ -530,7 +529,7 @@ export default function SimulationPage() {
 
               {stage === "enrol" && callDone && (
                 <StepButton
-                  label="Finish enrolment"
+                  label="Finish enrollment"
                   hint="The operator confirms what the call captured."
                   onClick={() => setStage("enrolled")}
                 />

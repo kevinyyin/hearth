@@ -2,7 +2,6 @@
 
 import AerialPins from "@/components/AerialPins";
 import ScanPins from "@/components/ScanPins";
-import FloorPlan from "@/components/sim/FloorPlan";
 import { useBuildingFeed, useEntranceFeed } from "@/lib/simSource";
 import type { InsidePin, OutsidePin } from "@/lib/types";
 
@@ -19,8 +18,8 @@ import type { InsidePin, OutsidePin } from "@/lib/types";
  *     listed, with the SDK key the API hands over.
  *
  * So there is no floor plan to fetch from anyone. When a scan exists we open it
- * from above, which is the nearest real thing, and the route is drawn on that;
- * when no scan is reachable the schematic below is a stand-in and says so.
+ * from above, which is the nearest real thing, and the route is drawn on that.
+ * With no scan there is no route: nothing is drawn over an invented layout.
  */
 export default function BuildingViews({
   buildingId,
@@ -132,23 +131,6 @@ export default function BuildingViews({
             </>
           )}
         </div>
-      )}
-
-      {/* --- the stand-in, only when there is no scan to draw the route on --- */}
-      {!(live && scanId) && (
-        <>
-          <h4
-            className="mt-4 mb-1.5 text-xs font-semibold"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Recommended path — planned over a stand-in layout
-          </h4>
-          <FloorPlan showEntrance showMachine showBlocked showPath />
-          <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-            With a scan the route is drawn on its floor plan. There is none here, so the grid this
-            route is planned over is a schematic: the planning is real, the layout is not.
-          </p>
-        </>
       )}
     </div>
   );
