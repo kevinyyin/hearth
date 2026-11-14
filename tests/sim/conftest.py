@@ -16,3 +16,14 @@ def pat(**overrides) -> Patient:
 
 def ctx(restoration=48, home_unsafe=False, temp_unsafe=False, delivery=False, move=False, allow_moves=True) -> Ctx:
     return Ctx(restoration, home_unsafe, temp_unsafe, delivery, move, allow_moves)
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _patients_file_to_tmp(tmp_path_factory, monkeypatch):
+    """load_population writes data/processed/patients_*.parquet, which the API serves; tests write theirs to a separate
+    temp folder (not tmp_path, which tests list to find their run folder)."""
+    import hearth.population
+    monkeypatch.setattr(hearth.population, "PROCESSED", tmp_path_factory.mktemp("processed"))
