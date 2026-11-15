@@ -378,6 +378,14 @@ def storm(round: registry.Round = Body("week", embed=True)):
     return registry.storm(round)
 
 
+@app.post("/api/storm/reset")
+def storm_reset():
+    """Forgets the storm rounds placed (and the two-minute guard), so dispatch starts the three steps again. Calls,
+    registrations and help requests stay."""
+    store.clear("storm")
+    return registry.storm_history()
+
+
 # ---- help loop: a resident asks, a model orders, code offers the job to a crew with a refuge as the drop-off ----
 CrewName = PathParam(pattern=r"^[A-Za-z0-9 _-]{1,40}$")
 

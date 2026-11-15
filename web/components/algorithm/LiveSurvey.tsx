@@ -11,7 +11,9 @@ type Row = { building_id: string; name: string | null; surveyed: boolean };
 type Recording = { recorded_at: number; events: TraceEvent[] };
 
 const DEFAULT = "7768847"; // Calais Midtown Apartments: all three layers, and conflicts between them
-const SPEED = 2;
+// every replay lasts about 18 s, and never plays slower than twice the real run
+const speedOf = (r: Recording) => Math.max(2, (r.events.at(-1)?.t ?? 0) / 18);
+const times = (k: number) => `${Number.isInteger(k) ? k : k.toFixed(1)}×`;
 const LAYER: Record<string, [string, string]> = {
   costar: ["CoStar", "var(--series-1)"], vexcel: ["Vexcel", "var(--series-3)"], matterport: ["Matterport", "var(--series-2)"],
 };
@@ -84,8 +86,9 @@ export default function LiveSurvey() {
     setError(null);
     setMode("replay");
     started.current = performance.now();
-    for (const e of recording.events) timers.current.push(window.setTimeout(() => setShown((s) => [...s, e]), (e.t * 1000) / SPEED));
-    timers.current.push(window.setTimeout(() => setMode("idle"), (recording.events.at(-1)!.t * 1000) / SPEED + 100));
+    const k = speedOf(recording);
+    for (const e of recording.events) timers.current.push(window.setTimeout(() => setShown((s) => [...s, e]), (e.t * 1000) / k));
+    timers.current.push(window.setTimeout(() => setMode("idle"), (recording.events.at(-1)!.t * 1000) / k + 100));
   }
 
   async function live() {
@@ -110,6 +113,7 @@ export default function LiveSurvey() {
   const known = p ? PROFILE_FIELDS.filter((f) => p[f].source !== "default") : [];
   const unknown = p ? PROFILE_FIELDS.filter((f) => p[f].source === "default") : [];
   const took = recording?.events.at(-1)?.t;
+  const speed = recording ? speedOf(recording) : 2;
   const trace = reduceTrace(shown);
   // the lead agent often skips its last to-do update; a written profile means every step ran
   if (trace.done && !trace.error) trace.todos = trace.todos.map((t) => ({ ...t, status: "completed" }));
@@ -139,14 +143,14 @@ export default function LiveSurvey() {
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={replay} disabled={playing || !recording?.events.length}
               className="rounded-[7px] border border-[var(--text-primary)] bg-[var(--text-primary)] px-3 py-1.5 text-[13px] font-medium text-[var(--surface-1)] hover:bg-[#2b2925] disabled:opacity-50">
-              {mode === "replay" ? "Replaying…" : `Replay the last survey · ${SPEED}×`}
+              {mode === "replay" ? "Replaying…" : `Replay the last survey · ${times(speed)}`}
             </button>
             <button type="button" onClick={live} disabled={playing}
               className="rounded-[7px] border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-[13px] font-medium hover:bg-[var(--surface-2)] disabled:opacity-50">
               {mode === "live" ? "Running live…" : "Run it live"}
             </button>
             <span className="tnum text-xs" style={muted}>
-              {playing ? `${now.toFixed(1)} s${mode === "replay" ? ` · ${(now * SPEED).toFixed(1)} s of the real run` : ""}`
+              {playing ? `${now.toFixed(1)} s${mode === "replay" ? ` · ${Math.min(now * speed, took ?? 0).toFixed(1)} s of the real run` : ""}`
                 : recording ? `Recorded ${new Date(recording.recorded_at * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · took ${took?.toFixed(1)} s live`
                 : recording === null ? "No recorded survey yet: run it live once." : ""}
             </span>

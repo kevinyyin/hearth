@@ -119,6 +119,13 @@ def test_a_finished_live_survey_is_recorded_for_replay(monkeypatch):
     assert [e["t"] for e in client.get("/api/buildings/B-SAMPLE/survey/recording").json()["events"]] == [0.5, 2.0]
 
 
+def test_storm_reset_forgets_the_rounds():
+    store.put("storm", "week", {"round": "week", "t": 1.0, "dialed": 1, "failed": 0})
+    store.put("storm", "last", {"t": 1.0})
+    assert client.post("/api/storm/reset").json() == {"placed": {}, "last": None}
+    assert store.get("storm", "last") is None
+
+
 def test_propose_for_unknown_patient_is_404():
     assert client.post("/api/patients/nobody/propose").status_code == 404
 

@@ -111,8 +111,8 @@ export default function TechnicalPage() {
 
         <Section eyebrow="Live" title="One building, surveyed by the agent">
           <p className="-mt-2 mb-4 max-w-[75ch] text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Real CoStar properties from the API. The trace is the last real survey of the building, replayed at twice its
-            speed; run it live to start a fresh one.
+            Real CoStar properties from the API. The trace is the last real survey of the building, sped up to about 18
+            seconds; run it live to start a fresh one.
           </p>
           <LiveSurvey />
         </Section>

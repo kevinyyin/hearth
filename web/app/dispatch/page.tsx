@@ -45,8 +45,8 @@ function Section({ title, n, tint, children }: { title: string; n: number; tint?
 function StormRounds({ storm, onPlaced }: { storm: DispatchView["storm"] | undefined; onPlaced: () => void }) {
   const { busy, error, act } = useAction();
   const [note, setNote] = useState<string | null>(null);
-  // the first press arms a round, the second places it; pressing anywhere else disarms
-  const [armed, setArmed] = useState<StormRound | null>(null);
+  // the first press arms a round (or the reset), the second does it; pressing anywhere else disarms
+  const [armed, setArmed] = useState<StormRound | "reset" | null>(null);
   const next = ROUNDS.find(([r]) => !storm?.placed[r])?.[0];
   const last = storm?.last;
   const call = (round: StormRound) =>
@@ -56,9 +56,24 @@ function StormRounds({ storm, onPlaced }: { storm: DispatchView["storm"] | undef
       setNote(out.dialed.length === 0 && out.failed.length ? plainError(new Error(out.failed.join("; "))) : out.failed.length ? `Not done: ${out.failed.join("; ")}` : null);
       onPlaced();
     });
+  const reset = () =>
+    act("reset", async () => {
+      await sendJson("POST", "/api/storm/reset");
+      setNote(null);
+      onPlaced();
+    });
   return (
     <div className="flex flex-col items-start gap-2 min-[960px]:ml-auto">
-      <p className="text-[13px] font-semibold" style={{ color: "var(--text-secondary)" }}>Call everyone on the list</p>
+      <div className="flex w-full items-baseline justify-between gap-4">
+        <p className="text-[13px] font-semibold" style={{ color: "var(--text-secondary)" }}>Call everyone on the list</p>
+        {last && (
+          <button type="button" disabled={!!busy} onBlur={() => setArmed(null)}
+            onClick={() => { if (armed === "reset") { setArmed(null); reset(); } else setArmed("reset"); }}
+            className="text-xs underline underline-offset-2 disabled:opacity-60" style={{ color: armed === "reset" ? NEEDS_TEXT : "var(--text-muted)" }}>
+            {busy === "reset" ? "Resetting…" : armed === "reset" ? "Click again to reset the rounds" : "Reset dispatch"}
+          </button>
+        )}
+      </div>
       <ol className="flex w-full flex-col items-stretch gap-1.5 min-[960px]:w-auto min-[960px]:flex-row" aria-label="Storm call rounds">
         {ROUNDS.map(([round, title], i) => {
           const at = storm?.placed[round];
