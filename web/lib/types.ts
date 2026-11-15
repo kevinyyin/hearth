@@ -257,6 +257,8 @@ export type HelpRequest = {
   blocked: string;
   declined_by: string[];
   refuge: RefugeOption | null;
+  /** A refuge a dispatcher approved for this request: the drop-off, in place of code's search. */
+  refuge_pick: RefugeOption | null;
   job: { job_id: string; org_id: string; status: string; eta: string | null } | null;
 };
 
@@ -279,13 +281,49 @@ export type CrewJob = {
 export type StagingLot = {
   building_id: string; name: string; address: string; zip: string; property_type: string;
   surface_spaces: number; lot_acres: number | null; km: number; stale?: boolean;
+  /** Absent on a lot chosen before lots carried their position. */
+  lat?: number; lon?: number;
 };
 /** `basis` is what an option's `km` is measured from; null when there is nothing to centre on. */
 export type StagingView = { chosen: StagingLot | null; options: StagingLot[]; basis: "open requests" | "registered homes" | null };
 
+export type DispatchRow = {
+  request: HelpRequest; patient: Patient; home: Home | null; device: string; mobility: string;
+  address: string | null; building_id: string | null; lat: number; lon: number;
+};
+
+/** A building survey or refuge search the dispatch page started; mirrors hearth/agents.py. Step times are seconds
+ *  since `started_at`; `t1` is null while the step is live. */
+export type AgentRun = {
+  run_id: string;
+  kind: "survey" | "refuge";
+  building_id: string | null;
+  patient_id: string | null;
+  address: string | null;
+  status: "running" | "done" | "failed" | "stopped";
+  /** Unix seconds. */
+  started_at: number;
+  updated_at: number;
+  steps: { text: string; t0: number; t1: number | null }[];
+  result: { proposal_id?: string; shelter_sites?: ShelterSite[]; message?: string; error?: string };
+  on_rail: boolean;
+};
+
+export type StormRound = "week" | "day" | "outage";
+/** Times are unix seconds. `registered` counts registrations that round's own calls made. */
+export type StormHistory = {
+  placed: Partial<Record<StormRound, number>>;
+  last: { round: StormRound; t: number; dialed: number; failed: number; registered: number } | null;
+};
+
 export type DispatchView = {
-  requests: { request: HelpRequest; device: string; mobility: string; address: string | null }[];
+  requests: DispatchRow[];
   crews: { crew: Responder; patient_id: string | null }[];
+  agents: AgentRun[];
+  /** Runs the page should start now; `key` changes each time one may start again. */
+  to_start: { run_id: string; kind: "survey" | "refuge"; building_id: string | null; patient_id: string | null; key: string }[];
+  proposals: RefugeProposal[];
+  storm: StormHistory;
 };
 
 export type TraceEvent = {
