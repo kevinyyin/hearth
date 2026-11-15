@@ -97,12 +97,12 @@ describe("toChartRows", () => {
 });
 
 describe("the central planner lines", () => {
-  it("come last, are labelled, and the pairing line is drawn by default", async () => {
+  it("come last and are labelled; the pairing line is not on the page, the route search is a toggle", async () => {
     const { DEFAULT_POLICIES, OPTIONAL_POLICIES, POLICY_ORDER, policyLabel } = await import("./types");
     expect(POLICY_ORDER.slice(-2)).toEqual(["p3__paired", "p3__alns"]);
     expect(policyLabel("p3__paired")).toBe("Hearth, best pairing");
     expect(policyLabel("p3__alns")).toBe("Hearth, pairing and route search");
-    expect(DEFAULT_POLICIES).toContain("p3__paired");
+    expect(DEFAULT_POLICIES).not.toContain("p3__paired");
     expect(OPTIONAL_POLICIES).toContain("p3__alns");
   });
 });
