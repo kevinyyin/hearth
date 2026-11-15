@@ -110,6 +110,9 @@ export default function LiveSurvey() {
   const known = p ? PROFILE_FIELDS.filter((f) => p[f].source !== "default") : [];
   const unknown = p ? PROFILE_FIELDS.filter((f) => p[f].source === "default") : [];
   const took = recording?.events.at(-1)?.t;
+  const trace = reduceTrace(shown);
+  // the lead agent often skips its last to-do update; a written profile means every step ran
+  if (trace.done && !trace.error) trace.todos = trace.todos.map((t) => ({ ...t, status: "completed" }));
   const effects = detail?.layer_effects && detail.hours_to_unsafe != null
     ? [["All layers", detail.hours_to_unsafe, "var(--text-primary)"] as const,
        ...Object.entries(detail.layer_effects).map(([l, h]) => [`Without ${LAYER[l]?.[0] ?? l}`, h, LAYER[l]?.[1] ?? "var(--text-muted)"] as const)]
@@ -159,7 +162,7 @@ export default function LiveSurvey() {
               </li>
             ))}
           </ol>
-          <div className="mt-4"><AgentTrace view={reduceTrace(shown)} running={playing} /></div>
+          <div className="mt-4"><AgentTrace view={trace} running={playing} /></div>
         </section>
 
         <section aria-label="Surveyed profile" className="min-w-0">
