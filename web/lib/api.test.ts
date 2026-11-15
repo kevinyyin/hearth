@@ -35,4 +35,11 @@ describe("getJson against the hosted API", () => {
     await expect(api.getJson("/api/runs")).rejects.toThrow("password");
     expect(api.getPassword()).toBeNull();
   });
+
+  it("says what failed when the API answers with an error", async () => {
+    const body = JSON.stringify({ detail: "an upstream service answered 503" });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body, { status: 502, statusText: "Bad Gateway" })));
+    const api = await import("./api");
+    await expect(api.getJson("/api/runs")).rejects.toThrow("502 an upstream service answered 503");
+  });
 });

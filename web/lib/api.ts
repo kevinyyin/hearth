@@ -50,7 +50,9 @@ export async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store", headers: authHeaders() });
   if (res.status === 401) onUnauthorized();
   if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText} for ${url}`);
+    // the API's own errors carry a detail that says what failed; anything else falls back to the status text
+    const detail = (await res.json().catch(() => null))?.detail;
+    throw new Error(`${res.status} ${typeof detail === "string" ? detail : res.statusText} for ${url}`);
   }
   return (await res.json()) as T;
 }

@@ -312,3 +312,26 @@ def test_a_lot_without_a_tile_or_reading_is_404_not_an_error():
     assert client.get("/api/buildings/B-SAMPLE/lot-image").status_code == 404  # fixtures hold no lot tile
     assert client.get("/api/buildings/B-SAMPLE/lot-reading").status_code == 404  # fixtures ask no vision model
     assert client.get("/api/buildings/NOPE/lot-image").status_code == 404
+
+
+def test_a_storage_failure_is_an_error_the_browser_can_read(monkeypatch):
+    # unhandled, it would leave as a bare 500 outside CORS, which a browser shows only as "Failed to fetch"
+    import httpx
+    from hearth import remote
+
+    def broken(path):
+        req = httpx.Request("GET", "https://project.supabase.co/storage/v1/object/x")
+        raise httpx.HTTPStatusError("boom", request=req, response=httpx.Response(503, request=req))
+
+    monkeypatch.setattr(remote, "fetch", broken)
+    r = TestClient(app, raise_server_exceptions=False).get("/api/runs/cloud_run/meta", headers={"Origin": "http://localhost:3000"})
+    assert r.status_code == 502 and r.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    assert "503" in r.json()["detail"] and "supabase" not in r.json()["detail"]  # says what failed, not where it lives
+
+
+def test_any_other_crash_is_readable_too(monkeypatch):
+    from hearth import remote
+    monkeypatch.setattr(remote, "fetch", lambda path: 1 / 0)
+    r = TestClient(app, raise_server_exceptions=False).get("/api/runs/cloud_run/meta", headers={"Origin": "http://localhost:3000"})
+    assert r.status_code == 500 and r.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    assert r.json()["detail"] == "server error (ZeroDivisionError)"

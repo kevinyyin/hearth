@@ -1,6 +1,7 @@
 """Hearth API: run files for the map, the building agent's surveys and refuge proposals, and the approval-gated call."""
 import hmac
 import json
+import logging
 import os
 import re
 from datetime import timedelta
@@ -8,6 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterator, Literal
 
+import httpx
 from fastapi import Body, FastAPI, HTTPException, Path as PathParam, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -31,6 +33,7 @@ PATIENTS_FILE = ROOT / "data" / "processed" / "patients_beryl_2024_s1.parquet"
 PATIENTS_JSON = "processed/patients_beryl_2024_s1.json"  # the same patients, in private storage for the hosted API
 
 app = FastAPI(title="Hearth (simulated patients)")
+log = logging.getLogger("hearth.api")
 
 
 @app.middleware("http")
@@ -46,7 +49,17 @@ async def guard(request: Request, call_next):
             return JSONResponse({"detail": "password required"}, status_code=401)
     elif "x-forwarded-for" in request.headers or "cf-connecting-ip" in request.headers:
         return JSONResponse({"detail": "the dispatcher API is not reachable through a tunnel"}, status_code=403)
-    return await call_next(request)
+    try:
+        return await call_next(request)
+    except Exception as e:
+        # Uncaught, a crash leaves as a bare 500 outside CORS, which the browser shows only as "Failed to fetch".
+        # Answered here, inside CORS, the page can say what failed; the traceback goes to the server log.
+        log.exception("unhandled error on %s", request.url.path)
+        if isinstance(e, httpx.HTTPStatusError):
+            return JSONResponse({"detail": f"an upstream service answered {e.response.status_code}"}, status_code=502)
+        if isinstance(e, httpx.HTTPError):
+            return JSONResponse({"detail": f"an upstream service did not answer ({type(e).__name__})"}, status_code=502)
+        return JSONResponse({"detail": f"server error ({type(e).__name__})"}, status_code=500)
 
 
 # added after the guard so they wrap it: a 401 still carries CORS headers the browser can read
