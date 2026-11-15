@@ -146,7 +146,7 @@ shelter:
   phrases: {value: ["school gymnasium with sports field", "church with large parking lot", "community center with parking lot"], source: "our call Nov 14: scene-level phrases; the first two returned correct tiles in a live test of Vexcel's semantic search and the third is the same kind of phrase. Small objects (generators) are unproven and not searched", confirmed: false}
   search_half_m: {value: 3000, source: "our call Nov 14: half the side of the search square around the patient; Vexcel's tutorial says a smaller square is faster and more exact, and 3 km answered in about 1 s", confirmed: false}
   tiles_per_phrase: {value: 10, source: "our call Nov 14: tiles asked for per phrase; those in the patient's own dark ZIP are dropped, so more than are shown; placeholder", confirmed: false}
-  merge_m: {value: 100, source: "our call Nov 14: tiles are about 66 m wide, so two matches closer than this are one place", confirmed: false}
+  merge_m: {value: 300, source: "our call Nov 14: matches closer than this are one place. Tiles are about 66 m wide and a school campus spans several: at 100 m a live run near 77096 listed one campus three times, at 300 m five separate places", confirmed: false}
   costar_match_m: {value: 100, source: "our call Nov 14: a CoStar record's point this close to a matched tile is taken as the same property; placeholder", confirmed: false}
   max_sites: {value: 5, source: "our call Nov 14: leads shown to the dispatcher, nearest first; a list short enough to phone", confirmed: false}
   tile_half_m: {value: 60, source: "our call Nov 14: the aerial shown for a lead is 120 m across, the matched tile and its surroundings", confirmed: false}

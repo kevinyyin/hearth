@@ -77,7 +77,7 @@ def test_tiles_of_one_place_merge_and_the_best_match_names_it(monkeypatch):
 
 
 def test_nearest_first_and_only_the_top_few(monkeypatch):
-    north = [(BELLAIRE[0] + i * 0.002, BELLAIRE[1]) for i in range(a("shelter.max_sites") + 2)]  # 220 m apart, all in 77401
+    north = [(round(29.693 + i * 0.004, 3), BELLAIRE[1]) for i in range(a("shelter.max_sites") + 2)]  # 445 m apart, all in 77401
     search(monkeypatch, {a("shelter.phrases")[0]: [tile(p, 0.2 + i / 100) for i, p in enumerate(north)]})
     sites = refuge.shelter_sites(who(), {"77096"})
     assert [(s["lat"], s["lon"]) for s in sites] == north[: a("shelter.max_sites")]
