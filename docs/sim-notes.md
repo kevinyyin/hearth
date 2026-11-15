@@ -113,13 +113,13 @@ and crew assignment. The world is identical under every policy; policies differ 
 
 ## Sweep and replay (Task S4)
 
-`HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim sweep --scenario beryl_2024` (crews 5, 10, 20, 40, 80, 10 seeds and every 36th patient from `sweep.*` in `assumptions.yaml`)
-(350 runs, about 2.5 min on 10 cores) writes `results/sweep_beryl_2024.json` and
+`HEARTH_DB=/path/to/hearth.db uv run python -m hearth.sim sweep --scenario beryl_2024` (crews 5, 10, 20, 40, 80, 100 seeds and every 36th patient from `sweep.*` in `assumptions.yaml`)
+(3,500 runs, about 17 min on 10 cores; 10 seeds until Nov 15) writes `results/sweep_beryl_2024.json` and
 `results/sweep_beryl_2024.assumptions.yaml`. The committed sweep ran against the main store: 1,386 records-only
 profiles plus 6 agent surveys, no fixtures.
 
 **Scale (Nov 14, user decision).** The sweep simulates every 36th patient (`sweep.patient_stride`), 647 of 23,273,
-over 5 to 80 crews, so Hearth sits near 5,000 weighted patient-hours at 20 crews (median 5,134). From Nov 13 until
+over 5 to 80 crews, so Hearth sits near 5,000 weighted patient-hours at 20 crews (median 5,104). From Nov 13 until
 then it ran all patients over 20 to 320 crews. The two paragraphs below were measured on that full-county sweep and
 have not been re-measured at the smaller scale. The map's county replay (`hearth.sim run`) still runs all patients.
 
