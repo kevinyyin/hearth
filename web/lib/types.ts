@@ -26,7 +26,7 @@ export const POLICY_LABELS: Record<PolicyId, string> = {
 };
 
 /** The policies drawn when the page loads; the others are toggles. */
-export const DEFAULT_POLICIES: PolicyId[] = ["p0", "p3", "p3__nobld", "p3__paired"];
+export const DEFAULT_POLICIES: PolicyId[] = ["p0", "p3", "p3__nobld"];
 
 export const OPTIONAL_POLICIES: PolicyId[] = ["p3__nomove", "p3__aid", "p3__alns"];
 

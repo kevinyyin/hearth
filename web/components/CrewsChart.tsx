@@ -26,7 +26,7 @@ import {
  * Kept out of the main screen. The ablation is still in the sweep and still in the
  * repo's own write-ups; it is one line too many for a two-minute demo.
  */
-const HIDDEN: PolicyId[] = ["p3__nomove"];
+const HIDDEN: PolicyId[] = ["p3__nomove", "p3__paired"];
 
 /** Colour follows the policy, never its rank, so a toggle never repaints the survivors. */
 function seriesColor(policy: string): string {
