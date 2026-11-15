@@ -45,6 +45,8 @@ function Section({ title, n, tint, children }: { title: string; n: number; tint?
 function StormRounds({ storm, onPlaced }: { storm: DispatchView["storm"] | undefined; onPlaced: () => void }) {
   const { busy, error, act } = useAction();
   const [note, setNote] = useState<string | null>(null);
+  // the first press arms a round, the second places it; pressing anywhere else disarms
+  const [armed, setArmed] = useState<StormRound | null>(null);
   const next = ROUNDS.find(([r]) => !storm?.placed[r])?.[0];
   const last = storm?.last;
   const call = (round: StormRound) =>
@@ -64,11 +66,12 @@ function StormRounds({ storm, onPlaced }: { storm: DispatchView["storm"] | undef
           return (
             <li key={round} className="contents">
               {i > 0 && <span aria-hidden className="hidden self-center text-sm min-[960px]:inline" style={muted}>→</span>}
-              <button type="button" disabled={!!busy} onClick={() => call(round)}
-                className={`flex w-full flex-col items-start gap-0.5 rounded-lg border px-3 py-[7px] text-left disabled:cursor-wait disabled:opacity-70 min-[960px]:w-auto min-[960px]:min-w-[150px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${primary ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--surface-1)] hover:bg-[#2b2925]" : "border-[var(--border)] bg-[var(--surface-1)] hover:bg-[var(--surface-2)]"}`}>
+              <button type="button" disabled={!!busy} onBlur={() => setArmed(null)}
+                onClick={() => { if (armed === round) { setArmed(null); call(round); } else setArmed(round); }}
+                className={`flex w-full flex-col items-start gap-0.5 rounded-lg border px-3 py-[7px] text-left disabled:cursor-wait disabled:opacity-70 min-[960px]:w-auto min-[960px]:min-w-[150px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${armed === round ? "border-[#9a3214] bg-[#fbefe8] text-[#9a3214]" : primary ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--surface-1)] hover:bg-[#2b2925]" : "border-[var(--border)] bg-[var(--surface-1)] hover:bg-[var(--surface-2)]"}`}>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold">{at && <Check className="text-[#0e7a54]" />}{title}</span>
-                <span className="tnum text-xs" style={{ color: primary ? "#d9d4c8" : "var(--text-muted)" }}>
-                  {busy === round ? "Calling…" : at ? `Placed ${clock(at)} · call again` : primary ? "Call everyone now" : "Not placed yet"}
+                <span className="tnum text-xs" style={{ color: armed === round ? NEEDS_TEXT : primary ? "#d9d4c8" : "var(--text-muted)" }}>
+                  {busy === round ? "Calling…" : armed === round ? "Click again to call everyone" : at ? `Placed ${clock(at)} · call again` : primary ? "Call everyone now" : "Not placed yet"}
                 </span>
               </button>
             </li>
@@ -204,6 +207,9 @@ export default function DispatchPage() {
     <div className="flex min-h-full flex-col min-[960px]:h-full">
       <header className="flex flex-wrap items-end gap-x-8 gap-y-4 border-b px-6 pt-6 pb-4" style={{ borderColor: "var(--border)" }}>
         <div>
+          <Link href="/results" className="mb-3 inline-block rounded-[7px] border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-[13px] font-medium hover:bg-[var(--surface-2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+            ← Back to results
+          </Link>
           <h1 className="display text-[40px] leading-none tracking-[-0.01em]">Dispatch</h1>
           <p className="mt-1 text-[13px]" style={muted}>
             Harris County · simulated storm · real calls go only to numbers on the demo list ·{" "}
