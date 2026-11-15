@@ -610,7 +610,14 @@ export type CountySim = {
   queueAt(time: number, which: SideKey): number;
   chainedShare(which: SideKey): number;
   restocksBy(time: number, which: SideKey): number;
+  /** The driving of the last `window` hours, one clipped leg each, for the fading trails. */
+  trailsAt(time: number, which: SideKey, window?: number): Trail[];
+  /** Homes a van pulled away from in the last `window` hours; `age` runs 0 to 1 across it. */
+  arrivalsAt(time: number, which: SideKey, window?: number): { h: number; age: number }[];
 };
+
+/** A stretch of road a van drove; `age` is hours since it drove the end of it. */
+export type Trail = { from: [number, number]; to: [number, number]; age: number };
 
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const point = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]);
@@ -769,6 +776,32 @@ export function buildCounty(households: Household[], hearthSide?: SideSim): Coun
     },
     restocksBy(time, which) {
       return sides[which].events.filter((e) => e.kind === "restock" && e.t <= time).length;
+    },
+    trailsAt(time, which, window = 2) {
+      const out: Trail[] = [];
+      const start = time - window;
+      const at = (l: Leg, t: number): [number, number] => {
+        const p = (t - l.t0) / Math.max(l.t1 - l.t0, 1e-6);
+        return [l.from[0] + (l.to[0] - l.from[0]) * p, l.from[1] + (l.to[1] - l.from[1]) * p];
+      };
+      for (const legs of sides[which].legs) {
+        for (const l of legs) {
+          if (l.t1 <= start || l.t0 >= time) continue;
+          if (l.from[0] === l.to[0] && l.from[1] === l.to[1]) continue; // parked at a door
+          const end = Math.min(l.t1, time);
+          out.push({ from: at(l, Math.max(l.t0, start)), to: at(l, end), age: time - end });
+        }
+      }
+      return out;
+    },
+    arrivalsAt(time, which, window = 0.4) {
+      const out: { h: number; age: number }[] = [];
+      for (const j of sides[which].jobs) {
+        if (j.servedAt !== null && j.servedAt <= time && j.servedAt > time - window) {
+          out.push({ h: j.h, age: (time - j.servedAt) / window });
+        }
+      }
+      return out;
     },
   };
 }

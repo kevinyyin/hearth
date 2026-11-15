@@ -8,16 +8,22 @@ import {
   type CountySim,
   type HouseholdState,
   type SideKey,
+  type Trail,
   type Vehicle,
 } from "@/lib/simulation";
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const HOMES = "households";
 const HOMES_LAYER = "households-circles";
+const TRAILS = "trails";
+const TRAILS_LAYER = "trails-lines";
+const PULSES = "pulses";
+const PULSES_LAYER = "pulses-rings";
 const CREWS = "crews";
 const CREWS_LAYER = "crews-vans";
 
-const FILL: Record<HouseholdState, string> = {
+/** The legend and the figures under each map read these too. */
+export const FILL: Record<HouseholdState, string> = {
   reached: "#0e7a54",
   waiting: "#c4461a",
   /** Blue: helped once, and the delivery has run down. A different problem from never reached. */
@@ -76,6 +82,22 @@ const HOME_PAINT = {
   "circle-stroke-opacity": ["match", ["get", "state"], "restocked", 0.35, 1],
 } as const;
 
+/** Where the vans have just been, in ink, fading over the trail window. */
+const TRAIL_PAINT = {
+  "line-color": "#3d382e",
+  "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.5, 12, 3],
+  "line-opacity": ["interpolate", ["linear"], ["get", "age"], 0, 0.7, 2, 0],
+} as const;
+
+/** A ring that grows and fades as a van pulls away from a door. */
+const PULSE_PAINT = {
+  "circle-radius": ["interpolate", ["linear"], ["get", "age"], 0, 4, 1, 24],
+  "circle-opacity": 0,
+  "circle-stroke-color": ["get", "color"],
+  "circle-stroke-width": 2,
+  "circle-stroke-opacity": ["interpolate", ["linear"], ["get", "age"], 0, 0.9, 1, 0],
+} as const;
+
 /** The van icon, aimed along its leg. */
 const CREW_LAYOUT = {
   "icon-image": "hearth-van",
@@ -114,6 +136,36 @@ function crews(vans: Vehicle[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   };
 }
 
+function trailLines(trails: Trail[]): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+  return {
+    type: "FeatureCollection",
+    features: trails.map((t) => ({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: [t.from, t.to] },
+      properties: { age: t.age },
+    })),
+  };
+}
+
+function pulses(
+  county: CountySim,
+  which: SideKey,
+  time: number,
+  arrivals: { h: number; age: number }[],
+): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: "FeatureCollection",
+    features: arrivals.map((a) => {
+      const h = county.households[a.h];
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [h.lon, h.lat] },
+        properties: { age: a.age, color: FILL[county.stateAt(a.h, time, which)] },
+      };
+    }),
+  };
+}
+
 /** Rasterises the van once per map, so the symbol layer has something to place. */
 function addVanIcon(m: MapLibreMap): Promise<void> {
   return new Promise((resolve) => {
@@ -134,6 +186,8 @@ export default function HouseholdMap({
   which,
   time,
   vehicles = [],
+  trails = [],
+  arrivals = [],
   interactive = true,
   height = 320,
   onMap,
@@ -147,6 +201,10 @@ export default function HouseholdMap({
   time: number;
   /** Crew positions this frame; empty when nothing is moving. */
   vehicles?: Vehicle[];
+  /** Where the vans drove in the last couple of hours; empty when nothing is moving. */
+  trails?: Trail[];
+  /** Homes a van has just left, for the pulse; empty under reduced motion. */
+  arrivals?: { h: number; age: number }[];
   /** False for the small panel on the simulation page: same picture, no controls. */
   interactive?: boolean;
   /** A CSS length: a number of px, or something like "min(62vh, 620px)". */
@@ -181,9 +239,18 @@ export default function HouseholdMap({
 
     m.on("load", async () => {
       m.addSource(HOMES, { type: "geojson", data: homes(county, which, 0) });
+      m.addSource(TRAILS, { type: "geojson", data: trailLines([]) });
+      m.addSource(PULSES, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       m.addSource(CREWS, { type: "geojson", data: crews([]) });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // bottom to top: trails, homes, pulses, vans
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      m.addLayer({
+        id: TRAILS_LAYER, type: "line", source: TRAILS, paint: TRAIL_PAINT as any,
+        layout: { "line-cap": "round" },
+      });
       m.addLayer({ id: HOMES_LAYER, type: "circle", source: HOMES, paint: HOME_PAINT as any });
+      m.addLayer({ id: PULSES_LAYER, type: "circle", source: PULSES, paint: PULSE_PAINT as any });
+      /* eslint-enable @typescript-eslint/no-explicit-any */
       await addVanIcon(m);
       if (!m.getLayer(CREWS_LAYER)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -230,12 +297,15 @@ export default function HouseholdMap({
     m.jumpTo({ center });
   }, [center]);
 
-  // the vans; this runs every animation frame, so it only touches the one source
+  // the vans, their trails and the pulses; this runs every animation frame, so it
+  // only touches those three sources
   useEffect(() => {
     const m = map.current;
     if (!m || !ready.current) return;
     (m.getSource(CREWS) as GeoJSONSource | undefined)?.setData(crews(vehicles));
-  }, [vehicles]);
+    (m.getSource(TRAILS) as GeoJSONSource | undefined)?.setData(trailLines(trails));
+    (m.getSource(PULSES) as GeoJSONSource | undefined)?.setData(pulses(county, which, time, arrivals));
+  }, [vehicles, trails, arrivals, county, which, time]);
 
   return (
     <div

@@ -166,3 +166,29 @@ describe("a Hearth side from the API", () => {
     expect(parseSide(bent, n)).toBeNull();
   });
 });
+
+describe("the night panel", () => {
+  const county = buildCounty(drawHouseholds());
+
+  it("draws trails only for driving inside the last two hours", () => {
+    expect(county.trailsAt(0, "hearthAt")).toHaveLength(0);
+    let seen = 0;
+    for (const t of steps()) {
+      for (const tr of county.trailsAt(t, "hearthAt")) {
+        seen += 1;
+        expect(tr.age).toBeGreaterThanOrEqual(0);
+        expect(tr.age).toBeLessThanOrEqual(2);
+        expect(tr.from[0] === tr.to[0] && tr.from[1] === tr.to[1]).toBe(false);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it("pulses a home just after its van pulls away", () => {
+    const job = county.sides.hearthAt.jobs.find((j) => j.servedAt !== null)!;
+    const now = county.arrivalsAt(job.servedAt! + 0.1, "hearthAt");
+    expect(now.some((a) => a.h === job.h)).toBe(true);
+    for (const a of now) expect(a.age >= 0 && a.age < 1).toBe(true);
+    expect(county.arrivalsAt(job.servedAt! + 0.5, "hearthAt").some((a) => a.h === job.h && a.age < 0.2)).toBe(false);
+  });
+});
