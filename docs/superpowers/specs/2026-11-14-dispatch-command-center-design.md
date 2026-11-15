@@ -28,7 +28,8 @@ Two asks from the same conversation are folded in here because they meet on this
 
 ## Non-goals
 
-- No change to how requests are ordered, placed or offered to crews (`hearth/dispatch.py` rules stay as they are).
+- No change to how requests are ordered or offered to crews. Placement changes in one place only: an approved refuge
+  proposal becomes the drop-off for that resident's request (see "Builder questions settled").
 - No change to the call scripts or the storm rounds' calling logic.
 - No new map style or visual world: the app's "paper" look (`web/app/globals.css`) stays.
 - The map page (`/`) keeps its county replay; only its approve/reject moves here (see below).
@@ -133,6 +134,34 @@ The staging lot proposal (today's `StagingCard`) moves into the card for the lot
 - The page, not the voice endpoint, starts the agents (Vercel constraint).
 - The refuge agent runs only for requests the rules could not place, so it never slows a person in danger.
 - Display face and palette are the app's existing ones.
+
+## Builder questions settled (my calls after the review; the script writer approved building without another round)
+
+1. **Approve sends a crew.** When the dispatcher approves a refuge proposal for a request code could not place, that
+   refuge becomes the request's drop-off and placement runs again, so a crew is offered and the story ends with a
+   crew on the way. This is the only change to `hearth/dispatch.py` placement. It follows what the script writer said:
+   "if we're moving the person, that should be a dispatcher call." Placement also runs again when any agent survey
+   finishes (`place_again` for waiting requests), since a newly surveyed hotel can unblock someone.
+2. **One entry per request in "Needs you", and only when a person is needed.** While the refuge agent is running for
+   a blocked request, it shows under "Agents at work", not under "Needs you". When the agent ends, the request enters
+   "Needs you" once: as Approve / Reject if it proposed a refuge, or as "No refuge fits · N shelter leads" with
+   "Take over" if it did not. A request blocked for another reason (no crew can carry them) goes to "Needs you" at once.
+3. **Agent runs live on the server.** Each run is a stored record (kind, building or patient, what started it, status,
+   step lines with times, result). Every tab reads the same records; a reload loses nothing and starts nothing new.
+   Shelter leads are stored with the run. A refuge search runs once per request; it runs again only after the
+   dispatcher rejects its proposal (the rejection reason already goes to the agent's memory file). A building survey
+   runs once per building (an agent profile is its result). Finished runs drop off "Agents at work" after
+   10 minutes (a config value) but their results stay on the household card.
+4. **Storm-round line counts only what the server knows.** For the last round: when, calls placed, calls that could
+   not be placed, and registrations made by that round's calls (call records carry `ctx.storm`). No "no answer"
+   count: the server is not told about hang-ups. Any round may be placed again after the existing two-minute guard;
+   a round shows a check once it has been placed at least once.
+5. **Staging lots as pins.** Proposed lots show as outlined "P" pins; the chosen lot is a solid "P". Each lot's card
+   holds today's staging card content and the Choose / Clear action.
+6. **Which households, and a clean start.** The map shows phone registrations and every request from the last 24 hours
+   (a config value); finished requests show green. A command-line reset (not a page button, since it deletes stored
+   data) clears help requests, call records, agent runs and storm-round history, and registrations for the demo
+   numbers, so a rehearsal starts clean and stale blocked requests do not start agents.
 
 ## Left to the builder
 
