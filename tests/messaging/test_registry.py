@@ -154,3 +154,31 @@ def test_a_second_round_right_after_the_first_calls_no_one_again(phones):
     registry.storm("week")
     again = registry.storm("outage")  # one phone cannot take two calls at once, whichever round
     assert len(phones[1]) == 2 and again == {"dialed": [], "failed": ["a round of calls was placed a moment ago; wait 2 minutes to place another"]}
+
+
+def test_a_round_is_remembered_with_its_counts(phones):
+    assert registry.storm_history() == {"placed": {}, "last": None}
+    registry.storm("week")
+    store.put("call", "C-9", {"call_id": "C-9", "kind": "register", "patient_id": "R-9", "ctx": {"storm": "week"}, "started_at": 2e9})
+    h = registry.storm_history()
+    assert list(h["placed"]) == ["week"] and h["last"]["round"] == "week"
+    assert (h["last"]["dialed"], h["last"]["failed"], h["last"]["registered"]) == (1, 2, 1)  # the stranger rings; the others cannot
+
+
+def test_a_guarded_press_records_no_round(phones):
+    registry.storm("week")
+    registry.storm("day")  # inside the two-minute guard
+    assert list(registry.storm_history()["placed"]) == ["week"]
+
+
+def test_reset_clears_demo_state(monkeypatch):
+    from hearth import reset
+
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", PHONE)
+    registry.save(call(**FULL))
+    for kind in reset.KINDS:
+        store.put(kind, "x", {"a": 1})
+    store.put("profile", "B-SAMPLE", {"building_id": "B-SAMPLE"})
+    out = reset.reset()
+    assert out["registrations"] == 1 and all(store.all(k) == [] for k in reset.KINDS)
+    assert registry.registrations()["registered"] == [] and store.get("profile", "B-SAMPLE")

@@ -269,7 +269,7 @@ def run() -> None:
             for r in left:
                 patient, home = people[r.patient_id]
                 here = locate(patient, home)
-                refuge = _refuge(patient, here, dark, taken, profiles)
+                refuge = r.refuge_pick or _refuge(patient, here, dark, taken, profiles)
                 if refuge is None:
                     r.blocked = NO_REFUGE.format(km=a("refuge.search_radius_km"))
                 elif not any(_fits(c, patient, home, r.declined_by) for c in on_duty.values()):
@@ -303,7 +303,7 @@ def run() -> None:
             offered = 0
             for k, j in sorted(routing.solve([[worth(k, j, pid) for j in range(len(free))] for k, pid in enumerate(serve)])):
                 r, patient, _, here, refuge = placed[serve[k]]
-                again = _refuge(patient, here, dark, taken, profiles)
+                again = r.refuge_pick or _refuge(patient, here, dark, taken, profiles)
                 if again is None or again.building_id != refuge.building_id:
                     continue  # someone ahead in the order took the last place this round; placed again next round
                 c = free[j]
@@ -345,6 +345,16 @@ def place_again(patient_id: str) -> None:
     with _lock:
         run()
     _notify(patient_id)
+
+
+def use_refuge(patient_id: str, option: RefugeOption) -> None:
+    """A dispatcher approved a refuge for this resident: it becomes the waiting request's drop-off, and placement runs again."""
+    with _lock:
+        if (r := request(patient_id)) is None or r.state != "waiting":
+            return
+        r.refuge_pick = option
+        _save(r)
+    place_again(patient_id)
 
 
 def open_request(patient_id: str) -> HelpRequest:

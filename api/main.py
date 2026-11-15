@@ -3,6 +3,7 @@ import hmac
 import json
 import os
 import re
+from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterator, Literal
@@ -14,7 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from api import live
-from hearth import dispatch, remote, staging, store
+from hearth import agents, dispatch, remote, staging, store
 from hearth.buildings import refuge, status, tools
 from hearth.messaging import registry
 from hearth.buildings.agent import survey
@@ -277,9 +278,18 @@ def building_entrance(building_id: str):
 
 
 @app.get("/api/buildings/{building_id}/survey")
-def building_survey(building_id: str, fresh: bool = False):
+def building_survey(building_id: str, fresh: bool = False, patient_id: str | None = None):
+    """`patient_id`: the phone registrant whose registration started it, when the dispatch page did. A cached profile
+    is read back untracked; a live survey is a stored run, refused while one for this building is running."""
     rec = _building(building_id)
-    return _sse(survey(building_id, rec["address"], rec["lat"], rec["lon"], use_cache=not fresh))
+    events = survey(building_id, rec["address"], rec["lat"], rec["lon"], use_cache=not fresh)
+    if not fresh and (doc := store.get("profile", building_id)) and doc.get("method", "agent") == "agent":
+        return _sse(events)
+    try:
+        run = agents.claim("survey", building_id=building_id, patient_id=patient_id, address=rec["address"])
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return _sse(agents.track(run, events))
 
 
 # ---- home markup: what a resident persona says about their own home, shown to the responder ----
@@ -431,13 +441,37 @@ def crew_action(body: JobAction, crew_id: str = CrewName):
 
 @app.get("/api/dispatch")
 def dispatch_board():
+    """The dispatch page's one poll: requests with where they are, crews, agent runs and the ones to start, refuge
+    proposals waiting on a person, and the storm rounds placed. Ended requests older than `dispatch_page.window_h` drop off."""
     dispatch.expire()
+    since = dispatch._now() - timedelta(hours=a("dispatch_page.window_h"))
     rows = []
     for req in dispatch.board():
-        if who := dispatch.person(req.patient_id):
-            rows.append({"request": req, "device": who[0].device, "mobility": who[0].mobility, "address": dispatch.locate(*who).address})
+        if (who := dispatch.person(req.patient_id)) and (req.state in dispatch.LIVE or max(req.times.values(), default=since) > since):
+            here = dispatch.locate(*who)
+            rows.append({"request": req, "patient": who[0], "home": who[1], "device": who[0].device, "mobility": who[0].mobility,
+                         "address": here.address, "building_id": here.building_id, "lat": here.lat, "lon": here.lon})
     on = {r.job.org_id: r.patient_id for r in dispatch.requests() if r.state in dispatch.WITH_CREW and r.job}
-    return {"requests": rows, "crews": [{"crew": c, "patient_id": on.get(c.crew_id)} for c in dispatch.crews()]}
+    return {"requests": rows, "crews": [{"crew": c, "patient_id": on.get(c.crew_id)} for c in dispatch.crews()],
+            "agents": agents.runs(), "to_start": agents.to_start(), "proposals": [p for p in store.all("proposal") if p.get("status") == "pending"],
+            "storm": registry.storm_history()}
+
+
+@lru_cache(maxsize=1)
+def _simulated() -> list[list[float]]:
+    for run_id in a("dispatch_page.simulated_runs"):
+        try:
+            pts = [[p["lon"], p["lat"]] for p in json.loads(_run_file(run_id, "snapshots/0.json").read_text())["patients"]]
+        except HTTPException:
+            continue
+        return pts[:: max(1, len(pts) // a("dispatch_page.simulated_dots"))][: a("dispatch_page.simulated_dots")]
+    return []
+
+
+@app.get("/api/dispatch/simulated")
+def simulated():
+    """[lon, lat] of a sample of the county replay's simulated households, drawn faintly behind the real ones."""
+    return _simulated()
 
 
 @app.post("/api/dispatch/{patient_id}/handled")
@@ -453,7 +487,13 @@ def handled(patient_id: str):
 def propose(patient_id: str, body: dict | None = Body(default=None)):
     patient = _patient(patient_id)
     dark = set((body or {}).get("dark_zips") or [patient.zip])  # the patient's own ZIP is dark by definition
-    return _sse(refuge.propose(patient, dark))
+    here = dispatch.locate(patient, (dispatch.person(patient_id) or (None, None))[1])
+    try:
+        run = agents.claim("refuge", building_id=here.building_id, patient_id=patient_id, address=here.address,
+                           request_at=agents.request_at(dispatch.request(patient_id)))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return _sse(agents.track(run, refuge.propose(patient, dark)))
 
 
 @app.get("/api/shelter-tile")
@@ -489,6 +529,7 @@ def decision(proposal_id: str, body: Decision):
         raise HTTPException(409, str(e))
     out = prop.model_dump(mode="json")
     if prop.status == "approved":
+        dispatch.use_refuge(prop.patient_id, prop.options[0])  # the dispatcher's pick becomes the drop-off, and a crew is offered
         try:
             out["call_id"] = live.on_approved(prop)
             out["phone_call"] = live.dial(out["call_id"])  # the patient's phone rings when a person entered one

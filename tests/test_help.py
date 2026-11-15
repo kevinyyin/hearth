@@ -104,3 +104,19 @@ def test_polling_the_tracker_does_not_rewrite_the_patient_record(monkeypatch):
     real = store.put
     monkeypatch.setattr(store, "put", lambda kind, id, obj: writes.append(kind) or real(kind, id, obj))
     assert client.get("/api/patients/p4/help").status_code == 200 and "patient" not in writes
+
+
+def test_approving_a_refuge_proposal_makes_it_the_drop_off_and_offers_a_crew(monkeypatch):
+    from api import live
+    from bhelpers import seed_pending_proposal
+
+    monkeypatch.setattr(live, "start_call", lambda *a, **k: "c1")
+    monkeypatch.setattr(live, "dial", lambda call_id: None)
+    store.delete("profile", "H-LEVEL")  # the only step-free refuge is unknown to code
+    crew("Alpha", vehicle="wheelchair_van", equipment=["wheelchair_lift"])
+    assert client.post("/api/patients/p1/help").json()["state"] == "waiting"
+    assert dispatch.request("p1").blocked.startswith("no refuge")
+    seed_pending_proposal("P-1", "p1")  # the refuge agent found H-LEVEL
+    assert client.post("/api/proposals/P-1/decision", json={"decision": "approve"}).status_code == 200
+    r = dispatch.request("p1")
+    assert r.state == "offered" and r.refuge.building_id == "H-LEVEL" and r.blocked == "" and job("Alpha")["request"]["patient_id"] == "p1"

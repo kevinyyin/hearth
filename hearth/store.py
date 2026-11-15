@@ -79,6 +79,15 @@ def all(kind: str) -> list[dict]:
     return [json.loads(r[0]) for r in rows]
 
 
+def clear(kind: str) -> None:
+    """Deletes every document of one kind."""
+    if url := postgres_url():
+        _pg(url, "DELETE FROM docs WHERE kind = %s", (kind,))
+        return
+    with closing(_conn()) as c, c:
+        c.execute("DELETE FROM docs WHERE kind = ?", (kind,))
+
+
 def delete(kind: str, id: str) -> None:
     if url := postgres_url():
         _pg(url, "DELETE FROM docs WHERE kind = %s AND id = %s", (kind, id))

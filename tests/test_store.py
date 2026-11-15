@@ -73,3 +73,12 @@ def test_postgres_keeps_one_connection_and_replaces_a_dropped_one(monkeypatch):
     assert len(opened) == 1  # each read or write used to open its own connection: about 150 ms each from Vercel
     opened[0].fail_next = True  # the pooler dropped an idle connection
     assert store.get("call", "c1") == {"ok": 1} and len(opened) == 2 and opened[0].closed
+
+
+def test_clear_removes_one_kind(tmp_path, monkeypatch):
+    monkeypatch.setenv("HEARTH_DB", str(tmp_path / "t.db"))
+    store.put("a", "1", {"x": 1})
+    store.put("a", "2", {"x": 2})
+    store.put("b", "1", {"x": 3})
+    store.clear("a")
+    assert store.all("a") == [] and store.all("b") == [{"x": 3}]
