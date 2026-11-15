@@ -268,13 +268,18 @@ export default function SimulationPage() {
     return () => clearTimeout(t);
   }, [callActive, event.n, advance]);
 
-  // a caller who asks to be moved on the real outage call has requested help, as the script's caller does
+  // asking for help on the real outage call opens a real request: once it is live, the caller has requested help,
+  // as the script's caller does
+  const helpState = usePoll<{ state: string | null }>(
+    realOutage && callActive && enrolledId ? `/api/patients/${enrolledId}/help` : null, 2000,
+  ).data?.state;
+  const helpOpened = !!helpState && ["waiting", "offered", "accepted", "at_door", "riding"].includes(helpState);
   useEffect(() => {
-    if (!realOutage || !callActive || outageCall?.facts?.consents_to_move !== true) return;
+    if (!realOutage || !callActive || !helpOpened) return;
     setAskedOnCall(true);
     const t = setTimeout(advance, AUTO_MS);
     return () => clearTimeout(t);
-  }, [realOutage, callActive, outageCall, advance]);
+  }, [realOutage, callActive, helpOpened, advance]);
 
   const startEvent = () => {
     setPhaseIdx(0);
