@@ -255,6 +255,36 @@ def vexcel_detect(lat: float, lon: float, labels: tuple[str, ...] = DETECT_LABEL
     return summarize_detections(r.json(), lat, lon)[:12]
 
 
+def _points(coords) -> list:
+    """Every [lon, lat] in a GeoJSON coordinates array, however deeply it nests."""
+    if not coords:
+        return []
+    return [coords] if isinstance(coords[0], (int, float)) else [p for c in coords for p in _points(c)]
+
+
+def tile_centers(j: dict) -> list[dict]:
+    """embedding/extract -> [{lat, lon, score}], best first: the centre of each matched tile (tiles are about 66 m wide)."""
+    out = []
+    for f in j.get("features") or []:
+        if pts := _points((f.get("geometry") or {}).get("coordinates")):
+            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+            out.append({"lat": round((min(ys) + max(ys)) / 2, 5), "lon": round((min(xs) + max(xs)) / 2, 5), "score": round(f["properties"]["score"], 3)})
+    return sorted(out, key=lambda t: -t["score"])
+
+
+def vexcel_search(lat: float, lon: float, half_m: float, text: str, limit: int) -> list[dict]:
+    """Semantic search over the aerial tiles in a square around the point: the tiles that look most like `text`."""
+    if _fixtures_on():
+        return []  # fixtures hold no aerial search
+    dlat, dlon = half_m / 111_320, half_m / (111_320 * math.cos(math.radians(lat)))
+    w, e, s, n = lon - dlon, lon + dlon, lat - dlat, lat + dlat
+    r = _vexcel("POST", "/embedding/extract", json={
+        "wkt": f"POLYGON(({w} {s},{e} {s},{e} {n},{w} {n},{w} {s}))", "srid": 4326, "search-text": text,
+        "include": "score,geometry,collection", "total-records": limit, "page-size": limit})
+    r.raise_for_status()
+    return tile_centers(r.json())
+
+
 def vexcel_attributes(lat: float, lon: float) -> dict | None:
     if not _fixtures_on():
         r = _vexcel("GET", "/property/extract", params={"wkt": f"POINT({lon} {lat})", "srid": 4326, "layer": VEXCEL_LAYERS,

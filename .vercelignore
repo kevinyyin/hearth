@@ -7,7 +7,9 @@
 data/raw
 data/buildings/*
 !data/buildings/_fixtures
-data/processed
+data/processed/*
+# the refuge agent's shelter search maps a site to its ZIP with these polygons (182 KB, public Census shapes)
+!data/processed/zcta_beryl_2024.geojson
 data/*.db
 data/remote
 results/beryl_*

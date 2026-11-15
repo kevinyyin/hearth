@@ -9,7 +9,7 @@
   "functions": {
     "api/main.py": {
       "maxDuration": 300,
-      "excludeFiles": "{.env,.env.*,.claude/**,.superpowers/**,.venv/**,web/**,tests/**,docs/**,evals/**,scripts/**,results/beryl_*/**,data/raw/**,data/processed/**,data/remote/**,data/*.db,data/buildings/!(_fixtures)/**}"
+      "excludeFiles": "{.env,.env.*,.claude/**,.superpowers/**,.venv/**,web/**,tests/**,docs/**,evals/**,scripts/**,results/beryl_*/**,data/raw/**,data/processed/!(zcta_beryl_2024.geojson),data/remote/**,data/*.db,data/buildings/!(_fixtures)/**}"
     }
   }
 }
