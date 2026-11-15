@@ -880,7 +880,7 @@ export default function SimulationPage() {
                 )}
 
                 {phaseReached("offered") && (
-                  <EmsOffer accepted={phaseReached("accepted")} onAccept={advance} buildingLabel={resident.buildingLabel} request={helpRequest} />
+                  <EmsOffer accepted={phaseReached("accepted")} onAccept={advance} buildingLabel={resident.buildingLabel} request={helpRequest} distance={real ? null : undefined} />
                 )}
 
                 {phaseReached("accepted") && (

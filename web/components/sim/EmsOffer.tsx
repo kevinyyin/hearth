@@ -12,11 +12,14 @@ export default function EmsOffer({
   accepted,
   buildingLabel = RESIDENT.buildingLabel,
   request = HELP_REQUEST,
+  distance = "2.5 km · about 11 min",
 }: {
   onAccept: () => void;
   accepted: boolean;
   /** What the crew is offered; the placeholder unless a real call supplied the record. */
   request?: typeof HELP_REQUEST;
+  /** The placeholder's drive; null when the route is worked out on the map instead. */
+  distance?: string | null;
   /** Real CoStar id when the API answered, the placeholder label otherwise. */
   buildingLabel?: string;
 }) {
@@ -37,7 +40,7 @@ export default function EmsOffer({
           </p>
           <h3 className="text-lg font-semibold">{request.summary}</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-            {buildingLabel} · 2.5 km · about 11 min
+            {buildingLabel}{distance ? ` · ${distance}` : ""}
           </p>
         </div>
         <span
