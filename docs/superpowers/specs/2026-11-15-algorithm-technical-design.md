@@ -32,9 +32,13 @@ stack (CoStar, Vexcel, Matterport, LangChain deepagents), and showing real data 
   - conflicts, verbatim;
   - layer effects: hours to unsafe with every layer, and with each layer's fields reset (`layer_effects`), as bars;
   - the Vexcel tile (`image_url` via `useAuthedImage`).
-  - "Run the surveyor live" streams `GET /api/buildings/{id}/survey?fresh=true` into the existing `AgentTrace`, then
-    reloads the profile. A 409 (already running) or failure shows its message; the stored profile is only replaced when
-    the agent writes a new one.
+  - **Replay at 2× (user decision, Nov 15):** a real survey took 35 s locally, too long for judges. Every live survey
+    that finishes now stores its events (`survey_recording`, written in `agents.track`), and
+    `GET /api/buildings/{id}/survey/recording` serves the last one. The page plays it back at twice its recorded
+    timing (~18 s), labeled with when it ran and how long it took live.
+  - "Run it live" streams `GET /api/buildings/{id}/survey?fresh=true` into the same log and `AgentTrace`, then
+    reloads the profile and the recording. A 409 (already running) or failure shows its message; the stored profile is
+    only replaced when the agent writes a new one.
 - **Static, always rendered** (so the page still reads if the API is down):
   - pipeline: `commercial-property.jsonl` → `normalize_costar` → surveyor (costar / aerial / interior subagents) →
     `BuildingProfile {value, source, confidence}` → planner;
