@@ -54,6 +54,12 @@ def test_a_full_registration_writes_records_and_closes():
     assert h.scan_id == "fixture-B-SAMPLE"
 
 
+@pytest.mark.parametrize("device, supply", [("oxygen", "backup"), ("home_dialysis", "time before your next treatment")])
+def test_the_hours_readback_names_the_backup(device, supply):
+    said = talk(new_call(), YES, Turn(device=device), ADDRESS, YES, Turn(backup_hours=4))
+    assert said[-1] == f"I have you at four hours, that's two hundred forty minutes of {supply}. Is that right?"
+
+
 def test_no_equipment_closes_and_stores_nothing():
     c = new_call()
     assert talk(c, NO)[-1] == render("reg_no_equipment") and c["status"] == "done" and store.all("patient") == []

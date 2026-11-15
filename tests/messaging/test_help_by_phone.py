@@ -87,7 +87,9 @@ def test_needs_help_now_opens_a_request_without_questions_and_flags_the_call(mon
     monkeypatch.setattr(voice, "interpret_turn", lambda *a: Turn(needs_help_now=True, wants_human=True))
     c = voice.start_call(pid, "menu", phone=PHONE)
     voice.respond(c, "")  # the opening
-    assert render("help_opened") in voice.respond(c, "my oxygen stopped, I can't breathe")
+    said = voice.respond(c, "my oxygen stopped, I can't breathe")
+    assert said == render("help_now") == ("If you can't breathe or this is an emergency, hang up and call 911 now. "
+                                          "I've also asked for a crew and flagged your call for a person at the health department.")
     assert store.get("call", c)["status"] == "escalated" and dispatch.request(pid).state in ("waiting", "offered") and mobility(pid) == "bedbound"
 
 
@@ -113,6 +115,16 @@ def test_a_live_request_is_already_in_and_read_back():
     dispatch.open_request(pid)
     said = talk(menu_call(pid), HELP)
     assert said[1].startswith("Your request: ") and said[-2] == render("help_already") and said[-1].startswith("Your request: ")
+
+
+def test_needs_help_now_with_a_live_request_says_911_first(monkeypatch):
+    pid = registrant()
+    dispatch.open_request(pid)
+    monkeypatch.setattr(voice, "interpret_turn", lambda *a: Turn(needs_help_now=True, wants_human=True))
+    c = voice.start_call(pid, "menu", phone=PHONE)
+    voice.respond(c, "")
+    said = voice.respond(c, "my oxygen stopped, I can't breathe")
+    assert said.startswith(render("help_now") + " " + render("help_already"))
 
 
 def test_spoken_safe_marks_safe_but_keypad_1_does_not():
