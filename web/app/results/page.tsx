@@ -56,6 +56,8 @@ export default function ResultsPage() {
   };
 
   const hearth = at("p3");
+  const atCrews = (policy: string) => rows?.find((r) => r.policy === policy && r.crews === crews);
+  const patients = atCrews("p3")?.patients;
   const bars = COMPARISONS.map((p) => ({ policy: p, value: at(p) }));
   const scaleMax = Math.max(hearth ?? 0, ...bars.map((b) => b.value ?? 0), 1);
 
@@ -205,6 +207,28 @@ export default function ResultsPage() {
               Median patient-hours at risk, risk-weighted. Lower is better; the upright mark is
               Hearth on the same scale.
             </p>
+
+            {/* the same comparison as a count of people, which reads faster than hours */}
+            {patients != null && (
+              <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                <h3 className="mb-2 text-sm font-semibold">Patients whose device ran out of power at home</h3>
+                <ul className="m-0 list-none space-y-1 p-0 text-sm">
+                  {(["p0", "p3", "p3__paired"] as PolicyId[]).map((policy) => {
+                    const n = atCrews(policy)?.ran_out_median;
+                    return (
+                      <li key={policy} className="flex items-baseline justify-between gap-3">
+                        <span style={{ color: "var(--text-secondary)" }}>{POLICY_LABELS[policy]}</span>
+                        <span className="tnum font-semibold">{n == null ? "—" : `${Math.round(n)} of ${patients}`}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                  Median over the simulated runs. A patient counts once if their backup reached zero in a home
+                  without power before a crew had moved them.
+                </p>
+              </div>
+            )}
           </section>
         </div>
 

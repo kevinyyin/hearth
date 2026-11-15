@@ -82,15 +82,18 @@ def test_summary_has_published_keys(tmp_path):
     from hearth.config import ASSUMPTIONS
     s = run("sample", "p3", 1, 5, out_root=tmp_path); d = next(tmp_path.iterdir())
     assert {"risk_hours_weighted", "risk_hours_unweighted", "device_hours", "temp_hours", "moves", "patients_reaching_zero",
-            "assumptions_sha256"} <= s.keys()
+            "patients", "assumptions_sha256"} <= s.keys()
+    assert 0 <= s["patients_reaching_zero"] <= s["patients"] == 200  # the sample scenario's patients
     assert s["assumptions_sha256"] == hashlib.sha256(ASSUMPTIONS.read_bytes()).hexdigest()
     assert s["moves"] == (d / "events.jsonl").read_text().count('"type": "moved"') > 0
 
 
 def test_sweep_rows_take_median_and_percentiles():
     from hearth.metrics import sweep_rows
-    runs = [{"policy": "p3", "crews": 5, "risk_hours_weighted": float(w), "risk_hours_unweighted": float(w) / 2} for w in range(1, 12)]
-    assert sweep_rows(runs) == [{"policy": "p3", "crews": 5, "median": 6.0, "p5": 1.5, "p95": 10.5, "unweighted_median": 3.0}]
+    runs = [{"policy": "p3", "crews": 5, "risk_hours_weighted": float(w), "risk_hours_unweighted": float(w) / 2,
+             "patients_reaching_zero": w * 10, "patients": 647} for w in range(1, 12)]
+    assert sweep_rows(runs) == [{"policy": "p3", "crews": 5, "median": 6.0, "p5": 1.5, "p95": 10.5, "unweighted_median": 3.0,
+                                 "ran_out_median": 60.0, "patients": 647}]
 
 
 def test_sweep_writes_one_row_per_policy_and_crew_count(tmp_path):
