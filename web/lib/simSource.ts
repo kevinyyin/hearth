@@ -346,6 +346,8 @@ export type BuildingBrief = {
   building_id: string;
   name: string | null;
   address?: string;
+  lat?: number;
+  lon?: number;
   /** Vexcel's top-down tile, served by the API behind the password. */
   image_url?: string;
   /** Matterport models CoStar lists for this building. Empty with fixtures. */

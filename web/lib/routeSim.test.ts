@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { cumulative, LEGS, pointAt } from "./routeSim";
+import { cumulative, LEGS, legsTo, pointAt } from "./routeSim";
 
 const path: [number, number][] = [[0, 0], [0, 1], [1, 1]];
 
@@ -24,4 +24,21 @@ it("chains the legs: each starts where the last one ended, with every obstacle o
     expect(Math.hypot(LEGS[i].path[0][0] - end[0], LEGS[i].path[0][1] - end[1])).toBeLessThan(0.0005);
   }
   for (const l of LEGS) for (const o of l.obstacles) expect(l.path.some(([x, y]) => x === o.at[0] && y === o.at[1])).toBe(true);
+});
+
+it("re-drives the loop through the enrolled household, falling back to a straight line", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof fetch;
+  try {
+    const { legs, road } = await legsTo({ lon: -95.38, lat: 29.743, job: "The caller · assisted move", task: "Down the stairs" });
+    expect(road).toBe(false);
+    expect(legs[0].path).toEqual([LEGS[0].path[0], [-95.38, 29.743]]);
+    expect(legs[1].path[0]).toEqual([-95.38, 29.743]);
+    expect(legs[1].path.at(-1)).toEqual(LEGS[1].path.at(-1));
+    expect(legs[2]).toBe(LEGS[2]);
+    expect(legs[0].km).toBeGreaterThan(7);
+    expect(legs[0].obstacles).toEqual([]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });

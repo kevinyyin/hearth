@@ -3,7 +3,7 @@
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { cumulative, LEGS, OBSTACLE_STYLE, pointAt } from "@/lib/routeSim";
+import { cumulative, type Destination, type Leg, LEGS, legsTo, OBSTACLE_STYLE, pointAt } from "@/lib/routeSim";
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 /** Demo pacing, not real drive times. */
@@ -43,7 +43,7 @@ function pill(text: string, color: string, filled: boolean) {
  * labelled on the map and listed below it, so the map is never the only place
  * they are said.
  */
-export default function RouteSim({ onArrive }: { onArrive: () => void }) {
+export default function RouteSim({ onArrive, destination }: { onArrive: () => void; destination?: Destination }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const van = useRef<Marker | null>(null);
@@ -52,6 +52,18 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
   onArriveRef.current = onArrive;
 
   const [ready, setReady] = useState(false);
+  // the saved loop, or the loop re-routed through the household a real call enrolled
+  const [routed, setRouted] = useState<{ legs: Leg[]; road: boolean } | null>(destination ? null : { legs: LEGS, road: true });
+  const legs = routed?.legs;
+  const destKey = destination && `${destination.lon},${destination.lat},${destination.job}`;
+  useEffect(() => {
+    if (!destination) return setRouted({ legs: LEGS, road: true });
+    const ac = new AbortController();
+    setRouted(null);
+    legsTo(destination, ac.signal).then(setRouted).catch(() => {});
+    return () => ac.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the destination's values, not its identity
+  }, [destKey]);
   const [leg, setLeg] = useState(0);
   const [phase, setPhase] = useState<Phase>("driving");
   const [run, setRun] = useState(0);
@@ -91,11 +103,11 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
   // one effect walks the loop: drive, do the task, take the next job
   useEffect(() => {
     const m = map.current;
-    if (!m || !ready) return;
-    const L = LEGS[leg];
+    if (!m || !ready || !legs) return;
+    const L = legs[leg];
 
     if (phase === "task") {
-      const t = setTimeout(() => setPhase(leg < LEGS.length - 1 ? "assign" : "done"), TASK_MS);
+      const t = setTimeout(() => setPhase(leg < legs.length - 1 ? "assign" : "done"), TASK_MS);
       return () => clearTimeout(t);
     }
     if (phase === "assign") {
@@ -138,16 +150,18 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [ready, leg, phase, run]);
+  }, [ready, leg, phase, run, legs]);
 
-  const L = LEGS[leg];
-  const status =
-    phase === "driving"
+  const all = legs ?? LEGS;
+  const L = all[leg];
+  const status = !legs
+    ? "Routing to the household the call enrolled…"
+    : phase === "driving"
       ? `Driving to ${L.job} · ${L.km} km`
       : phase === "task"
         ? `On site: ${L.task}`
         : phase === "assign"
-          ? `New assignment: ${LEGS[leg + 1].job}`
+          ? `New assignment: ${all[leg + 1].job}`
           : "All three jobs done. Queue clear.";
 
   return (
@@ -192,9 +206,9 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
             <p className="text-[11px] font-semibold tracking-wide uppercase" style={{ color: "var(--accent)" }}>
               New assignment
             </p>
-            <p className="text-sm font-semibold">{LEGS[leg + 1].job}</p>
+            <p className="text-sm font-semibold">{all[leg + 1].job}</p>
             <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              {LEGS[leg + 1].task} · {LEGS[leg + 1].km} km
+              {all[leg + 1].task} · {all[leg + 1].km} km
             </p>
           </div>
         )}
@@ -203,6 +217,9 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
       <h4 className="mt-4 mb-2 text-[11px] font-semibold tracking-wide uppercase" style={{ color: "var(--text-muted)" }}>
         On this route
       </h4>
+      {L.obstacles.length === 0 && (
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>No obstacles reported on this route.</p>
+      )}
       <ul className="space-y-2">
         {L.obstacles.map((o) => (
           <li key={o.street + o.kind} className="flex gap-3 text-sm">
@@ -220,7 +237,7 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
       </ul>
 
       <ol className="mt-4 space-y-1.5 border-t pt-3 text-sm" style={{ borderColor: "var(--border)" }}>
-        {LEGS.map((l, i) => {
+        {all.map((l, i) => {
           const done = i < leg || (i === leg && phase !== "driving");
           return (
             <li key={l.job} className="flex items-center gap-3">
@@ -239,8 +256,11 @@ export default function RouteSim({ onArrive }: { onArrive: () => void }) {
       </ol>
 
       <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-        Roads from OpenStreetMap via the OSRM router, saved once. Obstacle labels are placeholders until the
-        obstacle algorithm is connected; the next two households are synthetic.
+        {destination
+          ? routed && !routed.road
+            ? "The router did not answer, so the first two legs are straight lines, their length × 1.4. The last two households are synthetic."
+            : "Roads to the enrolled household and on to the next job from OpenStreetMap via the OSRM router, fetched just now. The last two households are synthetic."
+          : "Roads from OpenStreetMap via the OSRM router, saved once. Obstacle labels are placeholders until the obstacle algorithm is connected; the next two households are synthetic."}
       </p>
     </section>
   );

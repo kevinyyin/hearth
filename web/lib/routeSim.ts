@@ -59,3 +59,37 @@ export function pointAt(path: [number, number][], cum: number[], p: number) {
   const bearing = (Math.atan2((bx - ax) * Math.cos((ay * Math.PI) / 180), by - ay) * 180) / Math.PI;
   return { at, bearing, passed: i };
 }
+
+/** Where a crew going to a household the call just enrolled is sent: the household, and what to do there. */
+export type Destination = { lon: number; lat: number; job: string; task: string };
+
+const kmBetween = ([ax, ay]: [number, number], [bx, by]: [number, number]) =>
+  Math.hypot((bx - ax) * Math.cos((ay * Math.PI) / 180), by - ay) * 111.32;
+
+/**
+ * A road path from the public OSRM router (OpenStreetMap), the router the saved legs came from.
+ * shortcut: a straight line, its length × 1.4, when the public router does not answer; route on the API once it has roads.
+ */
+export async function roadPath(from: [number, number], to: [number, number], signal?: AbortSignal): Promise<{ path: [number, number][]; km: number; road: boolean }> {
+  try {
+    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${from.join(",")};${to.join(",")}?overview=full&geometries=geojson`, { signal });
+    const route = r.ok ? (await r.json()).routes?.[0] : null;
+    if (!route?.geometry?.coordinates?.length) throw new Error("no route");
+    return { path: route.geometry.coordinates, km: Math.round(route.distance / 100) / 10, road: true };
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    return { path: [from, to], km: Math.round(kmBetween(from, to) * 1.4 * 10) / 10, road: false };
+  }
+}
+
+/** The saved loop, re-driven through the enrolled household: station -> household -> the next job, then the last leg as saved. */
+export async function legsTo(dest: Destination, signal?: AbortSignal): Promise<{ legs: Leg[]; road: boolean }> {
+  const home: [number, number] = [dest.lon, dest.lat];
+  const next = LEGS[1].path[LEGS[1].path.length - 1];
+  const [a, b] = await Promise.all([roadPath(LEGS[0].path[0], home, signal), roadPath(home, next, signal)]);
+  // the saved obstacle labels sit on the saved roads, so the new roads carry none
+  return {
+    legs: [{ ...dest, km: a.km, path: a.path, obstacles: [] }, { ...LEGS[1], km: b.km, path: b.path, obstacles: [] }, LEGS[2]],
+    road: a.road && b.road,
+  };
+}

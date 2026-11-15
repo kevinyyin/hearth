@@ -7,7 +7,7 @@ import EmsOffer from "@/components/sim/EmsOffer";
 import BuildingViews from "@/components/sim/BuildingViews";
 import RouteSim from "@/components/sim/RouteSim";
 import { CREW_VEHICLE } from "@/lib/routeSim";
-import { useResidentFeed } from "@/lib/simSource";
+import { useBuildingFeed, useResidentFeed } from "@/lib/simSource";
 import {
   ENROLMENT_CALL,
   ENROLMENT_FIELDS,
@@ -166,6 +166,19 @@ export default function SimulationPage() {
   const views = real
     ? { buildingId: typeof said.building_id === "string" ? said.building_id : null, scanId: typeof said.scan_id === "string" ? said.scan_id : null, outside: [], inside: [] }
     : { buildingId: residentFeed.buildingId, scanId: residentFeed.scanId, outside: residentFeed.outside, inside: residentFeed.inside };
+
+  // the drive goes to the caller's building, by road, once the call has named it
+  const callBuilding = useBuildingFeed(real ? views.buildingId : null).data;
+  const destination = useMemo(() => {
+    if (!real || callBuilding?.lat == null || callBuilding.lon == null) return undefined;
+    const device = resident.device.toLowerCase();
+    return {
+      lon: callBuilding.lon,
+      lat: callBuilding.lat,
+      job: `${resident.name} · assisted move, ${device}`,
+      task: typeof said.room === "string" ? `Out from the ${said.room} with the ${device}` : `Assisted move with the ${device}`,
+    };
+  }, [real, callBuilding, resident, said]);
 
   /** Rings the number; true once the phone line has placed the call. */
   async function placeRealCall(): Promise<boolean> {
@@ -952,7 +965,7 @@ export default function SimulationPage() {
 
               {/* sidebar */}
               <div className="flex min-h-0 flex-col gap-5">
-                {phaseReached("accepted") && <RouteSim onArrive={advance} />}
+                {phaseReached("accepted") && <RouteSim onArrive={advance} destination={destination} />}
               </div>
             </div>
           </>
