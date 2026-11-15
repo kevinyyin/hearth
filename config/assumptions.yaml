@@ -150,3 +150,14 @@ shelter:
   costar_match_m: {value: 100, source: "our call Nov 14: a CoStar record's point this close to a matched tile is taken as the same property; placeholder", confirmed: false}
   max_sites: {value: 5, source: "our call Nov 14: leads shown to the dispatcher, nearest first; a list short enough to phone", confirmed: false}
   tile_half_m: {value: 60, source: "our call Nov 14: the aerial shown for a lead is 120 m across, the matched tile and its surroundings", confirmed: false}
+
+# ---- dispatch command center: agents the page starts on its own, and what the page shows ----
+agents:
+  stale_after_s: {value: 300, source: "our call Nov 14: Vercel's function limit is 300 s, so a run nobody has written to for this long was cut off and may start again", confirmed: false}
+  rail_min: {value: 10, source: "design Nov 14 (builder questions, 3): finished runs drop off Agents at work after 10 minutes", confirmed: false}
+  max_running: {value: 2, source: "our call Nov 14: at most this many agent runs at once across every dispatch tab; each survey costs model calls and holds a connection", confirmed: false}
+
+dispatch_page:
+  window_h: {value: 24, source: "design Nov 14 (builder questions, 6): the map shows requests from the last 24 hours; open ones always", confirmed: false}
+  simulated_runs: {value: ["beryl_2024__p3__c20__s1", "sample__p3__c5__s1"], source: "our call Nov 14: the county replay's patients stand behind the real pins; the bundled sample when the replay is not reachable", confirmed: false}
+  simulated_dots: {value: 400, source: "design Nov 14: a sample of a few hundred simulated households is enough", confirmed: false}

@@ -250,6 +250,7 @@ class HelpRequest(BaseModel):
     blocked: str = ""
     declined_by: list[str] = Field(default_factory=list)
     refuge: RefugeOption | None = None
+    refuge_pick: RefugeOption | None = None  # a refuge a dispatcher approved for this request: the drop-off, in place of code's search
     job: Job | None = None  # kind "ride", org_id the crew; created while offered, accepted until drop-off, then completed
 
 

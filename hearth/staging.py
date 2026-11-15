@@ -6,7 +6,7 @@ from hearth.buildings import tools
 from hearth.config import a
 
 NOT_STAGING = ("multifamily", "senior_housing")  # residents' own parking
-KEYS = ("building_id", "name", "address", "zip", "property_type", "surface_spaces", "lot_acres")
+KEYS = ("building_id", "name", "address", "zip", "property_type", "surface_spaces", "lot_acres", "lat", "lon")
 
 
 def candidates(rows: list[dict], dark_zips: set[str], center: tuple[float, float], limit: int = 3) -> list[dict]:

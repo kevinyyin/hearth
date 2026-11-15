@@ -38,7 +38,7 @@ def test_nearest_three_first_with_distance_and_a_name():
     assert [o["building_id"] for o in out] == ["near", "mid", "far"]
     assert (out[0]["name"], out[0]["km"]) == ("Target", 1.1)
     assert out[1]["name"] == "mid Lot St, Houston, TX 77027"  # no building name: the address stands in
-    assert set(out[0]) == {"building_id", "name", "address", "zip", "property_type", "surface_spaces", "lot_acres", "km"}
+    assert set(out[0]) == {"building_id", "name", "address", "zip", "property_type", "surface_spaces", "lot_acres", "lat", "lon", "km"}
 
 
 def test_nothing_to_centre_on_means_no_options():

@@ -7,7 +7,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, get_args
 
 from hearth import store
 from hearth.buildings import tools
@@ -123,7 +123,8 @@ def storm(round: Round = "week") -> dict:
     wait = a("storm.again_after_min")
     if time.time() - (store.get("storm", "last") or {}).get("t", 0) < wait * 60:  # a second press must not ring every phone again
         return {"dialed": [], "failed": [f"a round of calls was placed a moment ago; wait {wait} minutes to place another"]}
-    store.put("storm", "last", {"t": time.time()})
+    t = time.time()
+    store.put("storm", "last", {"t": t})
     out = {"dialed": [], "failed": []}
     zips = set(a("storm.forecast_zips"))
     registrants = [(store.get("contact", pid) or {}).get("phone") for pid in _phone_homes() if (store.get("patient", pid) or {}).get("zip") in zips]
@@ -142,4 +143,16 @@ def storm(round: Round = "week") -> dict:
                 out["failed"].append(f"{phone}: not dialed (the phone line is not set up)")
         except Exception as e:
             out["failed"].append(f"{phone}: {e}")
+    store.put("storm", round, {"round": round, "t": t, "dialed": len(out["dialed"]), "failed": len(out["failed"])})
     return out
+
+
+def storm_history() -> dict:
+    """For the dispatch page: when each round was last placed, and the last round's counts. "registered" counts the
+    registrations that round's own calls made; the server is not told about a hang-up, so there is no "no answer"."""
+    done = [d for r in get_args(Round) if (d := store.get("storm", r))]
+    last = max(done, key=lambda d: d["t"], default=None)
+    if last:
+        last = last | {"registered": sum(1 for c in store.all("call") if c.get("kind") == "register" and c.get("patient_id")
+                                         and c["ctx"].get("storm") == last["round"] and c.get("started_at", 0) >= last["t"])}
+    return {"placed": {d["round"]: d["t"] for d in done}, "last": last}

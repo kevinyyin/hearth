@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AccessBrief from "@/components/AccessBrief";
 import AgentTrace from "@/components/AgentTrace";
-import ProposalCard from "@/components/ProposalCard";
+import Link from "next/link";
 import { getJson, sendJson } from "@/lib/api";
 import { useAuthedImage } from "@/lib/useAuthedImage";
 import { reduceTrace, streamEvents } from "@/lib/sse";
@@ -14,9 +14,9 @@ const MISSING_WORDS: Record<string, string> = {
   vexcel: "No aerial data",
   matterport: "No 3D scan: entrance, stairs and elevator unverified",
 };
-const LAYER_NAMES: Record<string, string> = { costar: "CoStar", vexcel: "Vexcel", matterport: "Matterport" };
+export const LAYER_NAMES: Record<string, string> = { costar: "CoStar", vexcel: "Vexcel", matterport: "Matterport" };
 
-const show = (v: unknown): string =>
+export const show = (v: unknown): string =>
   v === null || v === undefined ? "unknown"
   : typeof v === "boolean" ? (v ? "yes" : "no")
   : Array.isArray(v) ? v.map((r) => (r && typeof r === "object" ? Object.values(r).filter((x) => x != null).join(" ") : String(r))).join("; ")
@@ -178,7 +178,12 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
               <ul className="space-y-1.5">{sites.map((s) => <ShelterLead key={`${s.lat},${s.lon}`} site={s} />)}</ul>
             </section>
           )}
-          {proposal && <ProposalCard proposal={proposal} onDecided={setProposal} />}
+          {proposal && (
+            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              The refuge agent proposed {proposal.options.map((o) => o.name).join(", ")}. Approve or reject it on the{" "}
+              <Link href="/dispatch" className="underline underline-offset-2">dispatch page</Link>.
+            </p>
+          )}
         </>
       )}
       {error && <p className="text-xs" style={{ color: "#d03b3b" }}>{error}</p>}

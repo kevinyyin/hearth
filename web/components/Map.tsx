@@ -10,7 +10,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { PLAN_STATES, stateColor, stateRadius } from "@/lib/snapshots";
 import type { Meta, PatientSnap, PlanState, Snapshot } from "@/lib/types";
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+export const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const SOURCE = "patients";
 const LAYER = "patients-circles";
 
