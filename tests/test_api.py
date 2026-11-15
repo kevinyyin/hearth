@@ -106,6 +106,19 @@ def test_survey_streams_server_sent_events():
     assert body.startswith("data: ") and '"kind":"done"' in body and '"cached":true' in body
 
 
+def test_a_finished_live_survey_is_recorded_for_replay(monkeypatch):
+    from api import main
+    from hearth.contracts import TraceEvent
+
+    events = [TraceEvent(seq=0, t=0.5, kind="tool", agent="costar", text="costar_record(building_id=B-SAMPLE)"),
+              TraceEvent(seq=1, t=2.0, kind="done", agent="surveyor", text="profile written", data={"profile": {"error": None}})]
+    monkeypatch.setattr(main, "survey", lambda *a, **k: iter(events))
+    assert client.get("/api/buildings/B-SAMPLE/survey/recording").status_code == 404
+    with client.stream("GET", "/api/buildings/B-SAMPLE/survey?fresh=true") as r:
+        "".join(r.iter_text())
+    assert [e["t"] for e in client.get("/api/buildings/B-SAMPLE/survey/recording").json()["events"]] == [0.5, 2.0]
+
+
 def test_propose_for_unknown_patient_is_404():
     assert client.post("/api/patients/nobody/propose").status_code == 404
 

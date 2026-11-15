@@ -305,6 +305,15 @@ def building_survey(building_id: str, fresh: bool = False, patient_id: str | Non
     return _sse(agents.track(run, events))
 
 
+@app.get("/api/buildings/{building_id}/survey/recording")
+def survey_recording(building_id: str):
+    """The last live survey of this building that finished, every event with its seconds; 404 before the first."""
+    _building(building_id)
+    if (doc := store.get(agents.RECORDING, building_id)) is None:
+        raise HTTPException(404, "no recorded survey")
+    return doc
+
+
 # ---- home markup: what a resident persona says about their own home, shown to the responder ----
 @app.get("/api/demo-patients")
 def demo_patients():

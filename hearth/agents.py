@@ -16,6 +16,7 @@ from hearth.config import a
 from hearth.contracts import HelpRequest, TraceEvent
 
 KIND = "agent_run"
+RECORDING = "survey_recording"
 LAYERS = {"costar": "CoStar records", "aerial": "Vexcel aerial", "interior": "Matterport scan"}
 DOING = {"costar_record": "reading the record", "vexcel_attributes": "reading the roof and trees", "aerial_detect": "finding parking and entrances",
          "aerial_look": "looking at the aerial", "matterport_rooms": "reading rooms", "matterport_panoramas": "listing panoramas",
@@ -115,6 +116,9 @@ def track(run: dict, events: Iterator[TraceEvent]) -> Iterator[TraceEvent]:
         if run["status"] == "running":
             store.put(KIND, run["run_id"], run | {"status": "stopped", "updated_at": time.time()})
     if run["kind"] == "survey" and run["status"] == "done":
+        # every event with its seconds, so the technical Algorithm page can replay the last real survey
+        store.put(RECORDING, run["building_id"], {"building_id": run["building_id"], "recorded_at": run["started_at"],
+                                                 "events": [e.model_dump(mode="json") for e in seen]})
         dispatch.place_again(run["patient_id"] or "")  # a newly surveyed hotel can unblock someone
 
 
