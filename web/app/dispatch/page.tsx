@@ -227,8 +227,7 @@ export default function DispatchPage() {
           </Link>
           <h1 className="display text-[40px] leading-none tracking-[-0.01em]">Dispatch</h1>
           <p className="mt-1 text-[13px]" style={muted}>
-            Harris County · simulated storm · real calls go only to numbers on the demo list ·{" "}
-            <Link href="/start" className="underline underline-offset-2">Switch role</Link>
+            Harris County · simulated storm · real calls go only to numbers on the demo list
           </p>
         </div>
         <StormRounds storm={view?.storm} onPlaced={changed} />
