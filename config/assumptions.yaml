@@ -119,7 +119,7 @@ building_records:
 sweep:
   crews: {value: [5, 10, 20, 40, 80], source: "user decision Nov 14: back to 5-80 crews, with the county scaled down to match (sweep.patient_stride). Was 20-320 from Nov 13 on the full county, where 5-80 covered only the start of the curve", confirmed: true}
   patient_stride: {value: 36, source: "user decision Nov 14: Hearth near 5,000 weighted patient-hours at 20 crews. The sweep simulates every 36th patient (about 650 of 23,273), chosen by trying strides on seed 1: 34 gave 5,851, 36 gave 5,095, 38 gave 3,638. The map's county replay still runs all patients", confirmed: true}
-  seeds: {value: 10, source: "plan Task S4", confirmed: true}
+  seeds: {value: 100, source: "user decision Nov 15: 100 seeds per setting, so each median is steadier (was 10, plan Task S4)", confirmed: true}
 
 # ---- help loop (slice 2): a resident's own request is dispatched to a crew, with a refuge as the drop-off ----
 dispatch:

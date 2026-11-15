@@ -119,7 +119,7 @@ building_records:
 sweep:
   crews: {value: [5, 10, 20, 40, 80], source: "user decision Nov 14: back to 5-80 crews, with the county scaled down to match (sweep.patient_stride). Was 20-320 from Nov 13 on the full county, where 5-80 covered only the start of the curve", confirmed: true}
   patient_stride: {value: 36, source: "user decision Nov 14: Hearth near 5,000 weighted patient-hours at 20 crews. The sweep simulates every 36th patient (about 650 of 23,273), chosen by trying strides on seed 1: 34 gave 5,851, 36 gave 5,095, 38 gave 3,638. The map's county replay still runs all patients", confirmed: true}
-  seeds: {value: 10, source: "plan Task S4", confirmed: true}
+  seeds: {value: 100, source: "user decision Nov 15: 100 seeds per setting, so each median is steadier (was 10, plan Task S4)", confirmed: true}
 
 # ---- help loop (slice 2): a resident's own request is dispatched to a crew, with a refuge as the drop-off ----
 dispatch:
@@ -140,3 +140,24 @@ storm:
 # ---- staging lots: where crews gather near an outage, proposed from CoStar parking data ----
 staging:
   min_surface_spaces: {value: 100, source: "our call Nov 14: a surface lot this size leaves room for several vans; 129 existing Houston properties in the kit pass the staging rule", confirmed: false}
+
+# ---- shelter sites: when no refuge passes, an aerial search for places a dispatcher could call about ----
+shelter:
+  phrases: {value: ["school gymnasium with sports field", "church with large parking lot", "community center with parking lot"], source: "our call Nov 14: scene-level phrases; the first two returned correct tiles in a live test of Vexcel's semantic search and the third is the same kind of phrase. Small objects (generators) are unproven and not searched", confirmed: false}
+  search_half_m: {value: 3000, source: "our call Nov 14: half the side of the search square around the patient; Vexcel's tutorial says a smaller square is faster and more exact, and 3 km answered in about 1 s", confirmed: false}
+  tiles_per_phrase: {value: 10, source: "our call Nov 14: tiles asked for per phrase; those in the patient's own dark ZIP are dropped, so more than are shown; placeholder", confirmed: false}
+  merge_m: {value: 300, source: "our call Nov 14: matches closer than this are one place. Tiles are about 66 m wide and a school campus spans several: at 100 m a live run near 77096 listed one campus three times, at 300 m five separate places", confirmed: false}
+  costar_match_m: {value: 100, source: "our call Nov 14: a CoStar record's point this close to a matched tile is taken as the same property; placeholder", confirmed: false}
+  max_sites: {value: 5, source: "our call Nov 14: leads shown to the dispatcher, nearest first; a list short enough to phone", confirmed: false}
+  tile_half_m: {value: 60, source: "our call Nov 14: the aerial shown for a lead is 120 m across, the matched tile and its surroundings", confirmed: false}
+
+# ---- dispatch command center: agents the page starts on its own, and what the page shows ----
+agents:
+  stale_after_s: {value: 300, source: "our call Nov 14: Vercel's function limit is 300 s, so a run nobody has written to for this long was cut off and may start again", confirmed: false}
+  rail_min: {value: 10, source: "design Nov 14 (builder questions, 3): finished runs drop off Agents at work after 10 minutes", confirmed: false}
+  max_running: {value: 2, source: "our call Nov 14: at most this many agent runs at once across every dispatch tab; each survey costs model calls and holds a connection", confirmed: false}
+
+dispatch_page:
+  window_h: {value: 24, source: "design Nov 14 (builder questions, 6): the map shows requests from the last 24 hours; open ones always", confirmed: false}
+  simulated_runs: {value: ["beryl_2024__p3__c20__s1", "sample__p3__c5__s1"], source: "our call Nov 14: the county replay's patients stand behind the real pins; the bundled sample when the replay is not reachable", confirmed: false}
+  simulated_dots: {value: 400, source: "design Nov 14: a sample of a few hundred simulated households is enough", confirmed: false}
