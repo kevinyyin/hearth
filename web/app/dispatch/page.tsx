@@ -14,14 +14,15 @@ const cardStyle = { borderColor: "var(--border)", background: "var(--surface-1)"
 const muted = { color: "var(--text-muted)" };
 const LIVE = ["waiting", "offered", "accepted", "at_door", "riding"];
 const HAS_CREW = ["offered", "accepted", "at_door", "riding", "dropped_off"];
+const ROUNDS = [["week", "One week out"], ["day", "Landfall day"], ["outage", "Power is out"]] as const;
 
 /** Help requests as a dispatcher sees them. Nothing here needs a click unless code could not place a request. */
 export default function DispatchPage() {
   const { data, error, refresh } = usePoll<DispatchView>(API ? "/api/dispatch" : null);
   const { data: phone } = usePoll<Registrations>(API ? "/api/registrations" : null);
   const [failed, setFailed] = useState<string | null>(null);
-  const [storm, setStorm] = useState<{ alerted: string[]; dialed: string[]; failed: string[] } | null>(null);
-  const [sending, setSending] = useState(false);
+  const [storm, setStorm] = useState<{ label: string; dialed: string[]; failed: string[] } | null>(null);
+  const [sending, setSending] = useState<string | null>(null);
 
   if (!API) return <p className="mx-auto max-w-2xl px-6 py-10 text-sm">This page needs the Hearth API.</p>;
 
@@ -35,15 +36,15 @@ export default function DispatchPage() {
     refresh();
   }
 
-  async function forecast() {
-    setSending(true); // each press rings every registrant, so one press at a time
+  async function callEveryone(round: string, label: string) {
+    setSending(round); // each press rings every phone on the list, so one press at a time
     try {
-      setStorm(await sendJson("POST", "/api/storm"));
+      setStorm({ label, ...(await sendJson<{ dialed: string[]; failed: string[] }>("POST", "/api/storm", { round })) });
       setFailed(null);
     } catch (e) {
       setFailed(e instanceof Error ? e.message : String(e));
     }
-    setSending(false);
+    setSending(null);
   }
 
   const stuck = data?.requests.filter((r) => r.request.blocked && r.request.state === "waiting") ?? [];
@@ -60,16 +61,21 @@ export default function DispatchPage() {
         drop-off. A person is asked only for the requests listed first.
       </p>
       <section className={card} style={cardStyle}>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm">Texts the county alert to the alert phones and calls every phone registrant in the forecast area.</p>
-          <button type="button" onClick={forecast} disabled={sending} className="shrink-0 rounded border px-3 py-1.5 text-xs font-medium disabled:opacity-50" style={{ borderColor: "var(--border)" }}>
-            {sending ? "Texting and calling…" : "Storm forecast (simulated)"}
-          </button>
+        <p className="text-sm">
+          Simulated storm: calls every phone on the county&apos;s list at once. A registrant gets a check; anyone else is asked whether
+          someone at home uses powered medical equipment.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {ROUNDS.map(([round, label]) => (
+            <button key={round} type="button" onClick={() => callEveryone(round, label)} disabled={sending !== null} className="rounded border px-3 py-1.5 text-xs font-medium disabled:opacity-50" style={{ borderColor: "var(--border)" }}>
+              {sending === round ? "Calling…" : label}
+            </button>
+          ))}
         </div>
         {storm && (
           <p className="text-xs" style={muted}>
-            Alert texted to {storm.alerted.length} phone{storm.alerted.length === 1 ? "" : "s"}; {storm.dialed.length} check call
-            {storm.dialed.length === 1 ? "" : "s"} placed.{storm.failed.length ? ` Not done: ${storm.failed.join("; ")}` : ""}
+            {storm.label}: {storm.dialed.length} call{storm.dialed.length === 1 ? "" : "s"} placed.
+            {storm.failed.length ? ` Not done: ${storm.failed.join("; ")}` : ""}
           </p>
         )}
       </section>

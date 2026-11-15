@@ -240,8 +240,12 @@ def test_a_browser_register_call_needs_a_listed_phone(monkeypatch):
     assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "register"
 
 
-def test_storm_route_reports_what_it_sent():
-    assert client.post("/api/storm").json() == {"alerted": [], "dialed": [], "failed": []}
+def test_storm_route_takes_a_round_and_defaults_to_a_week_out(monkeypatch):
+    assert client.post("/api/storm").json() == {"dialed": [], "failed": []}  # an old client sends no body
+    rounds = []
+    monkeypatch.setattr("hearth.messaging.registry.storm", lambda round: rounds.append(round) or {"dialed": [], "failed": []})
+    assert [client.post("/api/storm", **kw).status_code for kw in ({}, {"json": {"round": "outage"}}, {"json": {"round": "never"}})] == [200, 200, 422]
+    assert rounds == ["week", "outage"]
 
 
 def test_calling_an_unlisted_building_is_refused(monkeypatch):

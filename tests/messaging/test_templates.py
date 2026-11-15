@@ -47,7 +47,7 @@ def test_say_hours():
 
 
 NEW = ["reg_open", "ask_address", "readback_address", "reg_ask_hours", "ask_floor_building", "ask_door_aerial", "readback_home",
-       "reg_close", "menu", "help_opened", "safe_noted", "check_address", "ask_elevator_working", "bldg_open", "alert_text"]
+       "reg_close", "menu", "help_opened", "safe_noted", "check_address", "ask_elevator_working", "bldg_open", "storm_week", "storm_day", "storm_outage", "ask_equipment"]
 
 
 @pytest.mark.parametrize("key", NEW)

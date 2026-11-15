@@ -51,16 +51,17 @@ def questions(rec: dict | None, facts: dict) -> list[str]:
 
 def opening(call: dict) -> Lines:
     c = call["ctx"]
+    # an outbound storm call says who is calling and why before it reads back anyone's address or asks anything
+    storm = [("open_automated", {"county": c["county"]}), (f"storm_{c['storm']}", {})] if c.get("storm") else []
     if call["kind"] == "menu":
         call["step"] = "menu"
         return [("open_automated", {"county": c["county"]})] + _live_line(call["patient_id"]) + [("menu", {})]
     if call["kind"] == "check":
         call["facts"] = registry.facts_for(call["patient_id"])
         call["to_confirm"] = ["address", "hours", "home"]
-        opener = [("open_automated", {"county": c["county"]}), ("check_open_storm", {})] if c.get("storm") else [("check_open", {})]
-        return opener + _next(call)  # an outbound storm call says who is calling before it reads back anyone's address
+        return storm + [("check_open", {})] + _next(call)
     call["step"] = "equipment"
-    return [("reg_open", {"county": c["county"]})]
+    return storm + [("ask_equipment", {})] if storm else [("reg_open", {"county": c["county"]})]
 
 
 def advance(call: dict, t: Turn) -> Lines:

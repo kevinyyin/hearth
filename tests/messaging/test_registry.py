@@ -75,32 +75,56 @@ def test_environment_lists(monkeypatch):
     assert registry.demo_callers() == {"+15550001111", "+15550002222"} and registry.alert_phones() == []
 
 
-def test_storm_texts_alert_phones_and_calls_registrants_in_the_area(monkeypatch):
+STRANGER, UNLISTED = "+15550009999", "+15550008888"
+
+
+@pytest.fixture
+def phones(monkeypatch):
+    """Fakes for the phone line: every call a round places, and every text anything sends."""
     from hearth.messaging import photon, voice
     texts, dials = [], []
     monkeypatch.setattr(photon, "_send", lambda phone, text: texts.append((phone, text)) or "pho1")
     monkeypatch.setattr(voice, "dial", lambda call_id: dials.append(store.get("call", call_id)) or "conv1")
-    monkeypatch.setenv("HEARTH_ALERT_PHONES", "+15550009999")
-    monkeypatch.setenv("HEARTH_LINE_NUMBER", "(555) 010-0000")
-    inside = registry.save(call(**FULL))
+    monkeypatch.setenv("HEARTH_ALERT_PHONES", f"{STRANGER},{UNLISTED},{PHONE}")
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", STRANGER)
+    return texts, dials
+
+
+def test_a_round_calls_every_phone_on_the_list_once_and_texts_no_one(phones):
+    texts, dials = phones
+    inside = registry.save(call(**FULL))  # also on the alert list: still one call
     outside = registry.save({"patient_id": None, "ctx": {"phone": "+15550002222"}, "facts": dict(FULL)})
     store.put("patient", outside, store.get("patient", outside) | {"zip": "99999"})
-    out = registry.storm()
-    assert out == {"alerted": ["+15550009999"], "dialed": [inside], "failed": []}
-    assert texts == [("+15550009999", "Simulated Harris County alert: a hurricane is forecast for your area. If you or someone at home relies on "
-                                      "powered medical equipment, call Hearth at (555) 010-0000 so a crew knows how to reach you. In an emergency, call 911.")]
-    assert [(d["patient_id"], d["kind"], d["ctx"]["storm"]) for d in dials] == [(inside, "check", True)]
+    out = registry.storm("week")
+    assert out == {"dialed": [STRANGER, PHONE], "failed": [f"{UNLISTED}: not called (not registered, and only a number in HEARTH_DEMO_CALLERS may register)"]}
+    assert texts == []
+    assert [(d["patient_id"], d["kind"], d["ctx"].get("phone"), d["ctx"]["storm"]) for d in dials] == [
+        (None, "register", STRANGER, "week"), (inside, "check", None, "week")]
+    assert [c["ctx"].get("phone") for c in store.all("call")] == [STRANGER, None]  # no call record for the number that may not register
+
+
+def test_a_registrant_in_the_forecast_area_is_called_without_being_on_the_alert_list(phones, monkeypatch):
+    monkeypatch.delenv("HEARTH_ALERT_PHONES")
+    registry.save(call(**FULL))
+    assert registry.storm("day") == {"dialed": [PHONE], "failed": []}
+
+
+@pytest.mark.parametrize("round, kind", [("week", "check"), ("day", "check"), ("outage", "impact")])
+def test_a_registered_number_gets_the_rounds_own_call(phones, round, kind):
+    registry.save(call(**FULL))
+    registry.storm(round)
+    assert [(d["kind"], d["ctx"]["storm"]) for d in phones[1]] == [("register", round), (kind, round)]
 
 
 def test_storm_with_nothing_configured():
-    assert registry.storm() == {"alerted": [], "dialed": [], "failed": []}
+    assert registry.storm() == {"dialed": [], "failed": []}
 
 
 def test_a_storm_call_that_cannot_ring_is_reported(monkeypatch):
     from hearth.messaging import voice
     monkeypatch.setattr(voice, "dial", lambda call_id: None)  # no phone line set up
-    pid = registry.save(call(**FULL))
-    assert registry.storm()["failed"] == [f"{pid}: not dialed (the phone line is not set up)"]
+    registry.save(call(**FULL))
+    assert registry.storm()["failed"] == [f"{PHONE}: not dialed (the phone line is not set up)"]
 
 
 def test_a_check_call_without_a_phone_in_its_context_saves_a_correction():
@@ -125,15 +149,8 @@ def test_a_registration_call_that_went_quiet_needs_a_person():
     assert [(r["call_id"], r["status"]) for r in registry.registrations()["needs_person"]] == [("C-7", "unfinished")]
 
 
-def test_a_second_storm_press_right_after_the_first_calls_no_one_again(monkeypatch):
-    from hearth.messaging import photon, voice
-    texts, dials = [], []
-    monkeypatch.setattr(photon, "_send", lambda phone, text: texts.append(phone) or "pho1")
-    monkeypatch.setattr(voice, "dial", lambda call_id: dials.append(call_id) or "conv1")
-    monkeypatch.setenv("HEARTH_ALERT_PHONES", "+15550009999")
-    monkeypatch.setenv("HEARTH_LINE_NUMBER", "(555) 010-0000")
+def test_a_second_round_right_after_the_first_calls_no_one_again(phones):
     registry.save(call(**FULL))
-    registry.storm()
-    again = registry.storm()
-    assert (len(texts), len(dials)) == (1, 1) and again["alerted"] == again["dialed"] == []
-    assert again["failed"] == ["the storm alert was already sent a moment ago; wait 2 minutes to send it again"]
+    registry.storm("week")
+    again = registry.storm("outage")  # one phone cannot take two calls at once, whichever round
+    assert len(phones[1]) == 2 and again == {"dialed": [], "failed": ["a round of calls was placed a moment ago; wait 2 minutes to place another"]}

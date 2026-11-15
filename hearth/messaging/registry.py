@@ -7,6 +7,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timezone
+from typing import Literal
 
 from hearth import store
 from hearth.buildings import tools
@@ -15,6 +16,7 @@ from hearth.contracts import Home, Patient
 
 NEEDED = ("device", "building_id", "backup_hours", "floor")  # every required patient field the call asks
 KINDS = ("patient", "contact", "home", "help")
+Round = Literal["week", "day", "outage"]  # a storm round: about a week before landfall, the day of it, the power out
 
 
 def _env_list(name: str) -> list[str]:
@@ -111,35 +113,33 @@ def facts_for(patient_id: str) -> dict:
             "door": h.get("door"), "door_from_aerial": h.get("door_from_aerial"), "room": h.get("room"), "scan_room": h.get("scan_room")}
 
 
-def storm() -> dict:
-    """The simulated storm: the county alert text to each alert phone, and a check call to every phone registrant whose
-    ZIP is in the forecast area. Every failure is listed, never raised, so one bad number does not stop the rest."""
-    from hearth.messaging import photon, voice  # late: voice imports this module
-    from hearth.messaging.templates import render
+def storm(round: Round = "week") -> dict:
+    """One round of the simulated storm: a call to every phone on the county's list (the alert phones, and phone
+    registrants whose ZIP is in the forecast area), each rung once. A registered number gets its check, or the impact
+    call once the power is out; any other number is asked whether someone at home uses powered medical equipment.
+    Every failure is listed, never raised, so one bad number does not stop the rest."""
+    from hearth.messaging import voice  # late: voice imports this module
 
     wait = a("storm.again_after_min")
     if time.time() - (store.get("storm", "last") or {}).get("t", 0) < wait * 60:  # a second press must not ring every phone again
-        return {"alerted": [], "dialed": [], "failed": [f"the storm alert was already sent a moment ago; wait {wait} minutes to send it again"]}
+        return {"dialed": [], "failed": [f"a round of calls was placed a moment ago; wait {wait} minutes to place another"]}
     store.put("storm", "last", {"t": time.time()})
-    out = {"alerted": [], "dialed": [], "failed": []}
-    line = os.environ.get("HEARTH_LINE_NUMBER")
-    for phone in alert_phones():
+    out = {"dialed": [], "failed": []}
+    zips = set(a("storm.forecast_zips"))
+    registrants = [(store.get("contact", pid) or {}).get("phone") for pid in _phone_homes() if (store.get("patient", pid) or {}).get("zip") in zips]
+    for phone in dict.fromkeys(alert_phones() + [p for p in registrants if p]):
         try:
-            if not line:
-                raise LookupError("HEARTH_LINE_NUMBER is not set, so the alert cannot say what to call")
-            photon._send(phone, render("alert_text", line=line))
-            out["alerted"].append(phone)
+            if pid := patient_for_phone(phone):
+                call_id = voice.start_call(pid, "impact" if round == "outage" else "check", storm=round)
+            elif phone in demo_callers():
+                call_id = voice.start_call(None, "register", phone=phone, storm=round)
+            else:
+                out["failed"].append(f"{phone}: not called (not registered, and only a number in HEARTH_DEMO_CALLERS may register)")
+                continue
+            if voice.dial(call_id):
+                out["dialed"].append(phone)
+            else:
+                out["failed"].append(f"{phone}: not dialed (the phone line is not set up)")
         except Exception as e:
             out["failed"].append(f"{phone}: {e}")
-    zips = set(a("storm.forecast_zips"))
-    for pid in dict.fromkeys(_phone_homes()):
-        if (store.get("patient", pid) or {}).get("zip") not in zips:
-            continue
-        try:
-            if voice.dial(voice.start_call(pid, "check", storm=True)):
-                out["dialed"].append(pid)
-            else:
-                out["failed"].append(f"{pid}: not dialed (the phone line is not set up)")
-        except Exception as e:
-            out["failed"].append(f"{pid}: {e}")
     return out
