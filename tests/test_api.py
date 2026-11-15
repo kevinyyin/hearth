@@ -260,6 +260,17 @@ def test_a_browser_register_call_needs_a_listed_phone(monkeypatch):
     assert r.status_code == 200 and store.get("call", r.json()["call_id"])["kind"] == "register"
 
 
+def test_a_register_call_can_ring_the_listed_phone(monkeypatch):
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
+    monkeypatch.setattr(live, "dial", lambda call_id: "conv-1")
+    r = client.post("/api/calls", json={"kind": "register", "phone": "+15550100002", "dial": True})
+    assert r.status_code == 200 and r.json()["conversation_id"] == "conv-1"
+    monkeypatch.setattr(live, "dial", lambda call_id: None)  # no phone line on this server
+    r = client.post("/api/calls", json={"kind": "register", "phone": "+15550100002", "dial": True})
+    assert r.status_code == 503
+    assert max(store.all("call"), key=lambda c: c["started_at"])["status"] == "done"  # closed, not an unfinished registration
+
+
 def test_storm_route_takes_a_round_and_defaults_to_a_week_out(monkeypatch):
     assert client.post("/api/storm").json() == {"dialed": [], "failed": []}  # an old client sends no body
     rounds = []

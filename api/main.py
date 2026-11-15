@@ -572,6 +572,7 @@ class CallIn(BaseModel):
     patient_id: str | None = None
     kind: Literal["impact", "move_consent", "register"]
     phone: str | None = None  # register only: the browser phone stands in for this listed demo number (it has no caller ID)
+    dial: bool = False  # register only: ring `phone` from the phone line rather than wait for the browser phone
 
 
 # ---- staging lots: a real parking lot for crews to gather at, proposed from CoStar and picked by the dispatcher ----
@@ -623,8 +624,19 @@ def calls(body: CallIn):
         from hearth.messaging import registry
 
         if body.phone not in registry.demo_callers():  # strangers' details never reach the store
-            raise HTTPException(403, "only a number on the demo caller list can register")
-        return {"call_id": live.start_call(None, "register", phone=body.phone)}
+            raise HTTPException(403, "only a number on the demo caller list (HEARTH_DEMO_CALLERS) can register")
+        call_id = live.start_call(None, "register", phone=body.phone)
+        if not body.dial:
+            return {"call_id": call_id}
+        try:
+            conversation_id = live.dial(call_id)
+            error = None if conversation_id else (503, "the phone line is not set up on this server")
+        except RuntimeError as e:
+            conversation_id, error = None, (502, str(e))
+        if error:  # closed, so a call that never rang is not listed on dispatch as an unfinished registration
+            store.put("call", call_id, store.get("call", call_id) | {"status": "done"})
+            raise HTTPException(*error)
+        return {"call_id": call_id, "conversation_id": conversation_id}
     if not body.patient_id:
         raise HTTPException(422, "a patient id is needed")
     proposal_id = None

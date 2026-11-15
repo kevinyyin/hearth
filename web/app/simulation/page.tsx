@@ -19,6 +19,18 @@ import {
   type EventPhase,
   type TranscriptLine,
 } from "@/lib/simulation";
+import { API, sendJson } from "@/lib/api";
+import { plainError } from "@/lib/useAction";
+import { usePoll } from "@/lib/usePoll";
+
+/** A real call as the API keeps it: its state and every turn so far. */
+type LiveCall = { status: string; transcript: { role: string; text: string }[] };
+
+/** "(949) 512-6068" or "+1 949 512 6068" -> "+19495126068": the form the demo caller list uses. */
+const e164 = (s: string) => {
+  const d = s.replace(/[^\d+]/g, "");
+  return d.startsWith("+") ? d : d.length === 10 ? `+1${d}` : `+${d}`;
+};
 
 /** Calls run faster than real time so the whole thing fits a demo. */
 const SPEED = 0.4;
@@ -140,6 +152,25 @@ export default function SimulationPage() {
   const [callMode, setCallMode] = useState<CallMode>("simulated");
   const [realNumber, setRealNumber] = useState("");
   const [realCallNote, setRealCallNote] = useState<string | null>(null);
+  const [realCallId, setRealCallId] = useState<string | null>(null);
+  const [placing, setPlacing] = useState(false);
+  const liveCall = usePoll<LiveCall>(realCallId ? `/api/calls/${realCallId}` : null, 2000).data;
+
+  async function placeRealCall() {
+    if (!realNumber.trim()) return setRealCallNote("Enter a number first.");
+    if (!API) return setRealCallNote("A real call needs the Hearth API.");
+    setPlacing(true);
+    setRealCallNote(null);
+    setRealCallId(null);
+    try {
+      const out = await sendJson<{ call_id: string }>("POST", "/api/calls", { kind: "register", phone: e164(realNumber), dial: true });
+      setRealCallId(out.call_id);
+    } catch (e) {
+      setRealCallNote(`${plainError(e)}. Nothing was dialled.`);
+    } finally {
+      setPlacing(false);
+    }
+  }
 
   const [editing, setEditing] = useState(false);
   const [askedOnCall, setAskedOnCall] = useState(false);
@@ -369,18 +400,34 @@ export default function SimulationPage() {
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setRealCallNote(
-                          realNumber.trim()
-                            ? "Not connected. Placing a real call needs the voice lane's outbound number, which does not exist yet — spec v6 lists it as blocked on the Photon account, and no real call has been placed from this repo. Nothing was dialled."
-                            : "Enter a number first.",
-                        )
-                      }
-                      className="mt-3 rounded-lg border px-4 py-2.5 text-sm font-semibold"
+                      onClick={placeRealCall}
+                      disabled={placing}
+                      className="mt-3 rounded-lg border px-4 py-2.5 text-sm font-semibold disabled:cursor-wait disabled:opacity-60"
                       style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)" }}
                     >
-                      Place the call
+                      {placing ? "Dialling…" : realCallId ? "Call again" : "Place the call"}
                     </button>
+                    {realCallId && (
+                      <div className="mt-3 rounded-lg border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                        <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                          {!liveCall || (liveCall.status === "active" && liveCall.transcript.length === 0)
+                            ? `Ringing ${e164(realNumber)}. Answer it to enrol.`
+                            : liveCall.status === "active" ? "On the call" : `Call ${liveCall.status}`}
+                        </p>
+                        {liveCall && liveCall.transcript.length > 0 && (
+                          <ol aria-label="Live call transcript" aria-live="polite" className="mt-2 max-h-56 space-y-1 overflow-auto text-sm">
+                            {liveCall.transcript.map((m, i) => (
+                              <li key={i}>
+                                <span className="font-semibold" style={{ color: m.role === "agent" ? "var(--accent)" : "var(--text-primary)" }}>
+                                  {m.role === "agent" ? "Hearth" : "Resident"}:
+                                </span>{" "}
+                                <span style={{ color: "var(--text-secondary)" }}>{m.text}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                      </div>
+                    )}
                     {realCallNote && (
                       <p
                         className="mt-3 rounded-lg px-3 py-2.5 text-xs leading-relaxed"
@@ -390,8 +437,8 @@ export default function SimulationPage() {
                       </p>
                     )}
                     <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                      The control is here so the voice lane has somewhere to connect. Until then,
-                      run the simulated call.
+                      Hearth rings this number from its phone line and runs the real enrollment
+                      call. Only a number on the demo caller list can be called.
                     </p>
                   </div>
                 )}
