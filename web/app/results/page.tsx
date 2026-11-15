@@ -75,6 +75,9 @@ export default function ResultsPage() {
             <Link href="/dispatch" className="text-sm" style={{ color: "var(--text-muted)" }}>
               Dispatch
             </Link>
+            <Link href="/algorithm" className="text-sm" style={{ color: "var(--text-muted)" }}>
+              Algorithm
+            </Link>
           </nav>
           <Link
             href="/simulation"
