@@ -372,6 +372,18 @@ def registrations():
     return registry.registrations()
 
 
+@app.get("/api/registrations/latest")
+def latest_registration(phone: str):
+    """A demo-list number's newest phone registration, in the facts shape the calls use; 404 when it has none."""
+    from hearth.messaging import registry
+
+    if phone not in registry.demo_callers():
+        raise HTTPException(403, "only a number on the demo caller list (HEARTH_DEMO_CALLERS)")
+    if (pid := registry.patient_for_phone(phone)) is None:
+        raise HTTPException(404, "this number has no registration")
+    return {"patient_id": pid, "facts": registry.facts_for(pid)}
+
+
 @app.post("/api/storm")
 def storm(round: registry.Round = Body("week", embed=True)):
     """Simulated: one round of calls to every phone on the county's list. No body means a week out, as the first button did."""

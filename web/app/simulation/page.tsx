@@ -19,7 +19,7 @@ import {
   type EventPhase,
   type TranscriptLine,
 } from "@/lib/simulation";
-import { API, sendJson } from "@/lib/api";
+import { API, getJson, sendJson } from "@/lib/api";
 import { plainError } from "@/lib/useAction";
 import { usePoll } from "@/lib/usePoll";
 import { callFields, eventCallFor, heard, helpRequestFor, residentFromCall, type CallDoc } from "@/lib/realCall";
@@ -155,7 +155,12 @@ export default function SimulationPage() {
   // stage 2 stops reading the call, so the record the run follows holds still
   const liveCall = usePoll<CallDoc>(realCallId && stage !== "event" ? `/api/calls/${realCallId}` : null, 2000).data;
   const real = callMode === "real" && !!realCallId;
-  const said = useMemo(() => (liveCall ? heard(liveCall) : {}), [liveCall]);
+  // a call that saved no registration falls back to this number's newest one: what Hearth holds on record for it
+  const [prior, setPrior] = useState<{ patient_id: string; facts: Record<string, unknown> } | null>(null);
+  const said = useMemo(
+    () => (prior && !liveCall?.patient_id ? prior.facts : liveCall ? heard(liveCall) : {}),
+    [liveCall, prior],
+  );
   const resident = useMemo(
     () => (real ? residentFromCall(e164(realNumber), said) : residentFeed.resident),
     [real, realNumber, said, residentFeed.resident],
@@ -218,12 +223,12 @@ export default function SimulationPage() {
   const outageStarted = useRef(false); // one ring per run, even when an effect runs twice
   const outageCall = usePoll<CallDoc>(outageCallId ? `/api/calls/${outageCallId}` : null, 2000).data;
   const realOutage = real && !!outageCallId;
-  const enrolledId = liveCall?.patient_id ?? null;
+  const enrolledId = liveCall?.patient_id ?? prior?.patient_id ?? null;
   useEffect(() => {
     if (!real || !callActive || outageStarted.current) return;
     outageStarted.current = true;
     if (!enrolledId) {
-      setOutageNote("The enrollment call saved no registration, so the outage call below is the script.");
+      setOutageNote("The enrollment call saved no registration and this number has none on record, so the outage call below is the script.");
       return;
     }
     sendJson<{ call_id: string }>("POST", "/api/calls", { kind: "impact", patient_id: enrolledId, dial: true })
@@ -240,10 +245,17 @@ export default function SimulationPage() {
     : enrol.n >= ENROLMENT_CALL.length;
 
   // what the real call captured becomes the profile the operator checks, edits and confirms
+  const noRegistration = real && callDone && !liveCall?.patient_id;
+  useEffect(() => {
+    if (!noRegistration || prior) return;
+    getJson<{ patient_id: string; facts: Record<string, unknown> }>(`/api/registrations/latest?phone=${encodeURIComponent(e164(realNumber))}`)
+      .then(setPrior)
+      .catch(() => {}); // none on record: stage 2 says so and plays the script
+  }, [noRegistration, prior, realNumber]);
   useEffect(() => {
     if (real && callDone) setFields(callFields(said).map((f) => ({ label: f.label, value: f.value ?? "—", after: 0 })));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- taken once, as the call ends; later polls must not undo edits
-  }, [real, callDone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- taken as the call ends (and again if the number's record arrives); later polls must not undo edits
+  }, [real, callDone, prior]);
 
   const advance = useCallback(
     () => setPhaseIdx((i) => Math.min(i + 1, EVENT_PHASES.length - 1)),
@@ -296,6 +308,7 @@ export default function SimulationPage() {
     setRealEnded(false);
     setOutageCallId(null);
     setOutageNote(null);
+    setPrior(null);
     outageStarted.current = false;
     setFields(ENROLMENT_FIELDS.map((f) => ({ ...f })));
     enrol.reset();
@@ -582,6 +595,13 @@ export default function SimulationPage() {
                   </div>
                 ))}
               </dl>
+
+              {noRegistration && prior && (
+                <p className="mt-3 rounded-lg px-3 py-2 text-xs" style={{ background: "#fbeee6", color: "#7a2e12" }}>
+                  This call saved no registration, so the profile above is this number&rsquo;s earlier registration, and
+                  the outage call will use it.
+                </p>
+              )}
 
               {/* the markers the call produced, and a route planned over the layout */}
               {entranceKnown && (

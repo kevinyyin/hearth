@@ -253,6 +253,15 @@ def test_registrations_lists_phone_homes_and_calls_that_need_a_person():
     assert out["needs_person"] == [{"call_id": "C-9", "phone": "+15550100009", "facts": {"device": "oxygen"}, "status": "handoff", "started_at": 1.0}]
 
 
+def test_a_listed_numbers_latest_registration_is_served_as_call_facts(monkeypatch):
+    assert client.get("/api/registrations/latest", params={"phone": "+15550100002"}).status_code == 403
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
+    assert client.get("/api/registrations/latest", params={"phone": "+15550100002"}).status_code == 404
+    pid = phone_registrant()
+    out = client.get("/api/registrations/latest", params={"phone": "+15550100002"}).json()
+    assert out["patient_id"] == pid and out["facts"]["building_id"] and out["facts"]["backup_hours"] is not None
+
+
 def test_a_browser_register_call_needs_a_listed_phone(monkeypatch):
     assert client.post("/api/calls", json={"kind": "register", "phone": "+15550100002"}).status_code == 403
     monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
