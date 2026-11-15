@@ -221,7 +221,7 @@ def test_short_distress_at_the_opening_escalates(monkeypatch):
     FAKE["help me"] = Turn(needs_help_now=True, wants_human=True)
     c = start_call("p1", "impact")
     out = respond(c, "help me")
-    assert store.get("call", c)["status"] == "escalated" and render("help_opened") in out  # a person sees the call, and help is asked for
+    assert store.get("call", c)["status"] == "escalated" and out.startswith(render("help_now"))  # a person sees the call, and help is asked for, 911 first
 
 
 def test_dialysis_patient_hears_about_their_next_treatment_not_backup():

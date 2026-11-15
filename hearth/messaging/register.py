@@ -199,9 +199,9 @@ def help_now(call: dict) -> Lines:
     from hearth import dispatch
 
     if (r := dispatch.request(call["patient_id"])) and r.state in dispatch.LIVE:
-        return _end_help(call, [("help_already", {})] + _live_line(call["patient_id"]))
+        return _end_help(call, [("help_now", {}), ("help_already", {})] + _live_line(call["patient_id"]))
     _pending(call, "open")
-    return _end_help(call, [("help_opened", {})])
+    return _end_help(call, [("help_now", {})])  # 911 first: the caller may not be able to breathe
 
 
 def _open_help(call: dict, mobility: str) -> Lines:
@@ -372,7 +372,12 @@ def _set_unit(call: dict, m: dict | None, said: str) -> None:
 
 def _hours_readback(call: dict, hours: float) -> Lines:
     call["pending"] = hours
-    return _go(call, "hours_readback", "readback_hours", hours=say_hours(hours), supply="time without power")
+    return _go(call, "hours_readback", "readback_hours", hours=say_hours(hours), supply=_supply(call["facts"]))
+
+
+def _supply(f: dict) -> str:
+    """As the impact call says it (voice.start_call): dialysis hours are the time until the next treatment."""
+    return "time before your next treatment" if f.get("device") == "home_dialysis" else "backup"
 
 
 def _which_part(call: dict, part: str | None) -> Lines:

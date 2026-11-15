@@ -47,12 +47,17 @@ def test_say_hours():
 
 
 NEW = ["reg_open", "ask_address", "readback_address", "reg_ask_hours", "ask_floor_building", "ask_door_aerial", "readback_home",
-       "reg_close", "menu", "help_opened", "safe_noted", "check_address", "ask_elevator_working", "bldg_open", "storm_week", "storm_day", "storm_outage", "ask_equipment"]
+       "reg_close", "menu", "help_opened", "help_now", "safe_noted", "check_address", "ask_elevator_working", "bldg_open", "storm_week", "storm_day", "storm_outage", "ask_equipment"]
 
 
 @pytest.mark.parametrize("key", NEW)
 def test_new_keys_are_allowed_outside_moves(key):
     assert allowed(key, PlanState.OWN_BACKUP, "none")
+
+
+def test_help_now_is_allowed_in_every_state():
+    assert all("help_now" in keys for keys in ALLOWED.values()) and "help_now" not in PROMISE_KEYS
+    assert TEMPLATES["help_now"].startswith("If you can't breathe or this is an emergency, hang up and call 911 now.")
 
 
 def test_no_new_line_promises_a_crew():

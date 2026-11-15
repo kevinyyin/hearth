@@ -56,6 +56,7 @@ TEMPLATES: dict[str, str] = {
     "ask_walk": "Can you walk to a car, on your own or with someone helping?",
     "ask_wheelchair": "Do you use a wheelchair, or do you stay in bed?",
     "help_opened": "I've asked for a crew. We'll text you each step, and the arrival time once a crew accepts. If this is an emergency, hang up and call 911.",
+    "help_now": "If you can't breathe or this is an emergency, hang up and call 911 now. I've also asked for a crew and flagged your call for a person at the health department.",
     "help_already": "Your request is already in.",
     "safe_noted": "Thank you. I've noted that you're safe. Call this number if that changes.",
     "ask_elevator_working": "Is the elevator in your building working right now?",
