@@ -69,6 +69,9 @@ export default function AlgorithmPage() {
             to get from the curb to the machine. Every diagram below runs the planner&rsquo;s own formulas, so
             change the inputs and watch the plan move.
           </p>
+          <Link href="/algorithm/technical" className="mt-4 inline-block text-sm underline underline-offset-2" style={{ color: "var(--text-secondary)" }}>
+            Technical version →
+          </Link>
         </div>
 
         <Step name="Weighted hours at risk" method="What steps 1 and 2 both minimize" demo={<ScoreCurve />}>
