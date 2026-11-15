@@ -1,5 +1,7 @@
 from hearth.contracts import PlanState
 
+_ASK_EQUIPMENT = "Does someone at home use powered medical equipment, like oxygen, a ventilator, home dialysis or a feeding pump?"
+
 TEMPLATES: dict[str, str] = {
     "open_automated": "This is an automated call from Hearth for the {county} health department.",
     "impact_check": "The power is out at your address, and we're checking on your {device}. Our records say your backup should last about {hours}. Is that about right? You can answer, or press 1 for yes, 2 if you need help now, or 3 if it's different.",
@@ -19,7 +21,8 @@ TEMPLATES: dict[str, str] = {
     "text_fallback": "Hearth: Power is out at your address. Based on your profile, your {device} backup should last about {hours}. Reply 1 if you're OK, 2 if you need help now, or a number if your hours are different.",
     "call_summary": "Hearth: On our call you confirmed {facts}. Reply here or call this number if anything changes. In an emergency call 911.",
     # registration and check calls ({unit}, {walkup} and {parts} are pieces code builds from confirmed answers)
-    "reg_open": "This is an automated call from Hearth for the {county} health department. Does someone at home use powered medical equipment, like oxygen, a ventilator, home dialysis or a feeding pump?",
+    "reg_open": "This is an automated call from Hearth for the {county} health department. " + _ASK_EQUIPMENT,
+    "ask_equipment": _ASK_EQUIPMENT,
     "reg_no_equipment": "If that changes, call this number. In an emergency, call 911.",
     "ask_device": "Which equipment is it: oxygen, a ventilator, home dialysis or a feeding pump?",
     "ask_address": "What's the street address, with the apartment number if there is one?",
@@ -39,7 +42,10 @@ TEMPLATES: dict[str, str] = {
     "readback_home": "I have you {parts}. Is that right?",
     "ask_which_part": "Which part is wrong?",
     "reg_close": "Thank you, you're registered. If a storm or outage reaches you, a call from this number is Hearth checking on you. If you need help, call this number and say help. In an emergency, call 911.",
-    "check_open_storm": "A hurricane is forecast for your area. We're checking your details are still right.",
+    # why a storm round is calling, said after open_automated: before a check, or before ask_equipment for a number not registered
+    "storm_week": "A hurricane is forecast to reach your area in about a week.",
+    "storm_day": "A hurricane is forecast to reach your area today.",
+    "storm_outage": "The power is out in your area.",
     "check_open": "Let's check your details.",
     "check_address": "We have you at {address}{unit}. Is that still right?",
     "check_hours": "We have you OK for about {hours} without your {device}. Is that still right?",
@@ -60,8 +66,6 @@ TEMPLATES: dict[str, str] = {
     "bldg_elevator": "Is a passenger elevator running right now?",
     "bldg_readback": "I have that the building {power}{elevator}. Is that right?",
     "bldg_close": "Thank you. That's all we need.",
-    # a text, not a call line
-    "alert_text": "Simulated Harris County alert: a hurricane is forecast for your area. If you or someone at home relies on powered medical equipment, call Hearth at {line} so a crew knows how to reach you. In an emergency, call 911.",
 }
 KEYS: tuple[str, ...] = tuple(TEMPLATES)
 PROMISE_KEYS = {"move_confirmed_ride", "delivery_confirmed"}

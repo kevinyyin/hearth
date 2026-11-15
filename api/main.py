@@ -341,11 +341,9 @@ def registrations():
 
 
 @app.post("/api/storm")
-def storm():
-    """Simulated: the county alert text to the alert phones, and check calls to phone registrants in the forecast area."""
-    from hearth.messaging import registry
-
-    return registry.storm()
+def storm(round: registry.Round = Body("week", embed=True)):
+    """Simulated: one round of calls to every phone on the county's list. No body means a week out, as the first button did."""
+    return registry.storm(round)
 
 
 # ---- help loop: a resident asks, a model orders, code offers the job to a crew with a refuge as the drop-off ----

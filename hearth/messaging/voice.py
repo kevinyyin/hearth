@@ -46,7 +46,7 @@ Kind = Literal["impact", "move_consent", "register", "check", "menu", "building_
 
 
 def start_call(patient_id: str | None, kind: Kind, proposal_id: str | None = None, phone: str | None = None,
-               building_id: str | None = None, storm: bool = False) -> str:
+               building_id: str | None = None, storm: str | None = None) -> str:
     """Stores a "call" doc and returns its id. A consent call needs a dispatcher-approved proposal for this patient. A
     registration has no patient yet, only the caller's phone; a building call has a building, never a patient."""
     proposal = store.get("proposal", proposal_id) if proposal_id else None

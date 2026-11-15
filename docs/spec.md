@@ -252,11 +252,14 @@ Field names and coverage are in `docs/toolkit-notes.md`.
   opens (asking once how they move), "I'm safe" closes one, "details" reads back what is registered. Each new tracker
   line goes to them as a text. `python -m hearth.messaging.voice reset <phone>` clears a number for rehearsals.
   **Texts need a one-time setup per number**: Photon delivers only to a phone with an iMessage assignment that has texted
-  the line. For every number in `HEARTH_DEMO_CALLERS` and `HEARTH_ALERT_PHONES`, run
+  the line. For every number in `HEARTH_DEMO_CALLERS`, run
   `python -m hearth.messaging.photon contact demo-1 <+E.164 phone>` and text the line it prints once from that phone;
-  otherwise tracker, follow-up and alert texts fail (logged, never blocking a call).
-- **Storm and building calls.** "Storm forecast (simulated)" on `/dispatch` texts the county alert to
-  `HEARTH_ALERT_PHONES` and calls every phone registrant in `storm.forecast_zips` to check their details. The impact
+  otherwise tracker and follow-up texts fail (logged, never blocking a call).
+- **Storm and building calls.** Three buttons on `/dispatch` (one week out, landfall day, power is out) each call
+  every phone on the county's list at once: `HEARTH_ALERT_PHONES` and every phone registrant in `storm.forecast_zips`,
+  one call per phone, no text. A registrant gets a check of their details, or the impact call once the power is out.
+  Any other number is asked whether someone at home uses powered medical equipment: yes registers them on the call (only
+  a number in `HEARTH_DEMO_CALLERS` is dialed), no ends it with the 911 line and saves nothing. The impact
   call asks a registrant above floor 1 whether the elevator works right now; the answer adds stair minutes to their
   queue row. "Call the building" asks a refuge's office about power and the elevator; a fresh answer replaces the
   simulated refuge call.
@@ -352,7 +355,7 @@ Sources, corrections and the two oddities we investigated are in `docs/sim-notes
 | `GET /api/proposals`, `POST /api/proposals/{id}/decision` | Approve or reject, with a reason on reject |
 | `POST /api/calls`, `GET /api/calls/{id}` | Start a call (refused without an approved proposal; kind `register` needs a listed demo phone); read its transcript and confirmed facts |
 | `GET /api/registrations` | Phone registrations, and registration calls that ended before anyone was registered |
-| `POST /api/storm` | The simulated storm: alert texts and check calls |
+| `POST /api/storm` | One round of the simulated storm (`round`: `week`, `day` or `outage`): a call to every phone on the list |
 | `POST /api/buildings/{id}/call` | Ring a building's office about power and the elevator (only a number in `HEARTH_BUILDING_PHONES`) |
 | `POST /voice/v1/chat/completions` | The model endpoint ElevenLabs calls |
 | `GET`, `PUT /api/patients/{id}/home`, `GET /api/homes`, `GET /api/demo-patients` | The resident's home markup |

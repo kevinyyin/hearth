@@ -151,14 +151,29 @@ def test_room_lookup_failure_falls_back_to_bedrooms(monkeypatch):
     assert c["ctx"]["room_names"] == [] and said[-1] == render("ask_room_beds")
 
 
-def test_a_check_call_reads_back_what_is_known():
+STORM = {"week": "A hurricane is forecast to reach your area in about a week.", "day": "A hurricane is forecast to reach your area today.",
+         "outage": "The power is out in your area."}
+WHO = "This is an automated call from Hearth for the Harris County health department."
+
+
+@pytest.mark.parametrize("round", ["week", "day"])
+def test_a_check_call_reads_back_what_is_known(round):
     pid = registered()["patient_id"]
-    c = new_call("check", pid, storm=True)
+    c = new_call("check", pid, storm=round)
     said = talk(c)
-    assert said[:2] == [render("open_automated", county="Harris County"), render("check_open_storm")]  # an outbound call says who is calling
-    assert said[2].startswith("We have you at 1200 Fixture St") and said[2].endswith("Is that still right?")
-    said = talk(new_call("check", pid, storm=True), YES, YES, YES)
+    assert said[:3] == [WHO, STORM[round], render("check_open")]  # an outbound call says who is calling and why
+    assert said[3].startswith("We have you at 1200 Fixture St") and said[3].endswith("Is that still right?")
+    said = talk(new_call("check", pid, storm=round), YES, YES, YES)
     assert said[-1] == render("reg_close")
+
+
+@pytest.mark.parametrize("round", STORM)
+def test_a_storm_call_to_an_unregistered_number_screens_first(round):
+    question = "Does someone at home use powered medical equipment, like oxygen, a ventilator, home dialysis or a feeding pump?"
+    assert talk(c := new_call(storm=round)) == [WHO, STORM[round], question] and render("reg_open", county="Harris County") == f"{WHO} {question}"
+    said = talk(c, NO)
+    assert "In an emergency, call 911." in said[-1] and c["status"] == "done" and store.all("patient") == store.all("contact") == []
+    assert talk(new_call(storm=round), YES)[-1] == render("ask_device")
 
 
 def test_a_check_call_correction_asks_again():
