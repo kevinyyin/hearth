@@ -212,8 +212,27 @@ export default function SimulationPage() {
   const enrolActive = stage === "enrol" && !real;
   const callActive = stage === "event" && phase === "calling";
 
+  // after a real enrollment, the outage call rings the same phone; the script only stands in when it cannot
+  const [outageCallId, setOutageCallId] = useState<string | null>(null);
+  const [outageNote, setOutageNote] = useState<string | null>(null);
+  const outageStarted = useRef(false); // one ring per run, even when an effect runs twice
+  const outageCall = usePoll<CallDoc>(outageCallId ? `/api/calls/${outageCallId}` : null, 2000).data;
+  const realOutage = real && !!outageCallId;
+  const enrolledId = liveCall?.patient_id ?? null;
+  useEffect(() => {
+    if (!real || !callActive || outageStarted.current) return;
+    outageStarted.current = true;
+    if (!enrolledId) {
+      setOutageNote("The enrollment call saved no registration, so the outage call below is the script.");
+      return;
+    }
+    sendJson<{ call_id: string }>("POST", "/api/calls", { kind: "impact", patient_id: enrolledId, dial: true })
+      .then((o) => setOutageCallId(o.call_id))
+      .catch((e) => setOutageNote(`The outage call was not placed: ${plainError(e)}. The script below stands in for it.`));
+  }, [real, callActive, enrolledId]);
+
   const enrol = useReveal(ENROLMENT_CALL, enrolActive);
-  const event = useReveal(eventLines, callActive);
+  const event = useReveal(eventLines, callActive && (!real || !!outageNote));
 
   // a real call is done when it ends, once the registration is saved, or when the operator stops waiting
   const callDone = real
@@ -249,6 +268,14 @@ export default function SimulationPage() {
     return () => clearTimeout(t);
   }, [callActive, event.n, advance]);
 
+  // a caller who asks to be moved on the real outage call has requested help, as the script's caller does
+  useEffect(() => {
+    if (!realOutage || !callActive || outageCall?.facts?.consents_to_move !== true) return;
+    setAskedOnCall(true);
+    const t = setTimeout(advance, AUTO_MS);
+    return () => clearTimeout(t);
+  }, [realOutage, callActive, outageCall, advance]);
+
   const startEvent = () => {
     setPhaseIdx(0);
     setStage("event");
@@ -262,6 +289,9 @@ export default function SimulationPage() {
     setRealCallNote(null);
     setRealCallId(null);
     setRealEnded(false);
+    setOutageCallId(null);
+    setOutageNote(null);
+    outageStarted.current = false;
     setFields(ENROLMENT_FIELDS.map((f) => ({ ...f })));
     enrol.reset();
     event.reset();
@@ -281,6 +311,10 @@ export default function SimulationPage() {
         real: false,
       };
     }
+    if (realOutage) {
+      const lines: TranscriptLine[] = (outageCall?.transcript ?? []).map((m) => ({ at: 0, from: m.role === "agent" ? "hearth" : "resident", text: m.text }));
+      return { lines, revealed: lines.length, title: `Outage call · ${resident.phone}`, live: outageCall?.status === "active", real: true };
+    }
     return {
       lines: eventLines,
       revealed: event.n,
@@ -288,7 +322,7 @@ export default function SimulationPage() {
       live: callActive && event.n < eventLines.length,
       real: false,
     };
-  }, [stage, enrol.n, event.n, callActive, callDone, real, liveCall, realNumber, resident.phone, eventLines]);
+  }, [stage, enrol.n, event.n, callActive, callDone, real, liveCall, realNumber, resident.phone, eventLines, realOutage, outageCall]);
 
   const phaseReached = (p: EventPhase) =>
     EVENT_PHASES.findIndex((x) => x.phase === p) <= phaseIdx;
@@ -778,8 +812,19 @@ export default function SimulationPage() {
                     </p>
                     <p className="display mt-1 text-2xl">Hearth · Harris County</p>
                     <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-                      Answered. The transcript is below.
+                      {realOutage && !outageCall?.transcript.length
+                        ? `Ringing ${resident.phone}.`
+                        : realOutage
+                          ? "Answered. The transcript of the real call is below."
+                          : real && !outageNote
+                            ? "Dialling…"
+                            : "Answered. The transcript is below."}
                     </p>
+                    {outageNote && (
+                      <p className="mt-2 rounded-lg px-3 py-2 text-xs" style={{ background: "#fbeee6", color: "#7a2e12" }}>
+                        {outageNote}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -790,6 +835,7 @@ export default function SimulationPage() {
                       revealed={transcript.revealed}
                       title={transcript.title}
                       live={transcript.live}
+                      real={transcript.real}
                       onHide={() => setShowTranscript(false)}
                     />
                   </div>

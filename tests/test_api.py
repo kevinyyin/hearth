@@ -271,6 +271,20 @@ def test_a_register_call_can_ring_the_listed_phone(monkeypatch):
     assert max(store.all("call"), key=lambda c: c["started_at"])["status"] == "done"  # closed, not an unfinished registration
 
 
+def test_an_outage_call_rings_only_a_patient_whose_phone_is_listed(monkeypatch):
+    from hearth.messaging import voice
+
+    monkeypatch.setattr(voice, "start_call", lambda *a, **k: store.put("call", "C-out", {"call_id": "C-out", "status": "active"}) or "C-out")
+    monkeypatch.setattr(live, "dial", lambda call_id: "conv-2")
+    store.put("contact", "P-1", {"phone": "+15550100002"})
+    body = {"kind": "impact", "patient_id": "P-1", "dial": True}
+    assert client.post("/api/calls", json=body).status_code == 403  # the phone is not on the demo list
+    monkeypatch.setenv("HEARTH_DEMO_CALLERS", "+15550100002")
+    r = client.post("/api/calls", json=body)
+    assert r.status_code == 200 and r.json() == {"call_id": "C-out", "conversation_id": "conv-2"}
+    assert client.post("/api/calls", json=body | {"patient_id": "P-synthetic"}).status_code == 403  # no phone a person entered
+
+
 def test_storm_route_takes_a_round_and_defaults_to_a_week_out(monkeypatch):
     assert client.post("/api/storm").json() == {"dialed": [], "failed": []}  # an old client sends no body
     rounds = []

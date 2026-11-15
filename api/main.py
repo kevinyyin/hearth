@@ -572,7 +572,7 @@ class CallIn(BaseModel):
     patient_id: str | None = None
     kind: Literal["impact", "move_consent", "register"]
     phone: str | None = None  # register only: the browser phone stands in for this listed demo number (it has no caller ID)
-    dial: bool = False  # register only: ring `phone` from the phone line rather than wait for the browser phone
+    dial: bool = False  # ring the number from the phone line rather than wait for the browser phone
 
 
 # ---- staging lots: a real parking lot for crews to gather at, proposed from CoStar and picked by the dispatcher ----
@@ -626,19 +626,15 @@ def calls(body: CallIn):
         if body.phone not in registry.demo_callers():  # strangers' details never reach the store
             raise HTTPException(403, "only a number on the demo caller list (HEARTH_DEMO_CALLERS) can register")
         call_id = live.start_call(None, "register", phone=body.phone)
-        if not body.dial:
-            return {"call_id": call_id}
-        try:
-            conversation_id = live.dial(call_id)
-            error = None if conversation_id else (503, "the phone line is not set up on this server")
-        except RuntimeError as e:
-            conversation_id, error = None, (502, str(e))
-        if error:  # closed, so a call that never rang is not listed on dispatch as an unfinished registration
-            store.put("call", call_id, store.get("call", call_id) | {"status": "done"})
-            raise HTTPException(*error)
-        return {"call_id": call_id, "conversation_id": conversation_id}
+        return _ring(call_id) if body.dial else {"call_id": call_id}
     if not body.patient_id:
         raise HTTPException(422, "a patient id is needed")
+    if body.dial:
+        from hearth.messaging import registry, voice
+
+        # only a phone a person entered, and only one on the demo list: the line never rings a synthetic patient's number
+        if voice.phone_of(body.patient_id) not in registry.demo_callers():
+            raise HTTPException(403, "only a patient whose phone is on the demo caller list (HEARTH_DEMO_CALLERS) can be rung")
     proposal_id = None
     if body.kind == "move_consent":
         approved = [p for p in store.all("proposal") if p["patient_id"] == body.patient_id and p["status"] == "approved"]
@@ -646,9 +642,24 @@ def calls(body: CallIn):
             raise HTTPException(409, "no approved proposal for this patient; a dispatcher must approve a move first")
         proposal_id = approved[-1]["proposal_id"]
     try:
-        return {"call_id": live.start_call(body.patient_id, body.kind, proposal_id)}
+        call_id = live.start_call(body.patient_id, body.kind, proposal_id)
     except ImportError:
         raise HTTPException(503, "voice lane not installed yet")
+    return _ring(call_id) if body.dial else {"call_id": call_id}
+
+
+def _ring(call_id: str) -> dict:
+    """Rings a started call's number from the phone line. A call that never rang is closed, so dispatch does not list it
+    as an unfinished registration."""
+    try:
+        conversation_id = live.dial(call_id)
+        error = None if conversation_id else (503, "the phone line is not set up on this server")
+    except RuntimeError as e:
+        conversation_id, error = None, (502, str(e))
+    if error:
+        store.put("call", call_id, store.get("call", call_id) | {"status": "done"})
+        raise HTTPException(*error)
+    return {"call_id": call_id, "conversation_id": conversation_id}
 
 
 @app.get("/api/calls/{call_id}")
