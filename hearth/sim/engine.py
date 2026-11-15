@@ -274,7 +274,7 @@ def run(scenario: str, policy: str, seed: int, crews: int, flags: Flags = Flags(
     rid = run_id(scenario, policy_label(policy, flags), crews, seed)
     summary = {"run_id": rid, **{k: float(v) for k, v in summarize(risk, weight, dt).items()},
                "device_hours": float(device_h), "temp_hours": float(temp_h), "moves": moves,
-               "patients_reaching_zero": int(zeroed.sum()), "assumptions_sha256": hashlib.sha256(ASSUMPTIONS.read_bytes()).hexdigest(),
+               "patients_reaching_zero": int(zeroed.sum()), "patients": n, "assumptions_sha256": hashlib.sha256(ASSUMPTIONS.read_bytes()).hexdigest(),
                "profiles_used": len(profiles)}
     if out is not None:
         (out / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))

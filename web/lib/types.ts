@@ -7,6 +7,9 @@ export type SweepRow = {
   p5: number;
   p95: number;
   unweighted_median: number;
+  /** Median count of patients whose device ran out of backup in a dark home, out of `patients`. Absent in older files. */
+  ran_out_median?: number;
+  patients?: number;
 };
 
 /** Policy ids in the order the results page shows them. */

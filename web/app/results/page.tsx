@@ -284,7 +284,7 @@ export default function ResultsPage() {
         {/* ---------- the live side-by-side ---------- */}
         {rows != null && rows.length > 0 && (
           <div className="mt-7">
-            <FullRun />
+            <FullRun rows={rows} crews={crews} />
           </div>
         )}
 

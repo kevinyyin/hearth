@@ -2,9 +2,10 @@
 
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import HouseholdMap from "@/components/sim/HouseholdMap";
+import HouseholdMap, { FILL } from "@/components/sim/HouseholdMap";
 import { SpeedControl, useRunClock } from "@/components/sim/RunClock";
 import SourceBadge from "@/components/sim/SourceBadge";
+import type { SweepRow } from "@/lib/types";
 import { useCountyFeed } from "@/lib/simSource";
 import {
   CREW_COUNT,
@@ -28,13 +29,8 @@ const DOT: Record<SimEvent["kind"], string> = {
   restock: "#2a6fd6",
 };
 
-const SWATCH: Record<HouseholdState, { fill: string; ring: boolean }> = {
-  reached: { fill: "#0e7a54", ring: false },
-  waiting: { fill: "#c4461a", ring: true },
-  resupply: { fill: "#2a6fd6", ring: false },
-  restocked: { fill: "#9333a8", ring: false },
-  unaffected: { fill: "#b8b1a4", ring: false },
-};
+/** Waiting is the one drawn as a ring, as on the map. */
+const RING: HouseholdState = "waiting";
 
 const STATE_LABEL: Record<HouseholdState, string> = {
   reached: "Reached",
@@ -144,6 +140,7 @@ function Side({
   time,
   hour,
   running,
+  calm,
   onMap,
 }: {
   county: CountySim;
@@ -154,6 +151,8 @@ function Side({
   time: number;
   hour: number;
   running: boolean;
+  /** Reduced motion: no pulses. */
+  calm: boolean;
   onMap: (m: MapLibreMap | null) => void;
 }) {
   const hearth = which === "hearthAt";
@@ -180,6 +179,8 @@ function Side({
         which={which}
         time={time}
         vehicles={running ? county.vehiclesAt(time, which) : []}
+        trails={running ? county.trailsAt(time, which) : []}
+        arrivals={running && !calm ? county.arrivalsAt(time, which) : []}
         height="min(44vh, 440px)"
         onMap={onMap}
         ariaLabel={`${title} at hour ${hour}: ${t.reached} reached, ${t.waiting} waiting, ${t.resupply} needing a restock.`}
@@ -187,9 +188,9 @@ function Side({
 
       <dl className="mt-3 grid grid-cols-5 gap-2">
         {[
-          ["Reached", count.format(t.reached), "#0e7a54"],
-          ["Waiting", count.format(t.waiting), "#c4461a"],
-          ["Need restock", count.format(t.resupply), "#2a6fd6"],
+          ["Reached", count.format(t.reached), FILL.reached],
+          ["Waiting", count.format(t.waiting), FILL.waiting],
+          ["Need restock", count.format(t.resupply), FILL.resupply],
           ["Restocked", count.format(county.restocksBy(time, which)), undefined],
           ["Out now", `${county.outNow(time, which)}/${CREW_COUNT}`, undefined],
         ].map(([label, value, color]) => (
@@ -234,7 +235,15 @@ function Side({
 }
 
 /** The whole county, both ways at once, over a full day. */
-export default function FullRun() {
+export default function FullRun({
+  rows,
+  crews,
+}: {
+  /** The engine's sweep, for the headline count; the replay itself is the browser's own. */
+  rows: SweepRow[];
+  /** The crew count picked at the top of the results page. */
+  crews: number | null;
+}) {
   const feed = useCountyFeed();
   const { county, center } = feed;
 
@@ -258,6 +267,25 @@ export default function FullRun() {
     },
     [],
   );
+
+  // read on the client only; it changes props for the map, not any server markup
+  const calm =
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // The headline is the engine's count, not this replay's: the replay only sends
+  // help once a device has already run out, so every household would count on both sides.
+  const row = (policy: string) => rows.find((r) => r.policy === policy && r.crews === crews);
+  // medians can land on a half; rounded once, so the ratio matches the numbers shown
+  const round = (n?: number) => (n == null ? undefined : Math.round(n));
+  // Hearth's side of the map is routed by the central planner, so its row is the one to show
+  const outH = round(row("p3__alns")?.ran_out_median);
+  const outT = round(row("p0")?.ran_out_median);
+  const patients = row("p3__alns")?.patients;
+  /** A share of the sample: one decimal under 10%, where a whole number would read as zero. */
+  const pct = (n: number, of: number) => {
+    const v = (n / of) * 100;
+    return `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
+  };
 
   const restocksH = county.restocksBy(RUN_HOURS + 1, "hearthAt");
   const restocksT = county.restocksBy(RUN_HOURS + 1, "todayAt");
@@ -303,6 +331,52 @@ export default function FullRun() {
         />
       </div>
 
+      {outH != null && outT != null && patients != null && (
+        <div
+          className="mb-5 grid items-end gap-x-8 gap-y-3 rounded-xl border px-5 py-4 sm:grid-cols-3"
+          style={{ background: "var(--surface-0)", borderColor: "var(--border)" }}
+        >
+          <p
+            className="text-[11px] font-semibold tracking-wide uppercase sm:col-span-3"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Patients whose device ran out of power at home
+          </p>
+          {(
+            [
+              ["Hearth, central planner", outH, FILL.reached],
+              ["Today", outT, FILL.waiting],
+            ] as const
+          ).map(([label, n, color]) => (
+            <div key={label}>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                {label}
+              </p>
+              <p className="display tnum m-0 text-6xl leading-none" style={{ color }}>
+                {pct(n, patients)}
+                <span className="ml-2 text-xl" style={{ color: "var(--text-muted)" }}>
+                  {count.format(n)} of {count.format(patients)}
+                </span>
+              </p>
+            </div>
+          ))}
+          <div>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Today, as many patients
+            </p>
+            <p className="display tnum m-0 text-6xl leading-none">
+              {outH > 0 ? `${(outT / outH).toFixed(1)}×` : "—"}
+            </p>
+          </div>
+          <p className="m-0 text-xs sm:col-span-3" style={{ color: "var(--text-muted)" }}>
+            From the engine&rsquo;s sweep: {count.format(patients)} patients, one in 36 of the county&rsquo;s,
+            with {crews} crews, the median over its simulated runs. A patient counts once if their backup
+            reached zero in a home without power before a crew moved them. The replay below is the
+            browser&rsquo;s own day with {CREW_COUNT} crews.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Side
           county={county}
@@ -313,6 +387,7 @@ export default function FullRun() {
           time={time}
           hour={hour}
           running={running}
+          calm={calm}
           onMap={register("a")}
         />
         <Side
@@ -324,6 +399,7 @@ export default function FullRun() {
           time={time}
           hour={hour}
           running={running}
+          calm={calm}
           onMap={register("b")}
         />
       </div>
@@ -335,10 +411,10 @@ export default function FullRun() {
         {(Object.keys(STATE_LABEL) as HouseholdState[]).map((k) => (
           <li key={k} className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
-              {SWATCH[k].ring ? (
-                <circle r={4} fill="none" stroke={SWATCH[k].fill} strokeWidth={1.8} />
+              {k === RING ? (
+                <circle r={4} fill="none" stroke={FILL[k]} strokeWidth={1.8} />
               ) : (
-                <circle r={k === "unaffected" ? 2.6 : 4.4} fill={SWATCH[k].fill} />
+                <circle r={k === "unaffected" ? 2.6 : 4.4} fill={FILL[k]} />
               )}
             </svg>
             {STATE_LABEL[k]}
