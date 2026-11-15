@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterator, Literal
 
-from fastapi import Body, FastAPI, HTTPException, Path as PathParam, Request
+from fastapi import Body, FastAPI, HTTPException, Path as PathParam, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -20,7 +20,7 @@ from hearth.messaging import registry
 from hearth.buildings.agent import survey
 from hearth.buildings.brief import access_brief
 from hearth.buildings.profile import hours_to_unsafe, layer_effects
-from hearth.config import ROOT
+from hearth.config import ROOT, a
 from hearth.contracts import BuildingProfile, Equipment, Home, Patient, TraceEvent, Vehicle
 from hearth.sim.day import run_day
 
@@ -456,6 +456,17 @@ def propose(patient_id: str, body: dict | None = Body(default=None)):
     patient = _patient(patient_id)
     dark = set((body or {}).get("dark_zips") or [patient.zip])  # the patient's own ZIP is dark by definition
     return _sse(refuge.propose(patient, dark))
+
+
+@app.get("/api/shelter-tile")
+def shelter_tile(lat: float = Query(ge=-90, le=90), lon: float = Query(ge=-180, le=180)):
+    """The aerial around a shelter site, for the dispatcher to judge the lead by eye. A site has no building id, so it is
+    asked for by its coordinates."""
+    # shortcut: the building tile's 800 px PNG (about 1.2 MB) behind a thumbnail; ask Vexcel for a 400 px JPEG if the leads load slowly
+    img = tools.vexcel_image("shelter", lat, lon, a("shelter.tile_half_m"), f"{lat:.5f}_{lon:.5f}")
+    if img is None:
+        raise HTTPException(404, "no aerial image")
+    return FileResponse(img, media_type="image/png")
 
 
 @app.get("/api/proposals")

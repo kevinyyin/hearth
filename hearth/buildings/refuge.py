@@ -19,9 +19,14 @@ from hearth import store
 from hearth.buildings import status, tools
 from hearth.buildings.agent import survey
 from hearth.buildings.trace import to_trace
-from hearth.config import a, anthropic_headers
+from hearth.config import ROOT, a, anthropic_headers
 from hearth.contracts import BuildingProfile, Patient, RefugeOption, RefugeProposal, TraceEvent
 
+# shortcut: polygons for the Beryl replay's 132 Harris County ZIPs only, so a site in any other ZIP is dropped as unknown; swap in a full county file to keep those
+ZCTA_FILE = ROOT / "data" / "processed" / "zcta_beryl_2024.geojson"
+SHELTER_CAVEAT = "power, access and permission are not verified: a place to call about, not a shelter"
+_zip_rings = None
+_sites: dict[str, list[dict]] = {}  # patient_id -> shelter sites the running proposal's search found
 MEMORY_FILE = str(tools.CACHE_ROOT / "memories" / "dispatcher.md")
 MEMORY_SOURCE = "/memories/dispatcher.md"  # the same file, as the agent's filesystem backend (rooted at data/buildings) sees it
 MEMORY_HEADER = "# Dispatcher decisions on refuge proposals\n"
@@ -33,6 +38,43 @@ _graph = None
 def outside_dark_area(zip: str | None, dark_zips: set[str]) -> bool:
     """Unknown ZIP is not outside: we cannot show the refuge has power."""
     return bool(zip) and zip not in dark_zips
+
+
+def zip_at(lat: float, lon: float) -> str | None:
+    """The ZIP whose polygon contains the point, or None. `population.zip_at` without numpy, which the hosted API does not install."""
+    global _zip_rings
+    if _zip_rings is None:
+        polys = lambda g: [g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]
+        _zip_rings = {f["properties"]["zip"]: [ring for poly in polys(f["geometry"]) for ring in poly]
+                      for f in json.loads(ZCTA_FILE.read_text())["features"]}
+
+    def crossings(ring) -> int:  # even-odd ray cast, counted over outer rings and holes alike
+        return sum((y1 > lat) != (y2 > lat) and lon < (x2 - x1) * (lat - y1) / (y2 - y1) + x1 for (x1, y1), (x2, y2) in zip(ring, ring[1:]))
+    return next((z for z, rings in _zip_rings.items() if sum(map(crossings, rings)) % 2), None)
+
+
+def shelter_sites(patient: Patient, dark_zips: set[str]) -> list[dict]:
+    """Places near the patient that look, from the air, like they could shelter someone, in a ZIP that is not dark, nearest
+    first. Vexcel says what a place looks like and CoStar, where it has a record, what it is. Nothing says it has power, is
+    open or would agree, so these are leads for a dispatcher to call about and never a proposal."""
+    here = (patient.lat, patient.lon)
+    tiles = [t | {"looks_like": phrase} for phrase in a("shelter.phrases")
+             for t in tools.vexcel_search(*here, a("shelter.search_half_m"), phrase, a("shelter.tiles_per_phrase"))]
+    sites = []
+    for t in sorted(tiles, key=lambda t: -t["score"]):  # best match first, so it names a place several tiles cover
+        at = (t["lat"], t["lon"])
+        if outside_dark_area(z := zip_at(*at), dark_zips) and all(tools._km(at, (s["lat"], s["lon"])) * 1000 >= a("shelter.merge_m") for s in sites):
+            sites.append(t | {"zip": z, "km": round(tools._km(here, at), 1)})
+    sites = sorted(sites, key=lambda s: tools._km(here, (s["lat"], s["lon"])))[: a("shelter.max_sites")]
+    records = [r for r in tools.costar_all() if r.get("lat") is not None]
+    for s in sites:
+        m = lambda r: tools._km((s["lat"], s["lon"]), (r["lat"], r["lon"])) * 1000
+        near = min(records, key=m, default=None)
+        s["costar"] = None if near is None or m(near) > a("shelter.costar_match_m") else {
+            "building_id": near["building_id"], "name": near.get("name") or near["address"], "property_type": near["property_type"],
+            "floors": near.get("floors"), "surface_spaces": near.get("surface_spaces"), "lot_acres": near.get("lot_acres"), "m": round(m(near))}
+        s["caveat"] = SHELTER_CAVEAT
+    return sites
 
 
 SIMULATED_CALL = "the refuge confirmed by phone that it is running (simulated call)"
@@ -140,6 +182,20 @@ def submit_proposal(patient_id: str, options_json: str) -> str:
     return "The dispatcher approved this proposal. Nothing is booked; stop here."
 
 
+@tool
+def search_shelter_sites(patient_id: str) -> str:
+    """Only when no candidate is eligible: an aerial search for places outside the dark area that look like a school gym,
+    a church or a community centre. The dispatcher gets them as leads to call about; they are never proposed."""
+    patient, dark = _ctx[patient_id]
+    try:
+        _sites[patient_id] = shelter_sites(patient, dark)
+    except Exception as ex:  # a Vexcel failure or missing ZIP polygons means no leads, not a broken run
+        return f"shelter site search unavailable ({type(ex).__name__}); stop here."
+    # the model gets a count only: the dispatcher reads the sites from code, on the run's last event
+    return f"{len(_sites[patient_id])} possible shelter site(s) sent to the dispatcher as leads to call about. None is confirmed; do not propose them. Stop here."
+
+
+TOOLS = [search_refuges, check_access, submit_proposal, search_shelter_sites]
 SYSTEM = """You find a temporary refuge with power for one simulated patient on a home medical device during a power
 outage. You book nothing and contact no patient. The only contact is one check_access may make: a simulated call to a
 refuge to confirm an elevator a scan showed. Steps:
@@ -148,7 +204,9 @@ refuge to confirm an elevator a scan showed. Steps:
 3. Call check_access for each candidate, nearest first. Skip any building the dispatcher's notes in your memory say to avoid.
 4. Eligibility from check_access is final; never propose an ineligible building. Rank eligible ones: closer first, then
    higher-confidence access evidence, then buildings with a scan. Reasons and sources come from check_access.
-5. Call submit_proposal once with 1 to 3 options. If none is eligible, say so in one sentence and stop without submitting.
+5. Call submit_proposal once with 1 to 3 options.
+6. If no candidate is eligible, or search_refuges found none, call search_shelter_sites once instead, say in one sentence that
+   no refuge was eligible, and stop without submitting. Those sites are unverified leads: never describe or propose them.
 Be brief. No medical advice, no promises of help."""
 
 
@@ -167,7 +225,7 @@ def _build(checkpointer):
     sync_memory()
     model = ChatAnthropic(model=a("models.agent"), default_headers=anthropic_headers(), timeout=60, max_retries=1,
                           output_config={"effort": a("models.agent_effort")})
-    return create_deep_agent(model=model, tools=[search_refuges, check_access, submit_proposal], system_prompt=SYSTEM,
+    return create_deep_agent(model=model, tools=TOOLS, system_prompt=SYSTEM,
                              middleware=[TodoListMiddleware()], memory=[MEMORY_SOURCE], interrupt_on={"submit_proposal": True},
                              backend=FilesystemBackend(root_dir=tools.CACHE_ROOT, virtual_mode=True), checkpointer=checkpointer)
 
@@ -218,9 +276,11 @@ def _options(patient: Patient, options_json: str) -> list[RefugeOption]:
 
 
 def propose(patient: Patient, dark_zips: set[str]) -> Iterator[TraceEvent]:
-    """Stream the refuge agent's work. Ends at kind="interrupt" with data={"proposal_id"}, or kind="done" if nothing fits."""
+    """Stream the refuge agent's work. Ends at kind="interrupt" with data={"proposal_id"}, or kind="done" if nothing fits;
+    that done event carries data["shelter_sites"] when the agent's shelter search ran."""
     t0, seq = time.time(), 0
     _ctx[patient.patient_id] = (patient, dark_zips)
+    _sites.pop(patient.patient_id, None)
     thread = f"refuge-{patient.patient_id}-{uuid.uuid4().hex[:8]}"
     config = {"configurable": {"thread_id": thread}, "recursion_limit": 60}
     ask = (f"Find a refuge for simulated patient {patient.patient_id}: device {patient.device}, mobility {patient.mobility}, "
@@ -250,8 +310,12 @@ def propose(patient: Patient, dark_zips: set[str]) -> Iterator[TraceEvent]:
                     break
     except Exception as ex:
         error = f"{type(ex).__name__}: {ex}"
-    yield TraceEvent(seq=seq, t=round(time.time() - t0, 2), kind="done", agent="refuge",
-                     text=error or "no eligible refuge found; a dispatcher should decide", data={"error": error})
+    sites = _sites.pop(patient.patient_id, None)
+    found = "a dispatcher should decide" if sites is None else (
+        f"{len(sites)} possible shelter site{'' if len(sites) == 1 else 's'} to call about, none confirmed" if sites
+        else "the aerial search found no shelter site outside the dark area either")
+    yield TraceEvent(seq=seq, t=round(time.time() - t0, 2), kind="done", agent="refuge", text=error or f"no eligible refuge found; {found}",
+                     data={"error": error} | ({"shelter_sites": sites} if sites else {}))
 
 
 def decide(proposal_id: str, decision: Literal["approve", "reject"], reason: str | None) -> RefugeProposal:

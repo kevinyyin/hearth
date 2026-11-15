@@ -297,6 +297,19 @@ export type TraceEvent = {
   data: Record<string, unknown>;
 };
 
+/** A place the aerial search matched when no refuge passed: a lead to call about, never a proposal. */
+export type ShelterSite = {
+  lat: number;
+  lon: number;
+  zip: string;
+  km: number;
+  score: number;
+  looks_like: string;
+  /** The CoStar record within a short distance (`m` metres) of the matched tile, when there is one. */
+  costar: { building_id: string; name: string; property_type: string; floors: number | null; surface_spaces: number | null; lot_acres: number | null; m: number } | null;
+  caveat: string;
+};
+
 export type RefugeOption = { building_id: string; name: string; lat: number; lon: number; reasons: string[]; sources: string[]; score: number };
 
 export type RefugeProposal = {

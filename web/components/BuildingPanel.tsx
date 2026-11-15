@@ -7,7 +7,7 @@ import ProposalCard from "@/components/ProposalCard";
 import { getJson, sendJson } from "@/lib/api";
 import { useAuthedImage } from "@/lib/useAuthedImage";
 import { reduceTrace, streamEvents } from "@/lib/sse";
-import { PROFILE_FIELDS, type BuildingDetail, type RefugeProposal, type TraceEvent } from "@/lib/types";
+import { PROFILE_FIELDS, type BuildingDetail, type RefugeProposal, type ShelterSite, type TraceEvent } from "@/lib/types";
 
 const MISSING_WORDS: Record<string, string> = {
   costar: "Not in CoStar's records",
@@ -21,6 +21,26 @@ const show = (v: unknown): string =>
   : typeof v === "boolean" ? (v ? "yes" : "no")
   : Array.isArray(v) ? v.map((r) => (r && typeof r === "object" ? Object.values(r).filter((x) => x != null).join(" ") : String(r))).join("; ")
   : String(v);
+
+/** One aerial-search lead. It has no approve button on purpose: nothing here is verified, so it is a place to phone. */
+function ShelterLead({ site }: { site: ShelterSite }) {
+  const image = useAuthedImage(`/api/shelter-tile?lat=${site.lat}&lon=${site.lon}`);
+  const c = site.costar;
+  const facts = c && [c.property_type.replace(/_/g, " "), c.floors != null && `${c.floors} floors`, c.surface_spaces != null && `${c.surface_spaces} surface spaces`,
+    c.lot_acres != null && `${c.lot_acres} acres`].filter(Boolean).join(", ");
+  return (
+    <li className="flex gap-2 rounded border p-2" style={{ borderColor: "var(--border)" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- an object URL fetched with the password header */}
+      {image && <img src={image} alt={`Aerial image of the site, Vexcel: matched "${site.looks_like}"`} className="h-20 w-20 shrink-0 rounded object-cover" />}
+      <div className="space-y-0.5">
+        <p className="font-medium">Looks like: {site.looks_like}</p>
+        <p className="tnum" style={{ color: "var(--text-secondary)" }}>{site.km.toFixed(1)} km away · ZIP {site.zip} · {site.lat.toFixed(5)}, {site.lon.toFixed(5)}</p>
+        <p style={{ color: "var(--text-secondary)" }}>{c ? `CoStar record ${c.m} m away: ${c.name} (${facts})` : "Not in CoStar's records"}</p>
+        <p style={{ color: "#b4541a" }}>{site.caveat}</p>
+      </div>
+    </li>
+  );
+}
 
 /** The building agent for one building: aerial tile, scan, live trace, sourced profile, unsafe-time by layer, access brief,
  *  and (for a patient) the refuge proposal the dispatcher approves or rejects. */
@@ -71,6 +91,7 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
     }
   }
 
+  const sites = (refugeEvents[refugeEvents.length - 1]?.data.shelter_sites as ShelterSite[] | undefined) ?? [];
   const said = detail?.status;
   const trace = reduceTrace(events);
   // after a run, show what that run produced (a failed run shows its default-backed profile); otherwise the stored, cached one
@@ -151,6 +172,12 @@ export default function BuildingPanel({ buildingId, patientId }: { buildingId: s
             {running === "refuge" ? "Finding a refuge…" : "Find a refuge"}
           </button>
           <AgentTrace view={reduceTrace(refugeEvents)} running={running === "refuge"} />
+          {sites.length > 0 && (
+            <section className="space-y-1.5 text-xs">
+              <h4 className="font-semibold" style={{ color: "var(--text-muted)" }}>Possible shelter sites · leads to call about, none confirmed</h4>
+              <ul className="space-y-1.5">{sites.map((s) => <ShelterLead key={`${s.lat},${s.lon}`} site={s} />)}</ul>
+            </section>
+          )}
           {proposal && <ProposalCard proposal={proposal} onDecided={setProposal} />}
         </>
       )}

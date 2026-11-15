@@ -298,6 +298,12 @@ def test_staging_options_choice_and_clear(monkeypatch):
     assert client.get("/api/staging").json()["chosen"] is None
 
 
+def test_a_shelter_tile_is_asked_for_by_coordinates():
+    assert client.get("/api/shelter-tile?lat=29.705&lon=-95.46").status_code == 404  # fixtures hold no shelter tile
+    assert client.get("/api/shelter-tile?lat=north&lon=-95.46").status_code == 422
+    assert client.get("/api/shelter-tile?lat=129.705&lon=-95.46").status_code == 422  # not a place on Earth
+
+
 def test_a_lot_without_a_tile_or_reading_is_404_not_an_error():
     assert client.get("/api/buildings/B-SAMPLE/lot-image").status_code == 404  # fixtures hold no lot tile
     assert client.get("/api/buildings/B-SAMPLE/lot-reading").status_code == 404  # fixtures ask no vision model
