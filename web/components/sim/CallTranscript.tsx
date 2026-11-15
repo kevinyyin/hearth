@@ -14,12 +14,15 @@ export default function CallTranscript({
   title,
   live,
   onHide,
+  real = false,
 }: {
   lines: TranscriptLine[];
   revealed: number;
   title: string;
   live: boolean;
   onHide: () => void;
+  /** A real phone call: its own words, not the placeholder script. */
+  real?: boolean;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -82,7 +85,7 @@ export default function CallTranscript({
                   className="mb-1 text-[11px] font-medium tracking-wide uppercase"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  {fromHearth ? "Hearth" : "Resident (simulated)"}
+                  {fromHearth ? "Hearth" : real ? "Resident" : "Resident (simulated)"}
                 </p>
                 <p
                   className="rounded-xl px-3 py-2 text-sm leading-relaxed"
@@ -110,7 +113,7 @@ export default function CallTranscript({
         className="shrink-0 border-t px-4 py-2.5 text-xs"
         style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
       >
-        Placeholder transcript. The real call and its wording belong to the voice lane.
+        {real ? "Live transcript of the real call, as Hearth heard it." : "Placeholder transcript. The real call and its wording belong to the voice lane."}
       </p>
     </aside>
   );

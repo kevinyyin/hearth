@@ -22,9 +22,7 @@ import {
 import { API, sendJson } from "@/lib/api";
 import { plainError } from "@/lib/useAction";
 import { usePoll } from "@/lib/usePoll";
-
-/** A real call as the API keeps it: its state and every turn so far. */
-type LiveCall = { status: string; transcript: { role: string; text: string }[] };
+import { callFields, eventCallFor, heard, helpRequestFor, residentFromCall, type CallDoc } from "@/lib/realCall";
 
 /** "(949) 512-6068" or "+1 949 512 6068" -> "+19495126068": the form the demo caller list uses. */
 const e164 = (s: string) => {
@@ -143,7 +141,6 @@ export default function SimulationPage() {
   // reachable; the call itself is always the placeholder, since the voice lane
   // owns the real one.
   const residentFeed = useResidentFeed();
-  const resident = residentFeed.resident;
 
   const [stage, setStage] = useState<Stage>("intro");
   const [showTranscript, setShowTranscript] = useState(true);
@@ -154,19 +151,37 @@ export default function SimulationPage() {
   const [realCallNote, setRealCallNote] = useState<string | null>(null);
   const [realCallId, setRealCallId] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
-  const liveCall = usePoll<LiveCall>(realCallId ? `/api/calls/${realCallId}` : null, 2000).data;
+  const [realEnded, setRealEnded] = useState(false);
+  // stage 2 stops reading the call, so the record the run follows holds still
+  const liveCall = usePoll<CallDoc>(realCallId && stage !== "event" ? `/api/calls/${realCallId}` : null, 2000).data;
+  const real = callMode === "real" && !!realCallId;
+  const said = useMemo(() => (liveCall ? heard(liveCall) : {}), [liveCall]);
+  const resident = useMemo(
+    () => (real ? residentFromCall(e164(realNumber), said) : residentFeed.resident),
+    [real, realNumber, said, residentFeed.resident],
+  );
+  const helpRequest = real ? helpRequestFor(resident) : HELP_REQUEST;
+  const eventLines = useMemo(() => (real ? eventCallFor(resident) : EVENT_CALL), [real, resident]);
+  // the caller's own building, from the address they gave; the resident markup belongs to the placeholder
+  const views = real
+    ? { buildingId: typeof said.building_id === "string" ? said.building_id : null, scanId: typeof said.scan_id === "string" ? said.scan_id : null, outside: [], inside: [] }
+    : { buildingId: residentFeed.buildingId, scanId: residentFeed.scanId, outside: residentFeed.outside, inside: residentFeed.inside };
 
-  async function placeRealCall() {
-    if (!realNumber.trim()) return setRealCallNote("Enter a number first.");
-    if (!API) return setRealCallNote("A real call needs the Hearth API.");
+  /** Rings the number; true once the phone line has placed the call. */
+  async function placeRealCall(): Promise<boolean> {
+    if (!realNumber.trim()) return setRealCallNote("Enter a number first."), false;
+    if (!API) return setRealCallNote("A real call needs the Hearth API."), false;
     setPlacing(true);
     setRealCallNote(null);
     setRealCallId(null);
+    setRealEnded(false);
     try {
       const out = await sendJson<{ call_id: string }>("POST", "/api/calls", { kind: "register", phone: e164(realNumber), dial: true });
       setRealCallId(out.call_id);
+      return true;
     } catch (e) {
       setRealCallNote(`${plainError(e)}. Nothing was dialled.`);
+      return false;
     } finally {
       setPlacing(false);
     }
@@ -175,18 +190,28 @@ export default function SimulationPage() {
   const [editing, setEditing] = useState(false);
   const [askedOnCall, setAskedOnCall] = useState(false);
   const [fields, setFields] = useState(ENROLMENT_FIELDS.map((f) => ({ ...f })));
+  const editBase = useRef(fields);
 
   const current = EVENT_PHASES[phaseIdx];
   const phase: EventPhase = current.phase;
   const step = current.next;
 
-  const enrolActive = stage === "enrol";
+  const enrolActive = stage === "enrol" && !real;
   const callActive = stage === "event" && phase === "calling";
 
   const enrol = useReveal(ENROLMENT_CALL, enrolActive);
-  const event = useReveal(EVENT_CALL, callActive);
+  const event = useReveal(eventLines, callActive);
 
-  const callDone = enrol.n >= ENROLMENT_CALL.length;
+  // a real call is done when it ends, once the registration is saved, or when the operator stops waiting
+  const callDone = real
+    ? realEnded || (!!liveCall && (liveCall.status !== "active" || !!liveCall.patient_id))
+    : enrol.n >= ENROLMENT_CALL.length;
+
+  // what the real call captured becomes the profile the operator checks, edits and confirms
+  useEffect(() => {
+    if (real && callDone) setFields(callFields(said).map((f) => ({ label: f.label, value: f.value ?? "—", after: 0 })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- taken once, as the call ends; later polls must not undo edits
+  }, [real, callDone]);
 
   const advance = useCallback(
     () => setPhaseIdx((i) => Math.min(i + 1, EVENT_PHASES.length - 1)),
@@ -222,35 +247,47 @@ export default function SimulationPage() {
     setEditing(false);
     setAskedOnCall(false);
     setRealCallNote(null);
+    setRealCallId(null);
+    setRealEnded(false);
     setFields(ENROLMENT_FIELDS.map((f) => ({ ...f })));
     enrol.reset();
     event.reset();
   };
 
   const transcript = useMemo(() => {
+    if ((stage === "enrol" || stage === "enrolled") && real) {
+      const lines: TranscriptLine[] = (liveCall?.transcript ?? []).map((m) => ({ at: 0, from: m.role === "agent" ? "hearth" : "resident", text: m.text }));
+      return { lines, revealed: lines.length, title: `Enrollment call · ${e164(realNumber)}`, live: liveCall?.status === "active", real: true };
+    }
     if (stage === "enrol" || stage === "enrolled") {
       return {
         lines: ENROLMENT_CALL,
         revealed: stage === "enrolled" ? ENROLMENT_CALL.length : enrol.n,
-        title: `Enrollment call · ${callMode === "real" ? realNumber || "no number yet" : resident.phone}`,
+        title: `Enrollment call · ${resident.phone}`,
         live: stage === "enrol" && !callDone,
+        real: false,
       };
     }
     return {
-      lines: EVENT_CALL,
+      lines: eventLines,
       revealed: event.n,
       title: `Outage call · ${resident.phone}`,
-      live: callActive && event.n < EVENT_CALL.length,
+      live: callActive && event.n < eventLines.length,
+      real: false,
     };
-  }, [stage, enrol.n, event.n, callActive, callDone, callMode, realNumber]);
+  }, [stage, enrol.n, event.n, callActive, callDone, real, liveCall, realNumber, resident.phone, eventLines]);
 
   const phaseReached = (p: EventPhase) =>
     EVENT_PHASES.findIndex((x) => x.phase === p) <= phaseIdx;
 
+  // during a real call the fields fill as the caller answers; after it, the confirmed profile is shown
+  const shownFields = real && !callDone ? callFields(said).map((f) => ({ label: f.label, value: f.value ?? "—" })) : fields;
   /** A field is known once the resident's answer to it has been said. */
   const landed = (label: string) =>
-    stage === "enrolled" || enrol.n > (ENROLMENT_FIELDS.find((f) => f.label === label)?.after ?? Infinity);
-  const entranceKnown = landed("Entrance");
+    real
+      ? (shownFields.find((f) => f.label === label)?.value ?? "—") !== "—"
+      : stage === "enrolled" || enrol.n > (ENROLMENT_FIELDS.find((f) => f.label === label)?.after ?? Infinity);
+  const entranceKnown = real ? !!views.buildingId : landed("Entrance");
 
   return (
     <div className="min-h-full">
@@ -398,36 +435,6 @@ export default function SimulationPage() {
                         minHeight: 48,
                       }}
                     />
-                    <button
-                      type="button"
-                      onClick={placeRealCall}
-                      disabled={placing}
-                      className="mt-3 rounded-lg border px-4 py-2.5 text-sm font-semibold disabled:cursor-wait disabled:opacity-60"
-                      style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)" }}
-                    >
-                      {placing ? "Dialling…" : realCallId ? "Call again" : "Place the call"}
-                    </button>
-                    {realCallId && (
-                      <div className="mt-3 rounded-lg border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                        <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                          {!liveCall || (liveCall.status === "active" && liveCall.transcript.length === 0)
-                            ? `Ringing ${e164(realNumber)}. Answer it to enrol.`
-                            : liveCall.status === "active" ? "On the call" : `Call ${liveCall.status}`}
-                        </p>
-                        {liveCall && liveCall.transcript.length > 0 && (
-                          <ol aria-label="Live call transcript" aria-live="polite" className="mt-2 max-h-56 space-y-1 overflow-auto text-sm">
-                            {liveCall.transcript.map((m, i) => (
-                              <li key={i}>
-                                <span className="font-semibold" style={{ color: m.role === "agent" ? "var(--accent)" : "var(--text-primary)" }}>
-                                  {m.role === "agent" ? "Hearth" : "Resident"}:
-                                </span>{" "}
-                                <span style={{ color: "var(--text-secondary)" }}>{m.text}</span>
-                              </li>
-                            ))}
-                          </ol>
-                        )}
-                      </div>
-                    )}
                     {realCallNote && (
                       <p
                         className="mt-3 rounded-lg px-3 py-2.5 text-xs leading-relaxed"
@@ -437,8 +444,9 @@ export default function SimulationPage() {
                       </p>
                     )}
                     <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                      Hearth rings this number from its phone line and runs the real enrollment
-                      call. Only a number on the demo caller list can be called.
+                      Starting stage 1 rings this number from Hearth&rsquo;s phone line and runs the
+                      real enrollment call; what the caller says fills the profile and the rest of the
+                      run. Only a number on the demo caller list can be called.
                     </p>
                   </div>
                 )}
@@ -452,11 +460,14 @@ export default function SimulationPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={() => setStage("enrol")}
-                  className="rounded-lg px-6 py-3.5 text-base font-semibold"
+                  disabled={placing}
+                  onClick={async () => {
+                    if (callMode === "simulated" || (await placeRealCall())) setStage("enrol");
+                  }}
+                  className="rounded-lg px-6 py-3.5 text-base font-semibold disabled:cursor-wait disabled:opacity-70"
                   style={{ background: "var(--text-primary)", color: "var(--surface-0)" }}
                 >
-                  Start stage 1 — the enrollment call
+                  {placing ? "Dialling…" : "Start stage 1 — the enrollment call"}
                 </button>
               </div>
             </section>
@@ -465,9 +476,9 @@ export default function SimulationPage() {
               className="rounded-xl border px-4 py-3 text-xs leading-relaxed"
               style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
             >
-              Every call, transcript and record in this simulation is a fixed placeholder written
-              into the page. The real enrollment call, its wording and the resident record belong to
-              the registration lane, and this screen is built to have them dropped in.
+              With a simulated call, every call, transcript and record here is a fixed placeholder
+              written into the page. With a real phone call, the enrollment call, its transcript and
+              the record it builds are real, and the outage call that follows is drawn from them.
             </p>
           </div>
         )}
@@ -484,15 +495,19 @@ export default function SimulationPage() {
                   Calling
                 </p>
                 <p className="tnum display mt-1 text-3xl">
-                  {callMode === "real" && realNumber ? realNumber : resident.phone}
+                  {real ? e164(realNumber) : resident.phone}
                 </p>
                 <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-                  {resident.name} · {resident.device} · simulated
+                  {real ? "Real phone call from Hearth\u2019s line" : `${resident.name} · ${resident.device} · simulated`}
                 </p>
                 <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
                   {stage === "enrolled"
-                    ? `Call ended. ${fields.length} fields captured.`
-                    : callDone
+                    ? `Call ended. ${fields.filter((f) => f.value !== "—").length} fields captured.`
+                    : real && !liveCall?.transcript.length && !callDone
+                      ? "Ringing. Answer it to enrol."
+                      : real && liveCall?.status === "active"
+                        ? "On the call. The transcript is being written as it goes."
+                        : callDone
                       ? "The call has ended."
                       : "On the call. The transcript is being written as it goes."}
                 </p>
@@ -500,7 +515,7 @@ export default function SimulationPage() {
 
               <h3 className="mb-3 text-sm font-semibold">What the call captured</h3>
               <dl className="space-y-0">
-                {fields.map((f) => (
+                {shownFields.map((f) => (
                   <div
                     key={f.label}
                     className="flex items-baseline justify-between gap-4 border-b py-2.5 last:border-b-0"
@@ -525,10 +540,10 @@ export default function SimulationPage() {
                     them.
                   </p>
                   <BuildingViews
-                    buildingId={residentFeed.buildingId}
-                    preferredScanId={residentFeed.scanId}
-                    outside={residentFeed.outside}
-                    inside={residentFeed.inside}
+                    buildingId={views.buildingId}
+                    preferredScanId={views.scanId}
+                    outside={views.outside}
+                    inside={views.inside}
                   />
                 </div>
               )}
@@ -536,11 +551,11 @@ export default function SimulationPage() {
               {stage === "enrol" && !callDone && (
                 <button
                   type="button"
-                  onClick={enrol.finish}
+                  onClick={real ? () => setRealEnded(true) : enrol.finish}
                   className="mt-5 rounded-lg border px-4 py-2.5 text-sm font-medium"
                   style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
                 >
-                  Skip to the end of the call
+                  {real ? "Stop waiting and use what the call captured" : "Skip to the end of the call"}
                 </button>
               )}
 
@@ -593,7 +608,7 @@ export default function SimulationPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setFields(ENROLMENT_FIELDS.map((f) => ({ ...f })));
+                        setFields(editBase.current);
                         setEditing(false);
                       }}
                       className="rounded-lg border px-4 py-2.5 text-sm font-medium"
@@ -609,7 +624,10 @@ export default function SimulationPage() {
                 <>
                   <button
                     type="button"
-                    onClick={() => setEditing(true)}
+                    onClick={() => {
+                      editBase.current = fields;
+                      setEditing(true);
+                    }}
                     className="mt-5 w-full rounded-lg border px-4 py-3 text-sm font-semibold"
                     style={{ borderColor: "var(--text-primary)", color: "var(--text-primary)", minHeight: 48 }}
                   >
@@ -659,6 +677,7 @@ export default function SimulationPage() {
                   revealed={transcript.revealed}
                   title={transcript.title}
                   live={transcript.live}
+                  real={transcript.real}
                   onHide={() => setShowTranscript(false)}
                 />
               </div>
@@ -714,7 +733,7 @@ export default function SimulationPage() {
 
             <div className="grid gap-5 xl:grid-cols-3">
               {/* user side */}
-              <Section side="User side" title={`${resident.name} · simulated`}>
+              <Section side="User side" title={real ? `${resident.name} · ${resident.phone}` : `${resident.name} · simulated`}>
                 {!phaseReached("warning") && (
                   <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                     Nothing on screen. The power is on.
@@ -730,8 +749,8 @@ export default function SimulationPage() {
                       Power outage in your area
                     </p>
                     <p className="mt-1 text-sm" style={{ color: "#7a2e12" }}>
-                      Expected to last through tonight. Your concentrator has about 4 hours of
-                      battery.
+                      Expected to last through tonight. Your {resident.device.toLowerCase()} has about{" "}
+                      {resident.backupHours} hours of battery.
                     </p>
                   </div>
                 )}
@@ -771,7 +790,7 @@ export default function SimulationPage() {
                     >
                       <p className="text-sm font-semibold">Help requested</p>
                       <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                        {HELP_REQUEST.summary}
+                        {helpRequest.summary}
                       </p>
                     </div>
 
@@ -781,7 +800,7 @@ export default function SimulationPage() {
                         ["offered", "A dispatcher is looking at it"],
                         ["accepted", "A crew accepted"],
                         ["enroute", "Crew on the way"],
-                        ["arrived", "Crew at the north door"],
+                        ["arrived", real ? "Crew at the door" : "Crew at the north door"],
                       ].map(([p, label]) => {
                         const done = phaseReached(p as EventPhase);
                         return (
@@ -848,7 +867,7 @@ export default function SimulationPage() {
                 )}
 
                 {phaseReached("offered") && (
-                  <EmsOffer accepted={phaseReached("accepted")} onAccept={advance} buildingLabel={resident.buildingLabel} />
+                  <EmsOffer accepted={phaseReached("accepted")} onAccept={advance} buildingLabel={resident.buildingLabel} request={helpRequest} />
                 )}
 
                 {phaseReached("accepted") && (
@@ -857,10 +876,10 @@ export default function SimulationPage() {
                     style={{ borderColor: "var(--border)", background: "var(--surface-0)" }}
                   >
                     <BuildingViews
-                      buildingId={residentFeed.buildingId}
-                    preferredScanId={residentFeed.scanId}
-                      outside={residentFeed.outside}
-                      inside={residentFeed.inside}
+                      buildingId={views.buildingId}
+                      preferredScanId={views.scanId}
+                      outside={views.outside}
+                      inside={views.inside}
                     />
 
                     <ul className="mt-4 space-y-2.5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
@@ -901,10 +920,12 @@ export default function SimulationPage() {
                           </div>
                         ))}
                     </dl>
-                    <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                      The blocked kerb came from the resident, not the imagery. No layer can tell you
-                      what happened tonight.
-                    </p>
+                    {!real && (
+                      <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
+                        The blocked kerb came from the resident, not the imagery. No layer can tell you
+                        what happened tonight.
+                      </p>
+                    )}
                   </div>
                 )}
 

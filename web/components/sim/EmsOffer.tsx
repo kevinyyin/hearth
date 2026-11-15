@@ -11,9 +11,12 @@ export default function EmsOffer({
   onAccept,
   accepted,
   buildingLabel = RESIDENT.buildingLabel,
+  request = HELP_REQUEST,
 }: {
   onAccept: () => void;
   accepted: boolean;
+  /** What the crew is offered; the placeholder unless a real call supplied the record. */
+  request?: typeof HELP_REQUEST;
   /** Real CoStar id when the API answered, the placeholder label otherwise. */
   buildingLabel?: string;
 }) {
@@ -32,7 +35,7 @@ export default function EmsOffer({
           >
             {accepted ? "Job accepted" : "New job — 30s to respond"}
           </p>
-          <h3 className="text-lg font-semibold">{HELP_REQUEST.summary}</h3>
+          <h3 className="text-lg font-semibold">{request.summary}</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
             {buildingLabel} · 2.5 km · about 11 min
           </p>
@@ -46,7 +49,7 @@ export default function EmsOffer({
       </div>
 
       <dl className="mb-4 grid gap-x-5 gap-y-2 sm:grid-cols-2">
-        {HELP_REQUEST.details.map((d) => (
+        {request.details.map((d) => (
           <div key={d.label}>
             <dt className="text-[11px] tracking-wide uppercase" style={{ color: "var(--text-muted)" }}>
               {d.label}
